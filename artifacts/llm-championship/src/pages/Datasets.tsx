@@ -24,7 +24,14 @@ export default function Datasets() {
   const privacyMutation = usePrivacyCheckDataset();
   const anonymizeMutation = useAnonymizeDataset();
 
+  const { data: gateways } = useListGateways();
   const [activeTab, setActiveTab] = useState<"list" | "upload" | "generate">("list");
+  const [actionDialog, setActionDialog] = useState<{ type: "privacy" | "anonymize"; datasetId: number } | null>(null);
+  const [dialogGatewayId, setDialogGatewayId] = useState("");
+  const [dialogModelId, setDialogModelId] = useState("");
+
+  const dialogGwId = Number(dialogGatewayId) || 0;
+  const { data: dialogModels } = useListGatewayModels(dialogGwId, { query: { queryKey: getListGatewayModelsQueryKey(dialogGwId), enabled: !!dialogGatewayId }});
 
   const handleDelete = async (id: number) => {
     if (confirm("DELETE DATASET? THIS CANNOT BE UNDONE.")) {
@@ -33,26 +40,22 @@ export default function Datasets() {
     }
   };
 
-  const handlePrivacyCheck = async (id: number) => {
-    const gatewayId = Number(prompt("Enter Gateway ID for Privacy Check (e.g. 1):", "1"));
-    const modelId = prompt("Enter Model ID (e.g. gpt-4o):", "gpt-4o");
-    if (!gatewayId || !modelId) return;
-    
-    alert("STARTING PRIVACY SCAN...");
-    await privacyMutation.mutateAsync({ id, data: { gatewayId, modelId } });
-    queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
-    alert("SCAN COMPLETE");
+  const openActionDialog = (type: "privacy" | "anonymize", datasetId: number) => {
+    setDialogGatewayId("");
+    setDialogModelId("");
+    setActionDialog({ type, datasetId });
   };
 
-  const handleAnonymize = async (id: number) => {
-    const gatewayId = Number(prompt("Enter Gateway ID for Anonymization (e.g. 1):", "1"));
-    const modelId = prompt("Enter Model ID (e.g. gpt-4o):", "gpt-4o");
-    if (!gatewayId || !modelId) return;
-    
-    alert("ANONYMIZING PII...");
-    await anonymizeMutation.mutateAsync({ id, data: { gatewayId, modelId } });
+  const handleDialogSubmit = async () => {
+    if (!actionDialog || !dialogGatewayId || !dialogModelId) return;
+    const { type, datasetId } = actionDialog;
+    if (type === "privacy") {
+      await privacyMutation.mutateAsync({ id: datasetId, data: { gatewayId: Number(dialogGatewayId), modelId: dialogModelId } });
+    } else {
+      await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: Number(dialogGatewayId), modelId: dialogModelId } });
+    }
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
-    alert("ANONYMIZATION COMPLETE");
+    setActionDialog(null);
   };
 
   return (
@@ -106,7 +109,7 @@ export default function Datasets() {
                       <span>CREATED: {formatDate(ds.createdAt)}</span>
                     </div>
                     {ds.privacyReport && (
-                      <div className="mt-4 p-3 border-2 border-dashed border-black text-sm max-h-32 overflow-y-auto bg-yellow-50">
+                      <div className="mt-4 p-3 border-2 border-dashed border-black text-sm max-h-32 overflow-y-auto bg-white">
                         <strong>PRIVACY REPORT:</strong><br />
                         {ds.privacyReport}
                       </div>
@@ -114,11 +117,11 @@ export default function Datasets() {
                   </div>
                   
                   <div className="flex flex-col space-y-2 justify-center md:w-48 border-l-[3px] border-black pl-4">
-                    <RetroButton size="sm" onClick={() => handlePrivacyCheck(ds.id)}>
+                    <RetroButton size="sm" onClick={() => openActionDialog("privacy", ds.id)}>
                       SCAN PRIVACY
                     </RetroButton>
                     {ds.privacyStatus === 'issues_found' && (
-                      <RetroButton size="sm" variant="secondary" onClick={() => handleAnonymize(ds.id)}>
+                      <RetroButton size="sm" variant="secondary" onClick={() => openActionDialog("anonymize", ds.id)}>
                         ANONYMIZE
                       </RetroButton>
                     )}
@@ -135,6 +138,42 @@ export default function Datasets() {
 
       {activeTab === "upload" && <UploadDatasetForm onSuccess={() => setActiveTab("list")} />}
       {activeTab === "generate" && <GenerateDatasetForm onSuccess={() => setActiveTab("list")} />}
+
+      {actionDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setActionDialog(null)}>
+          <div className="bg-white border-[3px] border-black p-0 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-black text-white px-4 py-2 font-display uppercase">
+              {actionDialog.type === "privacy" ? "PRIVACY SCAN CONFIG" : "ANONYMIZE CONFIG"}
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block font-display mb-2 uppercase text-sm">Gateway</label>
+                <RetroSelect value={dialogGatewayId} onChange={(e) => { setDialogGatewayId(e.target.value); setDialogModelId(""); }}>
+                  <option value="">-- SELECT GATEWAY --</option>
+                  {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </RetroSelect>
+              </div>
+              <div>
+                <label className="block font-display mb-2 uppercase text-sm">Model</label>
+                <RetroSelect value={dialogModelId} onChange={(e) => setDialogModelId(e.target.value)} disabled={!dialogModels?.length}>
+                  <option value="">-- SELECT MODEL --</option>
+                  {dialogModels?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </RetroSelect>
+              </div>
+              <div className="flex space-x-3 pt-2">
+                <RetroButton 
+                  className="flex-1" 
+                  onClick={handleDialogSubmit} 
+                  disabled={!dialogGatewayId || !dialogModelId || privacyMutation.isPending || anonymizeMutation.isPending}
+                >
+                  {(privacyMutation.isPending || anonymizeMutation.isPending) ? "PROCESSING..." : actionDialog.type === "privacy" ? "START SCAN" : "ANONYMIZE"}
+                </RetroButton>
+                <RetroButton variant="secondary" onClick={() => setActionDialog(null)}>CANCEL</RetroButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -165,7 +204,7 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputMode === "file" && selectedFile) {
-      await uploadMutation.mutateAsync({ data: { file: selectedFile as unknown as Blob, name, systemPrompt: prompt } });
+      await uploadMutation.mutateAsync({ data: { file: new Blob([selectedFile], { type: selectedFile.type }), name, systemPrompt: prompt } });
     } else {
       await createMutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
     }
