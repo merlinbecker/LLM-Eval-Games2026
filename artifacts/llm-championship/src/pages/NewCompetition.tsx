@@ -149,7 +149,6 @@ export default function NewCompetition() {
   );
 }
 
-// Sub-component for adding models
 function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: ModelSelection) => void, buttonLabel: string, icon: React.ReactNode, disabled?: boolean }) {
   const { data: gateways } = useListGateways();
   const [gatewayId, setGatewayId] = useState("");

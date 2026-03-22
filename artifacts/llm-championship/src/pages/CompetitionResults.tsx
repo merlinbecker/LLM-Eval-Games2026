@@ -34,15 +34,13 @@ export default function CompetitionResults() {
   const isRunning = comp.status === 'running';
   const hasResults = (comp.results?.length ?? 0) > 0;
 
-  // Format data for radar chart
   const radarData = comp.results?.map(r => ({
-    name: r.modelName.split('/').pop() || r.modelName, // short name
-    speedScore: Math.max(0, 10 - (r.avgSpeed / 1000)), // dummy normalization: 10s = 0, 0s = 10
-    costScore: Math.max(0, 10 - (r.avgCost * 100)), // dummy normalization
+    name: r.modelName.split('/').pop() || r.modelName,
+    speedScore: Math.max(0, 10 - (r.avgSpeed / 1000)),
+    costScore: Math.max(0, 10 - (r.avgCost * 100)),
     qualityScore: r.avgQuality,
   })) || [];
 
-  // Flattening for Recharts Radar
   const chartData = [
     { subject: 'QUALITY', ...radarData.reduce((acc, curr) => ({...acc, [curr.name]: curr.qualityScore}), {}) },
     { subject: 'SPEED', ...radarData.reduce((acc, curr) => ({...acc, [curr.name]: curr.speedScore}), {}) },
@@ -171,7 +169,7 @@ export default function CompetitionResults() {
                     <div key={d.name} className="flex items-center space-x-2">
                       <div 
                         className="w-8 h-1 bg-black" 
-                        style={{ borderBottom: `${strokes[i % strokes.length].dash.length ? '4px dashed white' : 'none'}` }} // hacky visualization
+                        style={{ borderBottom: `${strokes[i % strokes.length].dash.length ? '4px dashed white' : 'none'}` }}
                       />
                       <span className="font-bold uppercase text-sm">{d.name}</span>
                     </div>

@@ -22,9 +22,7 @@ export default function ArenaDashboard() {
             alt="Olympic Podium"
             className="w-full max-w-2xl h-auto relative z-10"
           />
-          
-          {/* Decorative robots placed absolutely over the podium image if we had exact coords, 
-              but we'll just show them prominently in the results page instead. */}
+
         </div>
         <div className="p-6 bg-white grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="border-[3px] border-black p-4 flex items-start space-x-4">

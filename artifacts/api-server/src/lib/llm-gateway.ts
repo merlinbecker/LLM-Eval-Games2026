@@ -1,5 +1,5 @@
 import { logger } from "./logger";
-import { resolve as dnsResolve } from "node:dns/promises";
+import { resolve4, resolve6 } from "node:dns/promises";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -82,16 +82,21 @@ async function validateGatewayUrl(baseUrl: string): Promise<void> {
     throw new Error("Gateway URL points to a private/reserved IP range");
   }
 
+  const allAddresses: string[] = [];
   try {
-    const addresses = await dnsResolve(hostname);
-    for (const addr of addresses) {
-      if (isPrivateIp(addr)) {
-        throw new Error(`Gateway hostname ${hostname} resolves to private IP ${addr}`);
-      }
-    }
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("resolves to private IP")) {
-      throw err;
+    const v4 = await resolve4(hostname);
+    allAddresses.push(...v4);
+  } catch {}
+  try {
+    const v6 = await resolve6(hostname);
+    allAddresses.push(...v6);
+  } catch {}
+  if (allAddresses.length === 0) {
+    throw new Error(`Gateway hostname ${hostname} could not be resolved`);
+  }
+  for (const addr of allAddresses) {
+    if (isPrivateIp(addr)) {
+      throw new Error(`Gateway hostname ${hostname} resolves to private IP ${addr}`);
     }
   }
 }

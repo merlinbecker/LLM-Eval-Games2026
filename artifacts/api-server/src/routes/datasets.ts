@@ -150,15 +150,18 @@ Only output the JSON, nothing else.`,
   let parsed;
   try {
     parsed = JSON.parse(result.content);
+    if (!parsed.status || !Array.isArray(parsed.findings)) {
+      throw new Error("Invalid response structure");
+    }
   } catch {
     parsed = {
-      status: "clean" as const,
+      status: "issues_found" as const,
       findings: [],
-      report: result.content,
+      report: `Analysis could not be completed. Raw output: ${result.content.slice(0, 500)}`,
     };
   }
 
-  const status = parsed.status === "issues_found" ? "issues_found" : "clean";
+  const status = parsed.status === "clean" ? "clean" : "issues_found";
   await db
     .update(datasetsTable)
     .set({ privacyStatus: status, privacyReport: parsed.report })

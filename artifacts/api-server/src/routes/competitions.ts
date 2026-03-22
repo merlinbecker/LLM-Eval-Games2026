@@ -119,6 +119,10 @@ router.post("/competitions/:id/run", async (req, res) => {
     res.status(404).json({ error: "Competition not found" });
     return;
   }
+  if (competition.status === "running") {
+    res.status(409).json({ error: "Competition is already running" });
+    return;
+  }
 
   const [dataset] = await db
     .select()
