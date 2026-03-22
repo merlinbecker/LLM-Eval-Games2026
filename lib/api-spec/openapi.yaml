@@ -3,20 +3,28 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LLM Eiskunstlauf Championship API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: gateways
+    description: LLM Gateway configuration
+  - name: datasets
+    description: Test dataset management
+  - name: competitions
+    description: Competition management
+  - name: models
+    description: Model listing from gateways
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +32,303 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /gateways:
+    get:
+      operationId: listGateways
+      tags: [gateways]
+      summary: List all configured LLM gateways
+      responses:
+        "200":
+          description: List of gateways
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Gateway"
+    post:
+      operationId: createGateway
+      tags: [gateways]
+      summary: Add a new LLM gateway
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGateway"
+      responses:
+        "201":
+          description: Gateway created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gateway"
+
+  /gateways/{id}:
+    delete:
+      operationId: deleteGateway
+      tags: [gateways]
+      summary: Delete a gateway
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  /gateways/{id}/models:
+    get:
+      operationId: listGatewayModels
+      tags: [models]
+      summary: List available models from a specific gateway
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModelInfo"
+
+  /datasets:
+    get:
+      operationId: listDatasets
+      tags: [datasets]
+      summary: List all datasets
+      responses:
+        "200":
+          description: List of datasets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dataset"
+    post:
+      operationId: createDataset
+      tags: [datasets]
+      summary: Create a new dataset (upload markdown)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDataset"
+      responses:
+        "201":
+          description: Dataset created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+
+  /datasets/{id}:
+    get:
+      operationId: getDataset
+      tags: [datasets]
+      summary: Get a single dataset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dataset detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+    delete:
+      operationId: deleteDataset
+      tags: [datasets]
+      summary: Delete a dataset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  /datasets/{id}/privacy-check:
+    post:
+      operationId: privacyCheckDataset
+      tags: [datasets]
+      summary: Run a privacy/PII check on a dataset using an LLM
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrivacyCheckRequest"
+      responses:
+        "200":
+          description: Privacy check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivacyCheckResult"
+
+  /datasets/{id}/anonymize:
+    post:
+      operationId: anonymizeDataset
+      tags: [datasets]
+      summary: Anonymize PII in a dataset using an LLM
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnonymizeRequest"
+      responses:
+        "200":
+          description: Anonymized dataset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+
+  /datasets/generate:
+    post:
+      operationId: generateDataset
+      tags: [datasets]
+      summary: Generate a test dataset using an LLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateDatasetRequest"
+      responses:
+        "201":
+          description: Generated dataset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+
+  /competitions:
+    get:
+      operationId: listCompetitions
+      tags: [competitions]
+      summary: List all competitions
+      responses:
+        "200":
+          description: List of competitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Competition"
+    post:
+      operationId: createCompetition
+      tags: [competitions]
+      summary: Create a new competition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompetition"
+      responses:
+        "201":
+          description: Competition created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Competition"
+
+  /competitions/{id}:
+    get:
+      operationId: getCompetition
+      tags: [competitions]
+      summary: Get competition details with results
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Competition with results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitionDetail"
+    delete:
+      operationId: deleteCompetition
+      tags: [competitions]
+      summary: Delete a competition
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
+  /competitions/{id}/run:
+    post:
+      operationId: runCompetition
+      tags: [competitions]
+      summary: Start running a competition (evaluate all models)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Competition started/completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitionDetail"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +339,357 @@ components:
       required:
         - status
 
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    Gateway:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [openrouter, github_copilot, custom]
+        baseUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - type
+        - baseUrl
+        - createdAt
+
+    CreateGateway:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [openrouter, github_copilot, custom]
+        baseUrl:
+          type: string
+        apiKey:
+          type: string
+      required:
+        - name
+        - type
+        - baseUrl
+        - apiKey
+
+    ModelInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        gatewayId:
+          type: integer
+        gatewayName:
+          type: string
+      required:
+        - id
+        - name
+        - gatewayId
+        - gatewayName
+
+    Dataset:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        content:
+          type: string
+        systemPrompt:
+          type: string
+        privacyStatus:
+          type: string
+          enum: [unchecked, clean, issues_found, anonymized]
+        privacyReport:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - content
+        - systemPrompt
+        - privacyStatus
+        - createdAt
+
+    CreateDataset:
+      type: object
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        systemPrompt:
+          type: string
+      required:
+        - name
+        - content
+        - systemPrompt
+
+    PrivacyCheckRequest:
+      type: object
+      properties:
+        gatewayId:
+          type: integer
+        modelId:
+          type: string
+      required:
+        - gatewayId
+        - modelId
+
+    PrivacyCheckResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [clean, issues_found]
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrivacyFinding"
+        report:
+          type: string
+      required:
+        - status
+        - findings
+        - report
+
+    PrivacyFinding:
+      type: object
+      properties:
+        type:
+          type: string
+        text:
+          type: string
+        suggestion:
+          type: string
+      required:
+        - type
+        - text
+        - suggestion
+
+    AnonymizeRequest:
+      type: object
+      properties:
+        gatewayId:
+          type: integer
+        modelId:
+          type: string
+      required:
+        - gatewayId
+        - modelId
+
+    GenerateDatasetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        topic:
+          type: string
+        systemPrompt:
+          type: string
+        numberOfItems:
+          type: integer
+        gatewayId:
+          type: integer
+        modelId:
+          type: string
+      required:
+        - name
+        - topic
+        - systemPrompt
+        - numberOfItems
+        - gatewayId
+        - modelId
+
+    Competition:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        datasetId:
+          type: integer
+        status:
+          type: string
+          enum: [draft, running, completed]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - datasetId
+        - status
+        - createdAt
+
+    CreateCompetition:
+      type: object
+      properties:
+        name:
+          type: string
+        datasetId:
+          type: integer
+        systemPrompt:
+          type: string
+        contestantModels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelSelection"
+        judgeModels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelSelection"
+      required:
+        - name
+        - datasetId
+        - systemPrompt
+        - contestantModels
+        - judgeModels
+
+    ModelSelection:
+      type: object
+      properties:
+        gatewayId:
+          type: integer
+        modelId:
+          type: string
+        modelName:
+          type: string
+      required:
+        - gatewayId
+        - modelId
+        - modelName
+
+    CompetitionDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        datasetId:
+          type: integer
+        systemPrompt:
+          type: string
+        status:
+          type: string
+          enum: [draft, running, completed]
+        contestantModels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelSelection"
+        judgeModels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelSelection"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitionResult"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - datasetId
+        - systemPrompt
+        - status
+        - contestantModels
+        - judgeModels
+        - results
+        - createdAt
+
+    CompetitionResult:
+      type: object
+      properties:
+        modelId:
+          type: string
+        modelName:
+          type: string
+        avgSpeed:
+          type: number
+        avgCost:
+          type: number
+        avgQuality:
+          type: number
+        totalTokens:
+          type: integer
+        responses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelResponse"
+      required:
+        - modelId
+        - modelName
+        - avgSpeed
+        - avgCost
+        - avgQuality
+        - totalTokens
+        - responses
+
+    ModelResponse:
+      type: object
+      properties:
+        dataItemIndex:
+          type: integer
+        response:
+          type: string
+        durationMs:
+          type: number
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+        cost:
+          type: number
+        judgeScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/JudgeScore"
+      required:
+        - dataItemIndex
+        - response
+        - durationMs
+        - promptTokens
+        - completionTokens
+        - cost
+        - judgeScores
+
+    JudgeScore:
+      type: object
+      properties:
+        judgeModelId:
+          type: string
+        judgeModelName:
+          type: string
+        score:
+          type: integer
+        reasoning:
+          type: string
+      required:
+        - judgeModelId
+        - judgeModelName
+        - score
+        - reasoning

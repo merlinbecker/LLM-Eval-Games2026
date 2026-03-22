@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --font-display: 'Silkscreen', cursive;
+  --font-sans: 'VT323', monospace;
+
+  --color-background: #ffffff;
+  --color-foreground: #000000;
+  --color-border: #000000;
+  --color-primary: #000000;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #ffffff;
+  --color-muted-foreground: #000000;
+  --color-card: #ffffff;
+  --color-card-foreground: #000000;
+  --color-ring: #000000;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+  --border: #000000;
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased font-sans text-xl leading-tight selection:bg-black selection:text-white;
+    background-image: url('/images/bg-dither.png');
+    background-size: 128px;
+    background-repeat: repeat;
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight uppercase;
+  }
+
+  /* Custom Scrollbar for Retro Feel */
+  ::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-left: 2px solid #000;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #000;
+    border: 2px solid #fff;
+  }
+  ::-webkit-scrollbar-button {
+    background: #fff;
+    border: 2px solid #000;
+    display: block;
+    height: 16px;
+    width: 16px;
+  }
+}
+
+@layer utilities {
+  .retro-shadow {
+    box-shadow: 6px 6px 0px 0px #000000;
+  }
+  .retro-shadow-sm {
+    box-shadow: 4px 4px 0px 0px #000000;
+  }
+  
+  .title-stripes {
+    background: repeating-linear-gradient(
+      0deg,
+      #fff,
+      #fff 2px,
+      #000 2px,
+      #000 4px
+    );
+  }
+
+  .bg-dither {
+    background-image: 
+      linear-gradient(45deg, #000 25%, transparent 25%),
+      linear-gradient(-45deg, #000 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #000 75%),
+      linear-gradient(-45deg, transparent 75%, #000 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0px;
+  }
+
+  .scanlines::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+    background-size: 100% 4px;
+    z-index: 50;
+    pointer-events: none;
+  }
+}

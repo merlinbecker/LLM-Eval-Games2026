@@ -1,0 +1,26 @@
+packages:
+  "recharts": "Radar charts for competition results"
+  "date-fns": "Date formatting"
+  "clsx": "Classname utility"
+  "tailwind-merge": "Tailwind class merging utility"
+
+images:
+  - path: "artifacts/llm-championship/public/images/bg-dither.png"
+    description: "1-bit monochrome black and white dithered checkerboard pattern texture, seamless"
+    aspect_ratio: "1:1"
+  - path: "artifacts/llm-championship/public/images/robot-1.png"
+    description: "8-bit retro pixel art robot face, pure black and white monochrome only, macintosh system 5 style"
+    aspect_ratio: "1:1"
+  - path: "artifacts/llm-championship/public/images/robot-2.png"
+    description: "8-bit retro pixel art robot face with antenna, pure black and white monochrome only, macintosh 1985 style"
+    aspect_ratio: "1:1"
+  - path: "artifacts/llm-championship/public/images/robot-3.png"
+    description: "8-bit retro pixel art robot face blocky, pure black and white monochrome only, classic mac style"
+    aspect_ratio: "1:1"
+  - path: "artifacts/llm-championship/public/images/podium.png"
+    description: "8-bit retro pixel art olympic podium with 1st 2nd 3rd places, pure black and white monochrome 1-bit only"
+    aspect_ratio: "16:9"
+
+notes:
+  - Uses @workspace/api-client-react for TanStack Query hooks.
+  - Strictly monochrome aesthetic (black and white only, no gray).
