@@ -5,6 +5,7 @@ import {
   useListDatasets, 
   useListGateways, 
   useListGatewayModels,
+  getListGatewayModelsQueryKey,
   useCreateCompetition,
   getListCompetitionsQueryKey
 } from "@workspace/api-client-react";
@@ -153,7 +154,8 @@ function ModelSelector({ onAdd, buttonLabel, icon }: { onAdd: (m: ModelSelection
   const [gatewayId, setGatewayId] = useState("");
   const [modelId, setModelId] = useState("");
   
-  const { data: models } = useListGatewayModels(Number(gatewayId), { query: { enabled: !!gatewayId }});
+  const gwId = Number(gatewayId) || 0;
+  const { data: models } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!gatewayId }});
 
   const handleAdd = () => {
     if (!gatewayId || !modelId) return;

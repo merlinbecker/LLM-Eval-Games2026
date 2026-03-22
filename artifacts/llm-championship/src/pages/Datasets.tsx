@@ -9,7 +9,8 @@ import {
   useGenerateDataset,
   getListDatasetsQueryKey,
   useListGateways,
-  useListGatewayModels
+  useListGatewayModels,
+  getListGatewayModelsQueryKey
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroSelect } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
@@ -186,7 +187,8 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const [gatewayId, setGatewayId] = useState("");
   const [modelId, setModelId] = useState("");
 
-  const { data: models } = useListGatewayModels(Number(gatewayId), { query: { enabled: !!gatewayId }});
+  const gwId = Number(gatewayId) || 0;
+  const { data: models } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!gatewayId }});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

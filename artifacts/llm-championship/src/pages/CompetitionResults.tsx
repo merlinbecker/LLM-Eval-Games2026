@@ -16,7 +16,7 @@ export default function CompetitionResults() {
   
   const queryClient = useQueryClient();
   const { data: comp, isLoading } = useGetCompetition(id, {
-    query: { refetchInterval: (query) => query.state.data?.status === 'running' ? 2000 : false }
+    query: { queryKey: getGetCompetitionQueryKey(id), refetchInterval: (query) => query.state.data?.status === 'running' ? 2000 : false }
   });
   const runMutation = useRunCompetition();
 
