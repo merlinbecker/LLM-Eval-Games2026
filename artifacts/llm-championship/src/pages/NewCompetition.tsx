@@ -29,8 +29,8 @@ export default function NewCompetition() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!datasetId || contestants.length < 1 || judges.length < 1) {
-      alert("Requires dataset, at least 1 contestant, and at least 1 judge.");
+    if (!datasetId || contestants.length < 1 || judges.length < 3 || judges.length > 5) {
+      alert("Requires dataset, at least 1 contestant, and 3–5 judges.");
       return;
     }
     
@@ -114,9 +114,10 @@ export default function NewCompetition() {
           <RetroWindow title="JUDGING PANEL">
             <div className="flex flex-col h-full">
               <ModelSelector 
-                onAdd={(m) => setJudges([...judges, m])} 
-                buttonLabel="ADD JUDGE" 
+                onAdd={(m) => { if (judges.length < 5) setJudges([...judges, m]); }} 
+                buttonLabel={judges.length >= 5 ? "MAX 5 JUDGES" : "ADD JUDGE"} 
                 icon={<Gavel className="w-4 h-4 mr-2" />}
+                disabled={judges.length >= 5}
               />
               
               <div className="mt-6 flex-1 border-t-[3px] border-black pt-4">
@@ -131,7 +132,7 @@ export default function NewCompetition() {
                       <button type="button" onClick={() => setJudges(judges.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-black hover:text-white">&times;</button>
                     </div>
                   ))}
-                  {judges.length === 0 && <div className="text-center p-4 border-2 border-dashed border-black">NO JUDGES (3-5 RECOMMENDED)</div>}
+                  {judges.length === 0 && <div className="text-center p-4 border-2 border-dashed border-black">NO JUDGES (3–5 REQUIRED)</div>}
                 </div>
               </div>
             </div>
@@ -149,7 +150,7 @@ export default function NewCompetition() {
 }
 
 // Sub-component for adding models
-function ModelSelector({ onAdd, buttonLabel, icon }: { onAdd: (m: ModelSelection) => void, buttonLabel: string, icon: React.ReactNode }) {
+function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: ModelSelection) => void, buttonLabel: string, icon: React.ReactNode, disabled?: boolean }) {
   const { data: gateways } = useListGateways();
   const [gatewayId, setGatewayId] = useState("");
   const [modelId, setModelId] = useState("");
@@ -183,7 +184,7 @@ function ModelSelector({ onAdd, buttonLabel, icon }: { onAdd: (m: ModelSelection
         </RetroSelect>
       </div>
       <div className="sm:col-span-1">
-        <RetroButton type="button" onClick={handleAdd} className="w-full flex items-center justify-center p-2" disabled={!modelId}>
+        <RetroButton type="button" onClick={handleAdd} className="w-full flex items-center justify-center p-2" disabled={!modelId || disabled}>
           {icon} ADD
         </RetroButton>
       </div>

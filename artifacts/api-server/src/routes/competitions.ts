@@ -72,6 +72,10 @@ router.get("/competitions", async (_req, res) => {
 
 router.post("/competitions", async (req, res) => {
   const data = CreateCompetitionBody.parse(req.body);
+  if (data.judgeModels.length < 3 || data.judgeModels.length > 5) {
+    res.status(400).json({ message: "Judge panel must have 3–5 models" });
+    return;
+  }
   const [competition] = await db
     .insert(competitionsTable)
     .values({
@@ -262,7 +266,7 @@ async function runCompetitionAsync(
       }
 
       const partialEntry = buildResultEntry(contestant, responses);
-      const idx = results.findIndex((r) => r.modelId === contestant.modelId);
+      const idx = results.findIndex((r) => r.gatewayId === contestant.gatewayId && r.modelId === contestant.modelId);
       if (idx >= 0) {
         results[idx] = partialEntry;
       } else {
@@ -300,6 +304,7 @@ function buildResultEntry(contestant: ModelSel, responses: ModelResponseEntry[])
 
   const count = responses.length || 1;
   return {
+    gatewayId: contestant.gatewayId,
     modelId: contestant.modelId,
     modelName: contestant.modelName,
     avgSpeed: totalSpeed / count,

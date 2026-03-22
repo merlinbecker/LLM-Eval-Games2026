@@ -8,6 +8,7 @@
 import type { ModelResponse } from "./modelResponse";
 
 export interface CompetitionResult {
+  gatewayId: number;
   modelId: string;
   modelName: string;
   avgSpeed: number;

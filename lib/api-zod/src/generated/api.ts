@@ -249,6 +249,7 @@ export const GetCompetitionResponse = zod.object({
   ),
   results: zod.array(
     zod.object({
+      gatewayId: zod.number(),
       modelId: zod.string(),
       modelName: zod.string(),
       avgSpeed: zod.number(),
@@ -318,6 +319,7 @@ export const RunCompetitionResponse = zod.object({
   ),
   results: zod.array(
     zod.object({
+      gatewayId: zod.number(),
       modelId: zod.string(),
       modelName: zod.string(),
       avgSpeed: zod.number(),

@@ -21,6 +21,7 @@ export interface ModelResponseEntry {
 }
 
 export interface CompetitionResultEntry {
+  gatewayId: number;
   modelId: string;
   modelName: string;
   avgSpeed: number;

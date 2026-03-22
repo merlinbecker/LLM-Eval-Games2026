@@ -178,6 +178,7 @@ export interface ModelResponse {
 }
 
 export interface CompetitionResult {
+  gatewayId: number;
   modelId: string;
   modelName: string;
   avgSpeed: number;

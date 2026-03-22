@@ -663,6 +663,8 @@ components:
     CompetitionResult:
       type: object
       properties:
+        gatewayId:
+          type: integer
         modelId:
           type: string
         modelName:
@@ -680,6 +682,7 @@ components:
           items:
             $ref: "#/components/schemas/ModelResponse"
       required:
+        - gatewayId
         - modelId
         - modelName
         - avgSpeed
