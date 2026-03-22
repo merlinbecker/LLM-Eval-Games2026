@@ -15,7 +15,7 @@ import { chatCompletion } from "../lib/llm-gateway";
 
 const router: IRouter = Router();
 
-function datasetToJson(d: any) {
+function datasetToJson(d: typeof datasetsTable.$inferSelect) {
   return {
     id: d.id,
     name: d.name,

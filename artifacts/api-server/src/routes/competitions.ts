@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, competitionsTable, datasetsTable, gatewaysTable } from "@workspace/db";
+import type { CompetitionResultEntry, JudgeScoreEntry, ModelResponseEntry } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import {
   CreateCompetitionBody,
@@ -11,37 +12,34 @@ import { chatCompletion } from "../lib/llm-gateway";
 
 const router: IRouter = Router();
 
+const MAX_CONCURRENCY = 5;
+
 interface ModelSel {
   gatewayId: number;
   modelId: string;
   modelName: string;
 }
 
-interface JudgeScoreEntry {
-  judgeModelId: string;
-  judgeModelName: string;
-  score: number;
-  reasoning: string;
-}
+async function runWithConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number,
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
 
-interface ModelResponseEntry {
-  dataItemIndex: number;
-  response: string;
-  durationMs: number;
-  promptTokens: number;
-  completionTokens: number;
-  cost: number;
-  judgeScores: JudgeScoreEntry[];
-}
+  async function runNext(): Promise<void> {
+    while (index < tasks.length) {
+      const currentIndex = index++;
+      results[currentIndex] = await tasks[currentIndex]();
+    }
+  }
 
-interface CompetitionResultEntry {
-  modelId: string;
-  modelName: string;
-  avgSpeed: number;
-  avgCost: number;
-  avgQuality: number;
-  totalTokens: number;
-  responses: ModelResponseEntry[];
+  const workers = Array.from(
+    { length: Math.min(concurrency, tasks.length) },
+    () => runNext(),
+  );
+  await Promise.all(workers);
+  return results;
 }
 
 function competitionToJson(c: typeof competitionsTable.$inferSelect) {
@@ -53,7 +51,7 @@ function competitionToJson(c: typeof competitionsTable.$inferSelect) {
     status: c.status,
     contestantModels: c.contestantModels,
     judgeModels: c.judgeModels,
-    results: (c.results ?? []) as CompetitionResultEntry[],
+    results: c.results ?? [],
     createdAt: c.createdAt.toISOString(),
   };
 }
@@ -131,9 +129,11 @@ router.post("/competitions/:id/run", async (req, res) => {
     .set({ status: "running" })
     .where(eq(competitionsTable.id, id));
 
+  res.json({ status: "running", message: "Competition started" });
+
   const dataItems = parseMarkdownItems(dataset.content);
-  const contestants = competition.contestantModels as ModelSel[];
-  const judges = competition.judgeModels as ModelSel[];
+  const contestants: ModelSel[] = competition.contestantModels;
+  const judges: ModelSel[] = competition.judgeModels;
 
   const allGatewayIds = [
     ...new Set([
@@ -148,20 +148,11 @@ router.post("/competitions/:id/run", async (req, res) => {
     .where(inArray(gatewaysTable.id, allGatewayIds));
   const gatewayMap = new Map(gatewayRows.map((g) => [g.id, g]));
 
-  const results: CompetitionResultEntry[] = [];
-
-  for (const contestant of contestants) {
+  const contestantTasks = contestants.map((contestant) => async (): Promise<CompetitionResultEntry | null> => {
     const gw = gatewayMap.get(contestant.gatewayId);
-    if (!gw) continue;
+    if (!gw) return null;
 
-    const responses: ModelResponseEntry[] = [];
-    let totalSpeed = 0;
-    let totalCost = 0;
-    let totalQuality = 0;
-    let totalTokens = 0;
-
-    for (let i = 0; i < dataItems.length; i++) {
-      const item = dataItems[i];
+    const responseTasks = dataItems.map((item, i) => async (): Promise<ModelResponseEntry> => {
       try {
         const result = await chatCompletion(
           { type: gw.type, baseUrl: gw.baseUrl, apiKey: gw.apiKey },
@@ -173,12 +164,12 @@ router.post("/competitions/:id/run", async (req, res) => {
         );
 
         const cost = estimateCost(result.promptTokens, result.completionTokens);
-        totalTokens += result.promptTokens + result.completionTokens;
 
-        const judgeScores: JudgeScoreEntry[] = [];
-        for (const judge of judges) {
+        const judgeTasks = judges.map((judge) => async (): Promise<JudgeScoreEntry> => {
           const judgeGw = gatewayMap.get(judge.gatewayId);
-          if (!judgeGw) continue;
+          if (!judgeGw) {
+            return { judgeModelId: judge.modelId, judgeModelName: judge.modelName, score: 0, reasoning: "Gateway not found" };
+          }
 
           try {
             const judgeResult = await chatCompletion(
@@ -187,10 +178,7 @@ router.post("/competitions/:id/run", async (req, res) => {
               [
                 {
                   role: "system",
-                  content: `You are a judge evaluating LLM responses. Score the following response on a scale of 1-10 based on quality, accuracy, helpfulness, and relevance.
-
-Respond in JSON format: { "score": <number 1-10>, "reasoning": "<brief explanation>" }
-Only output the JSON.`,
+                  content: `You are a judge evaluating LLM responses. Score the following response on a scale of 1-10 based on quality, accuracy, helpfulness, and relevance.\n\nRespond in JSON format: { "score": <number 1-10>, "reasoning": "<brief explanation>" }\nOnly output the JSON.`,
                 },
                 {
                   role: "user",
@@ -206,32 +194,25 @@ Only output the JSON.`,
               parsed = { score: 5, reasoning: judgeResult.content };
             }
 
-            judgeScores.push({
+            return {
               judgeModelId: judge.modelId,
               judgeModelName: judge.modelName,
               score: Math.min(10, Math.max(1, Number(parsed.score) || 5)),
               reasoning: parsed.reasoning ?? "",
-            });
+            };
           } catch (err) {
-            judgeScores.push({
+            return {
               judgeModelId: judge.modelId,
               judgeModelName: judge.modelName,
               score: 0,
               reasoning: `Judge error: ${(err as Error).message}`,
-            });
+            };
           }
-        }
+        });
 
-        const avgItemQuality =
-          judgeScores.length > 0
-            ? judgeScores.reduce((s, j) => s + j.score, 0) / judgeScores.length
-            : 0;
+        const judgeScores = await runWithConcurrency(judgeTasks, MAX_CONCURRENCY);
 
-        totalSpeed += result.durationMs;
-        totalCost += cost;
-        totalQuality += avgItemQuality;
-
-        responses.push({
+        return {
           dataItemIndex: i,
           response: result.content,
           durationMs: result.durationMs,
@@ -239,9 +220,9 @@ Only output the JSON.`,
           completionTokens: result.completionTokens,
           cost,
           judgeScores,
-        });
+        };
       } catch (err) {
-        responses.push({
+        return {
           dataItemIndex: i,
           response: `Error: ${(err as Error).message}`,
           durationMs: 0,
@@ -249,12 +230,28 @@ Only output the JSON.`,
           completionTokens: 0,
           cost: 0,
           judgeScores: [],
-        });
+        };
+      }
+    });
+
+    const responses = await runWithConcurrency(responseTasks, MAX_CONCURRENCY);
+
+    let totalSpeed = 0;
+    let totalCost = 0;
+    let totalQuality = 0;
+    let totalTokens = 0;
+
+    for (const r of responses) {
+      totalSpeed += r.durationMs;
+      totalCost += r.cost;
+      totalTokens += r.promptTokens + r.completionTokens;
+      if (r.judgeScores.length > 0) {
+        totalQuality += r.judgeScores.reduce((s, j) => s + j.score, 0) / r.judgeScores.length;
       }
     }
 
     const count = responses.length || 1;
-    results.push({
+    return {
       modelId: contestant.modelId,
       modelName: contestant.modelName,
       avgSpeed: totalSpeed / count,
@@ -262,16 +259,16 @@ Only output the JSON.`,
       avgQuality: totalQuality / count,
       totalTokens,
       responses,
-    });
-  }
+    };
+  });
 
-  const [updated] = await db
+  const rawResults = await runWithConcurrency(contestantTasks, MAX_CONCURRENCY);
+  const results: CompetitionResultEntry[] = rawResults.filter((r): r is CompetitionResultEntry => r !== null);
+
+  await db
     .update(competitionsTable)
     .set({ status: "completed", results })
-    .where(eq(competitionsTable.id, id))
-    .returning();
-
-  res.json(competitionToJson(updated));
+    .where(eq(competitionsTable.id, id));
 });
 
 function parseMarkdownItems(content: string): string[] {
