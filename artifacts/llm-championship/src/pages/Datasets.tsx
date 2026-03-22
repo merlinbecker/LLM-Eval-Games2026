@@ -204,7 +204,7 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputMode === "file" && selectedFile) {
-      await uploadMutation.mutateAsync({ data: { file: new Blob([selectedFile], { type: selectedFile.type }), name, systemPrompt: prompt } });
+      await uploadMutation.mutateAsync({ data: { file: selectedFile as Blob, name, systemPrompt: prompt } });
     } else {
       await createMutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
     }
