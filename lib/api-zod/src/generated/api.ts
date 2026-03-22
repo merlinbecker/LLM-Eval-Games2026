@@ -88,6 +88,18 @@ export const CreateDatasetBody = zod.object({
 });
 
 /**
+ * @summary Upload a markdown file as a new dataset
+ */
+export const UploadDatasetBody = zod.object({
+  file: zod.instanceof(File).describe("A .md (Markdown) file"),
+  name: zod
+    .string()
+    .optional()
+    .describe("Dataset name (defaults to filename if omitted)"),
+  systemPrompt: zod.string().describe("System prompt for evaluating responses"),
+});
+
+/**
  * @summary Get a single dataset
  */
 export const GetDatasetParams = zod.object({

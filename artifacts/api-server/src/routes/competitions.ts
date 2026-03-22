@@ -129,8 +129,6 @@ router.post("/competitions/:id/run", async (req, res) => {
     .set({ status: "running" })
     .where(eq(competitionsTable.id, id));
 
-  res.json({ status: "running", message: "Competition started" });
-
   const dataItems = parseMarkdownItems(dataset.content);
   const contestants: ModelSel[] = competition.contestantModels;
   const judges: ModelSel[] = competition.judgeModels;
@@ -265,10 +263,13 @@ router.post("/competitions/:id/run", async (req, res) => {
   const rawResults = await runWithConcurrency(contestantTasks, MAX_CONCURRENCY);
   const results: CompetitionResultEntry[] = rawResults.filter((r): r is CompetitionResultEntry => r !== null);
 
-  await db
+  const [updated] = await db
     .update(competitionsTable)
     .set({ status: "completed", results })
-    .where(eq(competitionsTable.id, id));
+    .where(eq(competitionsTable.id, id))
+    .returning();
+
+  res.json(competitionToJson(updated));
 });
 
 function parseMarkdownItems(content: string): string[] {

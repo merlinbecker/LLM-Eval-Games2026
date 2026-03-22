@@ -1,2 +1,2 @@
 export * from "./generated/api";
-export * from "./generated/types";
+export type { AnonymizeRequest, Competition, CompetitionDetail, CompetitionDetailStatus, CompetitionResult, CompetitionStatus, CreateCompetition, CreateDataset, CreateGateway, CreateGatewayType, Dataset, DatasetPrivacyStatus, Gateway, GatewayType, GenerateDatasetRequest, HealthStatus, JudgeScore, ModelInfo, ModelResponse, ModelSelection, PrivacyCheckRequest, PrivacyCheckResult, PrivacyCheckResultStatus, PrivacyFinding, SuccessMessage, UploadDatasetBody } from "./generated/types";

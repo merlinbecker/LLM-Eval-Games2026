@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListDatasets, 
-  useCreateDataset, 
+  useCreateDataset,
+  useUploadDataset,
   useDeleteDataset, 
   usePrivacyCheckDataset, 
   useAnonymizeDataset,
@@ -140,21 +141,51 @@ export default function Datasets() {
 
 function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const queryClient = useQueryClient();
-  const mutation = useCreateDataset();
+  const createMutation = useCreateDataset();
+  const uploadMutation = useUploadDataset();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [content, setContent] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [inputMode, setInputMode] = useState<"file" | "text">("file");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith(".md")) {
+        alert("ONLY .MD FILES ACCEPTED");
+        return;
+      }
+      setSelectedFile(file);
+      if (!name) setName(file.name.replace(/\.md$/, ""));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await mutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
+    if (inputMode === "file" && selectedFile) {
+      await uploadMutation.mutateAsync({ data: { file: selectedFile as unknown as Blob, name, systemPrompt: prompt } });
+    } else {
+      await createMutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
+    }
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     onSuccess();
   };
 
+  const isPending = createMutation.isPending || uploadMutation.isPending;
+
   return (
     <RetroWindow title="UPLOAD MARKDOWN">
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex space-x-4 mb-4">
+          <RetroButton type="button" variant={inputMode === "file" ? "primary" : "secondary"} size="sm" onClick={() => setInputMode("file")}>
+            UPLOAD .MD FILE
+          </RetroButton>
+          <RetroButton type="button" variant={inputMode === "text" ? "primary" : "secondary"} size="sm" onClick={() => setInputMode("text")}>
+            PASTE TEXT
+          </RetroButton>
+        </div>
         <div>
           <label className="block font-display mb-2 uppercase">Dataset Name</label>
           <RetroInput required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Math Riddles" />
@@ -163,12 +194,48 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
           <label className="block font-display mb-2 uppercase">System Prompt</label>
           <RetroTextarea required rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="You are a helpful assistant..." />
         </div>
-        <div>
-          <label className="block font-display mb-2 uppercase">Markdown Content (.md)</label>
-          <RetroTextarea required rows={10} value={content} onChange={(e) => setContent(e.target.value)} placeholder="# Question 1\n...\n\n# Question 2..." className="font-mono text-base" />
-        </div>
-        <RetroButton type="submit" disabled={mutation.isPending} size="lg" className="w-full">
-          {mutation.isPending ? "UPLOADING..." : "SAVE DATASET"}
+        {inputMode === "file" ? (
+          <div>
+            <label className="block font-display mb-2 uppercase">Markdown File (.md)</label>
+            <div 
+              className="border-[3px] border-dashed border-black p-8 text-center cursor-pointer hover:bg-black/5"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".md"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              {selectedFile ? (
+                <div className="font-display">
+                  <FileText className="w-10 h-10 mx-auto mb-2" />
+                  <p className="text-lg uppercase">{selectedFile.name}</p>
+                  <p className="text-sm">({(selectedFile.size / 1024).toFixed(1)} KB)</p>
+                </div>
+              ) : (
+                <div className="font-display">
+                  <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-lg uppercase">CLICK TO SELECT .MD FILE</p>
+                  <p className="text-sm">OR DRAG &amp; DROP</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block font-display mb-2 uppercase">Markdown Content</label>
+            <RetroTextarea required rows={10} value={content} onChange={(e) => setContent(e.target.value)} placeholder="## Question 1\n...\n\n## Question 2..." className="font-mono text-base" />
+          </div>
+        )}
+        <RetroButton 
+          type="submit" 
+          disabled={isPending || (inputMode === "file" && !selectedFile)} 
+          size="lg" 
+          className="w-full"
+        >
+          {isPending ? "UPLOADING..." : "SAVE DATASET"}
         </RetroButton>
       </form>
     </RetroWindow>

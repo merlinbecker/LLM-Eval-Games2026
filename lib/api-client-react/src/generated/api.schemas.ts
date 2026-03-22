@@ -196,3 +196,12 @@ export interface CompetitionDetail {
   results: CompetitionResult[];
   createdAt: string;
 }
+
+export type UploadDatasetBody = {
+  /** A .md (Markdown) file */
+  file: Blob;
+  /** Dataset name (defaults to filename if omitted) */
+  name?: string;
+  /** System prompt for evaluating responses */
+  systemPrompt: string;
+};

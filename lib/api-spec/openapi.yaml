@@ -137,6 +137,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/Dataset"
 
+  /datasets/upload:
+    post:
+      operationId: uploadDataset
+      tags: [datasets]
+      summary: Upload a markdown file as a new dataset
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: A .md (Markdown) file
+                name:
+                  type: string
+                  description: Dataset name (defaults to filename if omitted)
+                systemPrompt:
+                  type: string
+                  description: System prompt for evaluating responses
+              required:
+                - file
+                - systemPrompt
+      responses:
+        "201":
+          description: Dataset created from uploaded file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+        "400":
+          description: Invalid file type or content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+
   /datasets/{id}:
     get:
       operationId: getDataset

@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import multer from "multer";
 import { db, datasetsTable, gatewaysTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
@@ -14,6 +15,7 @@ import {
 import { chatCompletion } from "../lib/llm-gateway";
 
 const router: IRouter = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 function datasetToJson(d: typeof datasetsTable.$inferSelect) {
   return {
@@ -41,6 +43,39 @@ router.post("/datasets", async (req, res) => {
       content: data.content,
       systemPrompt: data.systemPrompt,
     })
+    .returning();
+  res.status(201).json(datasetToJson(dataset));
+});
+
+router.post("/datasets/upload", upload.single("file"), async (req, res) => {
+  const file = req.file;
+  if (!file) {
+    res.status(400).json({ message: "No file uploaded" });
+    return;
+  }
+
+  const originalName = file.originalname ?? "upload.md";
+  if (!originalName.endsWith(".md")) {
+    res.status(400).json({ message: "Only .md (Markdown) files are accepted" });
+    return;
+  }
+
+  const content = file.buffer.toString("utf-8");
+  if (!content.trim()) {
+    res.status(400).json({ message: "File is empty" });
+    return;
+  }
+
+  const name = (req.body.name as string) || originalName.replace(/\.md$/, "");
+  const systemPrompt = req.body.systemPrompt as string;
+  if (!systemPrompt) {
+    res.status(400).json({ message: "systemPrompt is required" });
+    return;
+  }
+
+  const [dataset] = await db
+    .insert(datasetsTable)
+    .values({ name, content, systemPrompt })
     .returning();
   res.status(201).json(datasetToJson(dataset));
 });

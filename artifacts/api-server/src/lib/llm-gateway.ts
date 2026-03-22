@@ -32,8 +32,28 @@ interface OpenAIModelsResponse {
   data?: OpenAIModelEntry[];
 }
 
-const ALLOWED_URL_PROTOCOLS = ["https:"];
-const BLOCKED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]", "169.254.169.254", "metadata.google.internal"];
+const BLOCKED_HOSTS = [
+  "localhost", "127.0.0.1", "0.0.0.0", "[::1]",
+  "169.254.169.254", "metadata.google.internal",
+];
+
+const PRIVATE_IP_RANGES = [
+  /^10\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^127\./,
+  /^0\./,
+  /^169\.254\./,
+  /^fc00:/i,
+  /^fd/i,
+  /^fe80:/i,
+  /^::1$/,
+  /^::$/,
+];
+
+function isPrivateIp(hostname: string): boolean {
+  return PRIVATE_IP_RANGES.some((re) => re.test(hostname));
+}
 
 function validateGatewayUrl(baseUrl: string): void {
   let parsed: URL;
@@ -42,12 +62,24 @@ function validateGatewayUrl(baseUrl: string): void {
   } catch {
     throw new Error("Invalid gateway URL");
   }
-  if (!ALLOWED_URL_PROTOCOLS.includes(parsed.protocol)) {
+  if (parsed.protocol !== "https:") {
     throw new Error(`Gateway URL must use HTTPS (got ${parsed.protocol})`);
   }
   const hostname = parsed.hostname.toLowerCase();
-  if (BLOCKED_HOSTS.includes(hostname) || hostname.endsWith(".local") || hostname.endsWith(".internal")) {
+  if (BLOCKED_HOSTS.includes(hostname)) {
     throw new Error("Gateway URL points to a blocked host");
+  }
+  if (hostname.endsWith(".local") || hostname.endsWith(".internal") || hostname.endsWith(".localhost")) {
+    throw new Error("Gateway URL points to a blocked host");
+  }
+  if (isPrivateIp(hostname)) {
+    throw new Error("Gateway URL points to a private/reserved IP range");
+  }
+  if (parsed.port && !["443", ""].includes(parsed.port)) {
+    const portNum = Number(parsed.port);
+    if (portNum < 1024 && portNum !== 443) {
+      throw new Error("Gateway URL uses a restricted port");
+    }
   }
 }
 

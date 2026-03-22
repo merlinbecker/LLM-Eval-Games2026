@@ -31,3 +31,4 @@ export * from "./privacyCheckResult";
 export * from "./privacyCheckResultStatus";
 export * from "./privacyFinding";
 export * from "./successMessage";
+export * from "./uploadDatasetBody";
