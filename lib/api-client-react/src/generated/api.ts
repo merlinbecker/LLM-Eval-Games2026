@@ -1467,7 +1467,7 @@ export const useDeleteCompetition = <
 };
 
 /**
- * @summary Start running a competition (evaluate all models)
+ * @summary Start running a competition (evaluate all models asynchronously)
  */
 export const getRunCompetitionUrl = (id: number) => {
   return `/api/competitions/${id}/run`;
@@ -1528,7 +1528,7 @@ export type RunCompetitionMutationResult = NonNullable<
 export type RunCompetitionMutationError = ErrorType<unknown>;
 
 /**
- * @summary Start running a competition (evaluate all models)
+ * @summary Start running a competition (evaluate all models asynchronously)
  */
 export const useRunCompetition = <
   TError = ErrorType<unknown>,

@@ -8,7 +8,6 @@ import {
 import { RetroWindow, RetroButton, RetroBadge } from "@/components/retro";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { Play, Loader2, Award, Zap, Coins } from "lucide-react";
-import { useState, useEffect } from "react";
 
 export default function CompetitionResults() {
   const [, params] = useRoute("/competitions/:id");
@@ -20,9 +19,12 @@ export default function CompetitionResults() {
   });
   const runMutation = useRunCompetition();
 
-  const handleRun = async () => {
-    await runMutation.mutateAsync({ id });
-    queryClient.invalidateQueries({ queryKey: getGetCompetitionQueryKey(id) });
+  const handleRun = () => {
+    runMutation.mutate({ id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCompetitionQueryKey(id) });
+      },
+    });
   };
 
   if (isLoading) return <div className="text-center p-20 font-display text-4xl animate-pulse">LOADING TAPE...</div>;
@@ -30,6 +32,7 @@ export default function CompetitionResults() {
 
   const isCompleted = comp.status === 'completed';
   const isRunning = comp.status === 'running';
+  const hasResults = (comp.results?.length ?? 0) > 0;
 
   // Format data for radar chart
   const radarData = comp.results?.map(r => ({
@@ -91,7 +94,7 @@ export default function CompetitionResults() {
         )}
       </div>
 
-      {isCompleted && (
+      {(isCompleted || (isRunning && hasResults)) && (
         <>
           {/* PODIUM SECTION */}
           <RetroWindow title="CEREMONY" className="bg-white">

@@ -353,7 +353,7 @@ paths:
     post:
       operationId: runCompetition
       tags: [competitions]
-      summary: Start running a competition (evaluate all models)
+      summary: Start running a competition (evaluate all models asynchronously)
       parameters:
         - name: id
           in: path
@@ -362,7 +362,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Competition started/completed
+          description: Competition run started
           content:
             application/json:
               schema:

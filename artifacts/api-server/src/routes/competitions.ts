@@ -9,6 +9,7 @@ import {
   RunCompetitionParams,
 } from "@workspace/api-zod";
 import { chatCompletion } from "../lib/llm-gateway";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -124,11 +125,35 @@ router.post("/competitions/:id/run", async (req, res) => {
     return;
   }
 
+  const [running] = await db
+    .update(competitionsTable)
+    .set({ status: "running", results: [] })
+    .where(eq(competitionsTable.id, id))
+    .returning();
+
+  res.json(competitionToJson(running));
+
+  runCompetitionAsync(id, competition, dataset).catch((err) => {
+    logger.error({ err, competitionId: id }, "Competition run failed");
+    db.update(competitionsTable)
+      .set({ status: "error" })
+      .where(eq(competitionsTable.id, id))
+      .then(() => {});
+  });
+});
+
+async function savePartialResults(id: number, results: CompetitionResultEntry[]): Promise<void> {
   await db
     .update(competitionsTable)
-    .set({ status: "running" })
+    .set({ results })
     .where(eq(competitionsTable.id, id));
+}
 
+async function runCompetitionAsync(
+  id: number,
+  competition: typeof competitionsTable.$inferSelect,
+  dataset: typeof datasetsTable.$inferSelect,
+): Promise<void> {
   const dataItems = parseMarkdownItems(dataset.content);
   const contestants: ModelSel[] = competition.contestantModels;
   const judges: ModelSel[] = competition.judgeModels;
@@ -146,11 +171,16 @@ router.post("/competitions/:id/run", async (req, res) => {
     .where(inArray(gatewaysTable.id, allGatewayIds));
   const gatewayMap = new Map(gatewayRows.map((g) => [g.id, g]));
 
+  const results: CompetitionResultEntry[] = [];
+
   const contestantTasks = contestants.map((contestant) => async (): Promise<CompetitionResultEntry | null> => {
     const gw = gatewayMap.get(contestant.gatewayId);
     if (!gw) return null;
 
-    const responseTasks = dataItems.map((item, i) => async (): Promise<ModelResponseEntry> => {
+    const responses: ModelResponseEntry[] = [];
+
+    for (let i = 0; i < dataItems.length; i++) {
+      const item = dataItems[i];
       try {
         const result = await chatCompletion(
           { type: gw.type, baseUrl: gw.baseUrl, apiKey: gw.apiKey },
@@ -210,7 +240,7 @@ router.post("/competitions/:id/run", async (req, res) => {
 
         const judgeScores = await runWithConcurrency(judgeTasks, MAX_CONCURRENCY);
 
-        return {
+        responses.push({
           dataItemIndex: i,
           response: result.content,
           durationMs: result.durationMs,
@@ -218,9 +248,9 @@ router.post("/competitions/:id/run", async (req, res) => {
           completionTokens: result.completionTokens,
           cost,
           judgeScores,
-        };
+        });
       } catch (err) {
-        return {
+        responses.push({
           dataItemIndex: i,
           response: `Error: ${(err as Error).message}`,
           durationMs: 0,
@@ -228,49 +258,57 @@ router.post("/competitions/:id/run", async (req, res) => {
           completionTokens: 0,
           cost: 0,
           judgeScores: [],
-        };
+        });
       }
-    });
 
-    const responses = await runWithConcurrency(responseTasks, MAX_CONCURRENCY);
-
-    let totalSpeed = 0;
-    let totalCost = 0;
-    let totalQuality = 0;
-    let totalTokens = 0;
-
-    for (const r of responses) {
-      totalSpeed += r.durationMs;
-      totalCost += r.cost;
-      totalTokens += r.promptTokens + r.completionTokens;
-      if (r.judgeScores.length > 0) {
-        totalQuality += r.judgeScores.reduce((s, j) => s + j.score, 0) / r.judgeScores.length;
+      const partialEntry = buildResultEntry(contestant, responses);
+      const idx = results.findIndex((r) => r.modelId === contestant.modelId);
+      if (idx >= 0) {
+        results[idx] = partialEntry;
+      } else {
+        results.push(partialEntry);
       }
+      await savePartialResults(id, [...results]);
     }
 
-    const count = responses.length || 1;
-    return {
-      modelId: contestant.modelId,
-      modelName: contestant.modelName,
-      avgSpeed: totalSpeed / count,
-      avgCost: totalCost / count,
-      avgQuality: totalQuality / count,
-      totalTokens,
-      responses,
-    };
+    return buildResultEntry(contestant, responses);
   });
 
   const rawResults = await runWithConcurrency(contestantTasks, MAX_CONCURRENCY);
-  const results: CompetitionResultEntry[] = rawResults.filter((r): r is CompetitionResultEntry => r !== null);
+  const finalResults: CompetitionResultEntry[] = rawResults.filter((r): r is CompetitionResultEntry => r !== null);
 
-  const [updated] = await db
+  await db
     .update(competitionsTable)
-    .set({ status: "completed", results })
-    .where(eq(competitionsTable.id, id))
-    .returning();
+    .set({ status: "completed", results: finalResults })
+    .where(eq(competitionsTable.id, id));
+}
 
-  res.json(competitionToJson(updated));
-});
+function buildResultEntry(contestant: ModelSel, responses: ModelResponseEntry[]): CompetitionResultEntry {
+  let totalSpeed = 0;
+  let totalCost = 0;
+  let totalQuality = 0;
+  let totalTokens = 0;
+
+  for (const r of responses) {
+    totalSpeed += r.durationMs;
+    totalCost += r.cost;
+    totalTokens += r.promptTokens + r.completionTokens;
+    if (r.judgeScores.length > 0) {
+      totalQuality += r.judgeScores.reduce((s, j) => s + j.score, 0) / r.judgeScores.length;
+    }
+  }
+
+  const count = responses.length || 1;
+  return {
+    modelId: contestant.modelId,
+    modelName: contestant.modelName,
+    avgSpeed: totalSpeed / count,
+    avgCost: totalCost / count,
+    avgQuality: totalQuality / count,
+    totalTokens,
+    responses,
+  };
+}
 
 function parseMarkdownItems(content: string): string[] {
   const sections = content.split(/^## /m).filter(Boolean);

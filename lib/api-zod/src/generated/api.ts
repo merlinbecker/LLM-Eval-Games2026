@@ -290,7 +290,7 @@ export const DeleteCompetitionResponse = zod.object({
 });
 
 /**
- * @summary Start running a competition (evaluate all models)
+ * @summary Start running a competition (evaluate all models asynchronously)
  */
 export const RunCompetitionParams = zod.object({
   id: zod.coerce.number(),
