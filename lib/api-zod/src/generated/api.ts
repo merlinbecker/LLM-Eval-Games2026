@@ -15,6 +15,44 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Create or restore a session from client vault data
+ */
+export const SyncSessionBody = zod.object({
+  gateways: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.enum(["openrouter", "github_copilot", "custom"]),
+        baseUrl: zod.string(),
+        apiKey: zod.string(),
+      }),
+    )
+    .optional(),
+  datasets: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        content: zod.string(),
+        systemPrompt: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const SyncSessionResponse = zod.object({
+  sessionId: zod.string(),
+  gatewayCount: zod.number(),
+  datasetCount: zod.number(),
+});
+
+/**
+ * @summary Delete the current session and clear the cookie
+ */
+export const DeleteSessionResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
  * @summary List all configured LLM gateways
  */
 export const ListGatewaysResponseItem = zod.object({

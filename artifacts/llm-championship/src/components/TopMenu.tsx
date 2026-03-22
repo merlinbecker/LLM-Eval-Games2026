@@ -1,8 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useVault } from "@/lib/vault/vault-store";
 
 export function TopMenu() {
   const [location] = useLocation();
+  const { status, lock, exportVault, synced } = useVault();
 
   const links = [
     { href: "/", label: "Arena" },
@@ -33,6 +35,29 @@ export function TopMenu() {
           </Link>
         ))}
       </nav>
+      {status === "unlocked" && (
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            className={cn(
+              "inline-block w-2 h-2 rounded-full border border-black",
+              synced ? "bg-green-500" : "bg-yellow-400",
+            )}
+            title={synced ? "Synced" : "Syncing..."}
+          />
+          <button
+            onClick={exportVault}
+            className="px-2 py-0.5 font-display text-xs uppercase border-2 border-black hover:bg-black hover:text-white transition-colors"
+          >
+            Export
+          </button>
+          <button
+            onClick={lock}
+            className="px-2 py-0.5 font-display text-xs uppercase border-2 border-black hover:bg-black hover:text-white transition-colors"
+          >
+            Lock
+          </button>
+        </div>
+      )}
     </div>
   );
 }

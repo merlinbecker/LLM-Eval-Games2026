@@ -30,6 +30,8 @@ import type {
   ModelInfo,
   PrivacyCheckRequest,
   PrivacyCheckResult,
+  SessionSyncRequest,
+  SessionSyncResponse,
   SuccessMessage,
   UploadDatasetBody,
 } from "./api.schemas";
@@ -117,6 +119,173 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Create or restore a session from client vault data
+ */
+export const getSyncSessionUrl = () => {
+  return `/api/session/sync`;
+};
+
+export const syncSession = async (
+  sessionSyncRequest: SessionSyncRequest,
+  options?: RequestInit,
+): Promise<SessionSyncResponse> => {
+  return customFetch<SessionSyncResponse>(getSyncSessionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sessionSyncRequest),
+  });
+};
+
+export const getSyncSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncSession>>,
+    TError,
+    { data: BodyType<SessionSyncRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncSession>>,
+  TError,
+  { data: BodyType<SessionSyncRequest> },
+  TContext
+> => {
+  const mutationKey = ["syncSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncSession>>,
+    { data: BodyType<SessionSyncRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return syncSession(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncSession>>
+>;
+export type SyncSessionMutationBody = BodyType<SessionSyncRequest>;
+export type SyncSessionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create or restore a session from client vault data
+ */
+export const useSyncSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncSession>>,
+    TError,
+    { data: BodyType<SessionSyncRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncSession>>,
+  TError,
+  { data: BodyType<SessionSyncRequest> },
+  TContext
+> => {
+  return useMutation(getSyncSessionMutationOptions(options));
+};
+
+/**
+ * @summary Delete the current session and clear the cookie
+ */
+export const getDeleteSessionUrl = () => {
+  return `/api/session`;
+};
+
+export const deleteSession = async (
+  options?: RequestInit,
+): Promise<SuccessMessage> => {
+  return customFetch<SuccessMessage>(getDeleteSessionUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSession>>,
+    void
+  > = () => {
+    return deleteSession(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSession>>
+>;
+
+export type DeleteSessionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete the current session and clear the cookie
+ */
+export const useDeleteSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteSessionMutationOptions(options));
+};
 
 /**
  * @summary List all configured LLM gateways

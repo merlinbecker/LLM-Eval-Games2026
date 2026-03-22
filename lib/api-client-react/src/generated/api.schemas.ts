@@ -13,22 +13,6 @@ export interface SuccessMessage {
   message: string;
 }
 
-export type GatewayType = (typeof GatewayType)[keyof typeof GatewayType];
-
-export const GatewayType = {
-  openrouter: "openrouter",
-  github_copilot: "github_copilot",
-  custom: "custom",
-} as const;
-
-export interface Gateway {
-  id: number;
-  name: string;
-  type: GatewayType;
-  baseUrl: string;
-  createdAt: string;
-}
-
 export type CreateGatewayType =
   (typeof CreateGatewayType)[keyof typeof CreateGatewayType];
 
@@ -43,6 +27,39 @@ export interface CreateGateway {
   type: CreateGatewayType;
   baseUrl: string;
   apiKey: string;
+}
+
+export interface CreateDataset {
+  name: string;
+  content: string;
+  systemPrompt: string;
+}
+
+export interface SessionSyncRequest {
+  gateways?: CreateGateway[];
+  datasets?: CreateDataset[];
+}
+
+export interface SessionSyncResponse {
+  sessionId: string;
+  gatewayCount: number;
+  datasetCount: number;
+}
+
+export type GatewayType = (typeof GatewayType)[keyof typeof GatewayType];
+
+export const GatewayType = {
+  openrouter: "openrouter",
+  github_copilot: "github_copilot",
+  custom: "custom",
+} as const;
+
+export interface Gateway {
+  id: number;
+  name: string;
+  type: GatewayType;
+  baseUrl: string;
+  createdAt: string;
 }
 
 export interface ModelInfo {
@@ -71,12 +88,6 @@ export interface Dataset {
   /** @nullable */
   privacyReport?: string | null;
   createdAt: string;
-}
-
-export interface CreateDataset {
-  name: string;
-  content: string;
-  systemPrompt: string;
 }
 
 export interface PrivacyCheckRequest {

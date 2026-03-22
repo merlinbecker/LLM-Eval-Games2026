@@ -8,7 +8,7 @@
   "include": ["src"],
   "references": [
     {
-      "path": "../../lib/db"
+      "path": "../../lib/store"
     },
     {
       "path": "../../lib/api-zod"

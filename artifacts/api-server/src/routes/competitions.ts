@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, competitionsTable, datasetsTable, gatewaysTable } from "@workspace/db";
-import type { CompetitionResultEntry, JudgeScoreEntry, ModelResponseEntry } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { store } from "@workspace/store";
+import type { Competition, Gateway, CompetitionResultEntry, JudgeScoreEntry, ModelResponseEntry } from "@workspace/store";
 import {
   CreateCompetitionBody,
   GetCompetitionParams,
@@ -43,7 +42,7 @@ async function runWithConcurrency<T>(
   return results;
 }
 
-function competitionToJson(c: typeof competitionsTable.$inferSelect) {
+function competitionToJson(c: Competition) {
   return {
     id: c.id,
     name: c.name,
@@ -53,48 +52,42 @@ function competitionToJson(c: typeof competitionsTable.$inferSelect) {
     contestantModels: c.contestantModels,
     judgeModels: c.judgeModels,
     results: c.results ?? [],
-    createdAt: c.createdAt.toISOString(),
+    createdAt: c.createdAt,
   };
 }
 
-router.get("/competitions", async (_req, res) => {
-  const competitions = await db.select().from(competitionsTable);
+router.get("/competitions", (req, res) => {
+  const competitions = store.listCompetitions(req.sessionId!);
   res.json(
     competitions.map((c) => ({
       id: c.id,
       name: c.name,
       datasetId: c.datasetId,
       status: c.status,
-      createdAt: c.createdAt.toISOString(),
+      createdAt: c.createdAt,
     })),
   );
 });
 
-router.post("/competitions", async (req, res) => {
+router.post("/competitions", (req, res) => {
   const data = CreateCompetitionBody.parse(req.body);
   if (data.judgeModels.length < 3 || data.judgeModels.length > 5) {
     res.status(400).json({ message: "Judge panel must have 3–5 models" });
     return;
   }
-  const [competition] = await db
-    .insert(competitionsTable)
-    .values({
-      name: data.name,
-      datasetId: data.datasetId,
-      systemPrompt: data.systemPrompt,
-      contestantModels: data.contestantModels,
-      judgeModels: data.judgeModels,
-    })
-    .returning();
+  const competition = store.createCompetition(req.sessionId!, {
+    name: data.name,
+    datasetId: data.datasetId,
+    systemPrompt: data.systemPrompt,
+    contestantModels: data.contestantModels,
+    judgeModels: data.judgeModels,
+  });
   res.status(201).json(competitionToJson(competition));
 });
 
-router.get("/competitions/:id", async (req, res) => {
+router.get("/competitions/:id", (req, res) => {
   const { id } = GetCompetitionParams.parse(req.params);
-  const [competition] = await db
-    .select()
-    .from(competitionsTable)
-    .where(eq(competitionsTable.id, id));
+  const competition = store.getCompetition(req.sessionId!, id);
   if (!competition) {
     res.status(404).json({ error: "Competition not found" });
     return;
@@ -102,19 +95,17 @@ router.get("/competitions/:id", async (req, res) => {
   res.json(competitionToJson(competition));
 });
 
-router.delete("/competitions/:id", async (req, res) => {
+router.delete("/competitions/:id", (req, res) => {
   const { id } = DeleteCompetitionParams.parse(req.params);
-  await db.delete(competitionsTable).where(eq(competitionsTable.id, id));
+  store.deleteCompetition(req.sessionId!, id);
   res.json({ message: "Competition deleted" });
 });
 
-router.post("/competitions/:id/run", async (req, res) => {
+router.post("/competitions/:id/run", (req, res) => {
   const { id } = RunCompetitionParams.parse(req.params);
+  const sessionId = req.sessionId!;
 
-  const [competition] = await db
-    .select()
-    .from(competitionsTable)
-    .where(eq(competitionsTable.id, id));
+  const competition = store.getCompetition(sessionId, id);
   if (!competition) {
     res.status(404).json({ error: "Competition not found" });
     return;
@@ -124,43 +115,30 @@ router.post("/competitions/:id/run", async (req, res) => {
     return;
   }
 
-  const [dataset] = await db
-    .select()
-    .from(datasetsTable)
-    .where(eq(datasetsTable.id, competition.datasetId));
+  const dataset = store.getDataset(sessionId, competition.datasetId);
   if (!dataset) {
     res.status(404).json({ error: "Dataset not found" });
     return;
   }
 
-  const [running] = await db
-    .update(competitionsTable)
-    .set({ status: "running", results: [] })
-    .where(eq(competitionsTable.id, id))
-    .returning();
+  const running = store.updateCompetition(sessionId, id, { status: "running", results: [] });
+  res.json(competitionToJson(running!));
 
-  res.json(competitionToJson(running));
-
-  runCompetitionAsync(id, competition, dataset).catch((err) => {
+  runCompetitionAsync(sessionId, id, competition, dataset).catch((err) => {
     logger.error({ err, competitionId: id }, "Competition run failed");
-    db.update(competitionsTable)
-      .set({ status: "error" })
-      .where(eq(competitionsTable.id, id))
-      .then(() => {});
+    store.updateCompetition(sessionId, id, { status: "error" });
   });
 });
 
-async function savePartialResults(id: number, results: CompetitionResultEntry[]): Promise<void> {
-  await db
-    .update(competitionsTable)
-    .set({ results })
-    .where(eq(competitionsTable.id, id));
+function savePartialResults(sessionId: string, id: number, results: CompetitionResultEntry[]): void {
+  store.updateCompetition(sessionId, id, { results });
 }
 
 async function runCompetitionAsync(
+  sessionId: string,
   id: number,
-  competition: typeof competitionsTable.$inferSelect,
-  dataset: typeof datasetsTable.$inferSelect,
+  competition: Competition,
+  dataset: { content: string },
 ): Promise<void> {
   const dataItems = parseMarkdownItems(dataset.content);
   const contestants: ModelSel[] = competition.contestantModels;
@@ -173,11 +151,11 @@ async function runCompetitionAsync(
     ]),
   ];
 
-  const gatewayRows = await db
-    .select()
-    .from(gatewaysTable)
-    .where(inArray(gatewaysTable.id, allGatewayIds));
-  const gatewayMap = new Map(gatewayRows.map((g) => [g.id, g]));
+  const gatewayMap = new Map<number, Gateway>();
+  for (const gwId of allGatewayIds) {
+    const gw = store.getGateway(sessionId, gwId);
+    if (gw) gatewayMap.set(gwId, gw);
+  }
 
   const results: CompetitionResultEntry[] = [];
 
@@ -276,7 +254,7 @@ async function runCompetitionAsync(
       } else {
         results.push(partialEntry);
       }
-      await savePartialResults(id, [...results]);
+      savePartialResults(sessionId, id, [...results]);
     }
 
     return buildResultEntry(contestant, responses);
@@ -285,10 +263,7 @@ async function runCompetitionAsync(
   const rawResults = await runWithConcurrency(contestantTasks, MAX_CONCURRENCY);
   const finalResults: CompetitionResultEntry[] = rawResults.filter((r): r is CompetitionResultEntry => r !== null);
 
-  await db
-    .update(competitionsTable)
-    .set({ status: "completed", results: finalResults })
-    .where(eq(competitionsTable.id, id));
+  store.updateCompetition(sessionId, id, { status: "completed", results: finalResults });
 }
 
 function buildResultEntry(contestant: ModelSel, responses: ModelResponseEntry[]): CompetitionResultEntry {

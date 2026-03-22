@@ -16,9 +16,11 @@ import {
 import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroSelect } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
 import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit } from "lucide-react";
+import { useVault } from "@/lib/vault/vault-store";
 
 export default function Datasets() {
   const queryClient = useQueryClient();
+  const { addDataset, removeDataset, updateDataset: updateVaultDataset } = useVault();
   const { data: datasets, isLoading } = useListDatasets();
   const deleteMutation = useDeleteDataset();
   const privacyMutation = usePrivacyCheckDataset();
@@ -36,6 +38,7 @@ export default function Datasets() {
   const handleDelete = async (id: number) => {
     if (confirm("DELETE DATASET? THIS CANNOT BE UNDONE.")) {
       await deleteMutation.mutateAsync({ id });
+      removeDataset(id);
       queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     }
   };
@@ -180,6 +183,7 @@ export default function Datasets() {
 
 function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const queryClient = useQueryClient();
+  const { addDataset } = useVault();
   const createMutation = useCreateDataset();
   const uploadMutation = useUploadDataset();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,11 +207,21 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let result;
     if (inputMode === "file" && selectedFile) {
-      await uploadMutation.mutateAsync({ data: { file: selectedFile as Blob, name, systemPrompt: prompt } });
+      result = await uploadMutation.mutateAsync({ data: { file: selectedFile as Blob, name, systemPrompt: prompt } });
     } else {
-      await createMutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
+      result = await createMutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
     }
+    addDataset({
+      id: result.id,
+      name: result.name,
+      content: result.content,
+      systemPrompt: result.systemPrompt,
+      privacyStatus: result.privacyStatus ?? "unchecked",
+      privacyReport: result.privacyReport ?? null,
+      createdAt: result.createdAt,
+    });
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     onSuccess();
   };
@@ -283,6 +297,7 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
 
 function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const queryClient = useQueryClient();
+  const { addDataset } = useVault();
   const mutation = useGenerateDataset();
   const { data: gateways } = useListGateways();
   
@@ -298,7 +313,7 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await mutation.mutateAsync({ 
+    const result = await mutation.mutateAsync({ 
       data: { 
         name, 
         topic, 
@@ -307,6 +322,15 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
         gatewayId: Number(gatewayId),
         modelId
       } 
+    });
+    addDataset({
+      id: result.id,
+      name: result.name,
+      content: result.content,
+      systemPrompt: result.systemPrompt,
+      privacyStatus: result.privacyStatus ?? "unchecked",
+      privacyReport: result.privacyReport ?? null,
+      createdAt: result.createdAt,
     });
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     onSuccess();

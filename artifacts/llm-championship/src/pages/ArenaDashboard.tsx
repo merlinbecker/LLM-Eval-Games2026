@@ -6,6 +6,7 @@ import { Trophy, Activity, TerminalSquare } from "lucide-react";
 
 export default function ArenaDashboard() {
   const { data: competitions, isLoading } = useListCompetitions();
+  const competitionList = Array.isArray(competitions) ? competitions : [];
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -53,7 +54,7 @@ export default function ArenaDashboard() {
       <RetroWindow title="RECENT COMPETITIONS">
         {isLoading ? (
           <div className="p-8 text-center font-display text-2xl animate-pulse">LOADING LOGS...</div>
-        ) : !competitions || competitions.length === 0 ? (
+        ) : competitionList.length === 0 ? (
           <div className="p-12 text-center flex flex-col items-center">
             <Trophy className="w-16 h-16 mb-4" />
             <p className="text-2xl mb-6">No competitions found in the database.</p>
@@ -73,7 +74,7 @@ export default function ArenaDashboard() {
               </tr>
             </thead>
             <tbody>
-              {competitions.map((comp) => (
+              {competitionList.map((comp) => (
                 <tr key={comp.id} className="border-b-2 border-black/20 hover:bg-black/5">
                   <td className="p-3 font-display">#{comp.id}</td>
                   <td className="p-3 font-bold uppercase">{comp.name}</td>

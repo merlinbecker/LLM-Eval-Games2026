@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { db, datasetsTable, gatewaysTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { store } from "@workspace/store";
+import type { Dataset } from "@workspace/store";
 import {
   CreateDatasetBody,
   GetDatasetParams,
@@ -17,7 +17,7 @@ import { chatCompletion } from "../lib/llm-gateway";
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-function datasetToJson(d: typeof datasetsTable.$inferSelect) {
+function datasetToJson(d: Dataset) {
   return {
     id: d.id,
     name: d.name,
@@ -25,29 +25,26 @@ function datasetToJson(d: typeof datasetsTable.$inferSelect) {
     systemPrompt: d.systemPrompt,
     privacyStatus: d.privacyStatus,
     privacyReport: d.privacyReport ?? null,
-    createdAt: d.createdAt.toISOString(),
+    createdAt: d.createdAt,
   };
 }
 
-router.get("/datasets", async (_req, res) => {
-  const datasets = await db.select().from(datasetsTable);
+router.get("/datasets", (req, res) => {
+  const datasets = store.listDatasets(req.sessionId!);
   res.json(datasets.map(datasetToJson));
 });
 
-router.post("/datasets", async (req, res) => {
+router.post("/datasets", (req, res) => {
   const data = CreateDatasetBody.parse(req.body);
-  const [dataset] = await db
-    .insert(datasetsTable)
-    .values({
-      name: data.name,
-      content: data.content,
-      systemPrompt: data.systemPrompt,
-    })
-    .returning();
+  const dataset = store.createDataset(req.sessionId!, {
+    name: data.name,
+    content: data.content,
+    systemPrompt: data.systemPrompt,
+  });
   res.status(201).json(datasetToJson(dataset));
 });
 
-router.post("/datasets/upload", upload.single("file"), async (req, res) => {
+router.post("/datasets/upload", upload.single("file"), (req, res) => {
   const file = req.file;
   if (!file) {
     res.status(400).json({ message: "No file uploaded" });
@@ -73,19 +70,13 @@ router.post("/datasets/upload", upload.single("file"), async (req, res) => {
     return;
   }
 
-  const [dataset] = await db
-    .insert(datasetsTable)
-    .values({ name, content, systemPrompt })
-    .returning();
+  const dataset = store.createDataset(req.sessionId!, { name, content, systemPrompt });
   res.status(201).json(datasetToJson(dataset));
 });
 
-router.get("/datasets/:id", async (req, res) => {
+router.get("/datasets/:id", (req, res) => {
   const { id } = GetDatasetParams.parse(req.params);
-  const [dataset] = await db
-    .select()
-    .from(datasetsTable)
-    .where(eq(datasetsTable.id, id));
+  const dataset = store.getDataset(req.sessionId!, id);
   if (!dataset) {
     res.status(404).json({ error: "Dataset not found" });
     return;
@@ -93,9 +84,9 @@ router.get("/datasets/:id", async (req, res) => {
   res.json(datasetToJson(dataset));
 });
 
-router.delete("/datasets/:id", async (req, res) => {
+router.delete("/datasets/:id", (req, res) => {
   const { id } = DeleteDatasetParams.parse(req.params);
-  await db.delete(datasetsTable).where(eq(datasetsTable.id, id));
+  store.deleteDataset(req.sessionId!, id);
   res.json({ message: "Dataset deleted" });
 });
 
@@ -103,19 +94,13 @@ router.post("/datasets/:id/privacy-check", async (req, res) => {
   const { id } = PrivacyCheckDatasetParams.parse(req.params);
   const { gatewayId, modelId } = PrivacyCheckDatasetBody.parse(req.body);
 
-  const [dataset] = await db
-    .select()
-    .from(datasetsTable)
-    .where(eq(datasetsTable.id, id));
+  const dataset = store.getDataset(req.sessionId!, id);
   if (!dataset) {
     res.status(404).json({ error: "Dataset not found" });
     return;
   }
 
-  const [gateway] = await db
-    .select()
-    .from(gatewaysTable)
-    .where(eq(gatewaysTable.id, gatewayId));
+  const gateway = store.getGateway(req.sessionId!, gatewayId);
   if (!gateway) {
     res.status(404).json({ error: "Gateway not found" });
     return;
@@ -162,10 +147,7 @@ Only output the JSON, nothing else.`,
   }
 
   const status = parsed.status === "clean" ? "clean" : "issues_found";
-  await db
-    .update(datasetsTable)
-    .set({ privacyStatus: status, privacyReport: parsed.report })
-    .where(eq(datasetsTable.id, id));
+  store.updateDataset(req.sessionId!, id, { privacyStatus: status, privacyReport: parsed.report });
 
   res.json({
     status: parsed.status,
@@ -178,19 +160,13 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
   const { id } = AnonymizeDatasetParams.parse(req.params);
   const { gatewayId, modelId } = AnonymizeDatasetBody.parse(req.body);
 
-  const [dataset] = await db
-    .select()
-    .from(datasetsTable)
-    .where(eq(datasetsTable.id, id));
+  const dataset = store.getDataset(req.sessionId!, id);
   if (!dataset) {
     res.status(404).json({ error: "Dataset not found" });
     return;
   }
 
-  const [gateway] = await db
-    .select()
-    .from(gatewaysTable)
-    .where(eq(gatewaysTable.id, gatewayId));
+  const gateway = store.getGateway(req.sessionId!, gatewayId);
   if (!gateway) {
     res.status(404).json({ error: "Gateway not found" });
     return;
@@ -211,22 +187,14 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
     ],
   );
 
-  const [updated] = await db
-    .update(datasetsTable)
-    .set({ content: result.content, privacyStatus: "anonymized" })
-    .where(eq(datasetsTable.id, id))
-    .returning();
-
-  res.json(datasetToJson(updated));
+  const updated = store.updateDataset(req.sessionId!, id, { content: result.content, privacyStatus: "anonymized" });
+  res.json(datasetToJson(updated!));
 });
 
 router.post("/datasets/generate", async (req, res) => {
   const data = GenerateDatasetBody.parse(req.body);
 
-  const [gateway] = await db
-    .select()
-    .from(gatewaysTable)
-    .where(eq(gatewaysTable.id, data.gatewayId));
+  const gateway = store.getGateway(req.sessionId!, data.gatewayId);
   if (!gateway) {
     res.status(404).json({ error: "Gateway not found" });
     return;
@@ -251,14 +219,11 @@ Output only the Markdown document, nothing else.`,
     ],
   );
 
-  const [dataset] = await db
-    .insert(datasetsTable)
-    .values({
-      name: data.name,
-      content: result.content,
-      systemPrompt: data.systemPrompt,
-    })
-    .returning();
+  const dataset = store.createDataset(req.sessionId!, {
+    name: data.name,
+    content: result.content,
+    systemPrompt: data.systemPrompt,
+  });
 
   res.status(201).json(datasetToJson(dataset));
 });

@@ -2,6 +2,8 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NotFound from "@/pages/not-found";
 import { TopMenu } from "@/components/TopMenu";
+import { VaultProvider } from "@/lib/vault/vault-store";
+import { VaultGuard } from "@/components/VaultGuard";
 
 import ArenaDashboard from "@/pages/ArenaDashboard";
 import Datasets from "@/pages/Datasets";
@@ -33,14 +35,18 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <TopMenu />
-        <div className="pt-16 px-4 md:px-8 min-h-screen">
-          <Router />
-        </div>
-      </WouterRouter>
-    </QueryClientProvider>
+    <VaultProvider>
+      <QueryClientProvider client={queryClient}>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <VaultGuard>
+            <TopMenu />
+            <div className="pt-16 px-4 md:px-8 min-h-screen">
+              <Router />
+            </div>
+          </VaultGuard>
+        </WouterRouter>
+      </QueryClientProvider>
+    </VaultProvider>
   );
 }
 

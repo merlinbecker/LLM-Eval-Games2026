@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: session
+    description: Session management and vault sync
   - name: gateways
     description: LLM Gateway configuration
   - name: datasets
@@ -32,6 +34,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /session/sync:
+    post:
+      operationId: syncSession
+      tags: [session]
+      summary: Create or restore a session from client vault data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionSyncRequest"
+      responses:
+        "200":
+          description: Session synced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionSyncResponse"
+
+  /session:
+    delete:
+      operationId: deleteSession
+      tags: [session]
+      summary: Delete the current session and clear the cookie
+      responses:
+        "200":
+          description: Session deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
 
   /gateways:
     get:
@@ -385,6 +419,32 @@ components:
           type: string
       required:
         - message
+
+    SessionSyncRequest:
+      type: object
+      properties:
+        gateways:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateGateway"
+        datasets:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateDataset"
+
+    SessionSyncResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        gatewayCount:
+          type: integer
+        datasetCount:
+          type: integer
+      required:
+        - sessionId
+        - gatewayCount
+        - datasetCount
 
     Gateway:
       type: object

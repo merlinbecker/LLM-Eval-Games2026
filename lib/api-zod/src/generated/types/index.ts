@@ -30,5 +30,7 @@ export * from "./privacyCheckRequest";
 export * from "./privacyCheckResult";
 export * from "./privacyCheckResultStatus";
 export * from "./privacyFinding";
+export * from "./sessionSyncRequest";
+export * from "./sessionSyncResponse";
 export * from "./successMessage";
 export * from "./uploadDatasetBody";
