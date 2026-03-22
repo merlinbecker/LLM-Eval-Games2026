@@ -125,6 +125,7 @@ export const CompetitionStatus = {
   draft: "draft",
   running: "running",
   completed: "completed",
+  error: "error",
 } as const;
 
 export interface Competition {
@@ -156,6 +157,7 @@ export const CompetitionDetailStatus = {
   draft: "draft",
   running: "running",
   completed: "completed",
+  error: "error",
 } as const;
 
 export interface JudgeScore {

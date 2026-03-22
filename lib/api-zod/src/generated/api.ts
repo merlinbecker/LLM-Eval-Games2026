@@ -192,7 +192,7 @@ export const ListCompetitionsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   datasetId: zod.number(),
-  status: zod.enum(["draft", "running", "completed"]),
+  status: zod.enum(["draft", "running", "completed", "error"]),
   createdAt: zod.date(),
 });
 export const ListCompetitionsResponse = zod.array(ListCompetitionsResponseItem);
@@ -232,7 +232,7 @@ export const GetCompetitionResponse = zod.object({
   name: zod.string(),
   datasetId: zod.number(),
   systemPrompt: zod.string(),
-  status: zod.enum(["draft", "running", "completed"]),
+  status: zod.enum(["draft", "running", "completed", "error"]),
   contestantModels: zod.array(
     zod.object({
       gatewayId: zod.number(),
@@ -301,7 +301,7 @@ export const RunCompetitionResponse = zod.object({
   name: zod.string(),
   datasetId: zod.number(),
   systemPrompt: zod.string(),
-  status: zod.enum(["draft", "running", "completed"]),
+  status: zod.enum(["draft", "running", "completed", "error"]),
   contestantModels: zod.array(
     zod.object({
       gatewayId: zod.number(),

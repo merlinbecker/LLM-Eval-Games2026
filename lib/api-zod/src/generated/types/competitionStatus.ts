@@ -13,4 +13,5 @@ export const CompetitionStatus = {
   draft: "draft",
   running: "running",
   completed: "completed",
+  error: "error",
 } as const;
