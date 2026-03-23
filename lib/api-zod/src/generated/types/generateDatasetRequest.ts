@@ -8,9 +8,11 @@
 
 export interface GenerateDatasetRequest {
   name: string;
+  /** Description of the data to generate */
   topic: string;
-  systemPrompt: string;
   numberOfItems: number;
+  /** Optional example items to guide the generation style and format */
+  examples?: string;
   gatewayId: number;
   modelId: string;
 }

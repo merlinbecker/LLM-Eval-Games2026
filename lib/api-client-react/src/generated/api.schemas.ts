@@ -32,7 +32,6 @@ export interface CreateGateway {
 export interface CreateDataset {
   name: string;
   content: string;
-  systemPrompt: string;
 }
 
 export interface SessionSyncRequest {
@@ -83,7 +82,6 @@ export interface Dataset {
   id: number;
   name: string;
   content: string;
-  systemPrompt: string;
   privacyStatus: DatasetPrivacyStatus;
   /** @nullable */
   privacyReport?: string | null;
@@ -120,11 +118,18 @@ export interface AnonymizeRequest {
   modelId: string;
 }
 
+export interface UpdateDataset {
+  name?: string;
+  content?: string;
+}
+
 export interface GenerateDatasetRequest {
   name: string;
+  /** Description of the data to generate */
   topic: string;
-  systemPrompt: string;
   numberOfItems: number;
+  /** Optional example items to guide the generation style and format */
+  examples?: string;
   gatewayId: number;
   modelId: string;
 }
@@ -234,6 +239,4 @@ export type UploadDatasetBody = {
   file: Blob;
   /** Dataset name (defaults to filename if omitted) */
   name?: string;
-  /** System prompt for evaluating responses */
-  systemPrompt: string;
 };

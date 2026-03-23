@@ -145,7 +145,6 @@ class InMemoryStore {
       id,
       name: data.name,
       content: data.content,
-      systemPrompt: data.systemPrompt,
       privacyStatus: "unchecked",
       privacyReport: null,
       createdAt: new Date().toISOString(),

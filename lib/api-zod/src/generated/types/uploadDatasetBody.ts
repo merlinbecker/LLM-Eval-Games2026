@@ -11,6 +11,4 @@ export type UploadDatasetBody = {
   file: Blob;
   /** Dataset name (defaults to filename if omitted) */
   name?: string;
-  /** System prompt for evaluating responses */
-  systemPrompt: string;
 };

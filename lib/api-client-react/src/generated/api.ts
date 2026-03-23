@@ -34,6 +34,7 @@ import type {
   SessionSyncRequest,
   SessionSyncResponse,
   SuccessMessage,
+  UpdateDataset,
   UploadDatasetBody,
 } from "./api.schemas";
 
@@ -797,7 +798,6 @@ export const uploadDataset = async (
   if (uploadDatasetBody.name !== undefined) {
     formData.append(`name`, uploadDatasetBody.name);
   }
-  formData.append(`systemPrompt`, uploadDatasetBody.systemPrompt);
 
   return customFetch<Dataset>(getUploadDatasetUrl(), {
     ...options,
@@ -959,6 +959,93 @@ export function useGetDataset<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update a dataset (name, content, systemPrompt)
+ */
+export const getUpdateDatasetUrl = (id: number) => {
+  return `/api/datasets/${id}`;
+};
+
+export const updateDataset = async (
+  id: number,
+  updateDataset: UpdateDataset,
+  options?: RequestInit,
+): Promise<Dataset> => {
+  return customFetch<Dataset>(getUpdateDatasetUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateDataset),
+  });
+};
+
+export const getUpdateDatasetMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDataset>>,
+    TError,
+    { id: number; data: BodyType<UpdateDataset> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateDataset>>,
+  TError,
+  { id: number; data: BodyType<UpdateDataset> },
+  TContext
+> => {
+  const mutationKey = ["updateDataset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateDataset>>,
+    { id: number; data: BodyType<UpdateDataset> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateDataset(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateDatasetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateDataset>>
+>;
+export type UpdateDatasetMutationBody = BodyType<UpdateDataset>;
+export type UpdateDatasetMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a dataset (name, content, systemPrompt)
+ */
+export const useUpdateDataset = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDataset>>,
+    TError,
+    { id: number; data: BodyType<UpdateDataset> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateDataset>>,
+  TError,
+  { id: number; data: BodyType<UpdateDataset> },
+  TContext
+> => {
+  return useMutation(getUpdateDatasetMutationOptions(options));
+};
 
 /**
  * @summary Delete a dataset

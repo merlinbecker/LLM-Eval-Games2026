@@ -18,7 +18,6 @@ export interface Dataset {
   id: number;
   name: string;
   content: string;
-  systemPrompt: string;
   privacyStatus: string;
   privacyReport: string | null;
   createdAt: string;
@@ -27,7 +26,6 @@ export interface Dataset {
 export interface CreateDataset {
   name: string;
   content: string;
-  systemPrompt: string;
 }
 
 export interface JudgeScoreEntry {

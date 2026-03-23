@@ -33,7 +33,6 @@ export const SyncSessionBody = zod.object({
       zod.object({
         name: zod.string(),
         content: zod.string(),
-        systemPrompt: zod.string(),
       }),
     )
     .optional(),
@@ -109,7 +108,6 @@ export const ListDatasetsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   content: zod.string(),
-  systemPrompt: zod.string(),
   privacyStatus: zod.enum(["unchecked", "clean", "issues_found", "anonymized"]),
   privacyReport: zod.string().nullish(),
   createdAt: zod.date(),
@@ -122,7 +120,6 @@ export const ListDatasetsResponse = zod.array(ListDatasetsResponseItem);
 export const CreateDatasetBody = zod.object({
   name: zod.string(),
   content: zod.string(),
-  systemPrompt: zod.string(),
 });
 
 /**
@@ -134,7 +131,6 @@ export const UploadDatasetBody = zod.object({
     .string()
     .optional()
     .describe("Dataset name (defaults to filename if omitted)"),
-  systemPrompt: zod.string().describe("System prompt for evaluating responses"),
 });
 
 /**
@@ -148,7 +144,27 @@ export const GetDatasetResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   content: zod.string(),
-  systemPrompt: zod.string(),
+  privacyStatus: zod.enum(["unchecked", "clean", "issues_found", "anonymized"]),
+  privacyReport: zod.string().nullish(),
+  createdAt: zod.date(),
+});
+
+/**
+ * @summary Update a dataset (name, content, systemPrompt)
+ */
+export const UpdateDatasetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateDatasetBody = zod.object({
+  name: zod.string().optional(),
+  content: zod.string().optional(),
+});
+
+export const UpdateDatasetResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  content: zod.string(),
   privacyStatus: zod.enum(["unchecked", "clean", "issues_found", "anonymized"]),
   privacyReport: zod.string().nullish(),
   createdAt: zod.date(),
@@ -205,7 +221,6 @@ export const AnonymizeDatasetResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   content: zod.string(),
-  systemPrompt: zod.string(),
   privacyStatus: zod.enum(["unchecked", "clean", "issues_found", "anonymized"]),
   privacyReport: zod.string().nullish(),
   createdAt: zod.date(),
@@ -216,9 +231,14 @@ export const AnonymizeDatasetResponse = zod.object({
  */
 export const GenerateDatasetBody = zod.object({
   name: zod.string(),
-  topic: zod.string(),
-  systemPrompt: zod.string(),
+  topic: zod.string().describe("Description of the data to generate"),
   numberOfItems: zod.number(),
+  examples: zod
+    .string()
+    .optional()
+    .describe(
+      "Optional example items to guide the generation style and format",
+    ),
   gatewayId: zod.number(),
   modelId: zod.string(),
 });

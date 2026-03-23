@@ -8,6 +8,8 @@ import {
   usePrivacyCheckDataset, 
   useAnonymizeDataset,
   useGenerateDataset,
+  useUpdateDataset,
+  useGetDataset,
   getListDatasetsQueryKey,
   useListGateways,
   useListGatewayModels,
@@ -15,7 +17,7 @@ import {
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroSelect, RetroDialog, RetroFormField } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
-import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit } from "lucide-react";
+import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit, Edit3 } from "lucide-react";
 import { useVault } from "@/lib/vault/vault-store";
 
 export default function Datasets() {
@@ -29,6 +31,7 @@ export default function Datasets() {
   const { data: gateways } = useListGateways();
   const [activeTab, setActiveTab] = useState<"list" | "upload" | "generate">("list");
   const [actionDialog, setActionDialog] = useState<{ type: "privacy" | "anonymize"; datasetId: number } | null>(null);
+  const [editDatasetId, setEditDatasetId] = useState<number | null>(null);
   const [dialogGatewayId, setDialogGatewayId] = useState("");
   const [dialogModelId, setDialogModelId] = useState("");
 
@@ -93,16 +96,13 @@ export default function Datasets() {
           ) : (
             <div className="grid gap-6">
               {datasets.map((ds) => (
-                <div key={ds.id} className="border-[3px] border-mac-black p-4 flex flex-col md:flex-row gap-4">
+                <div key={ds.id} className="border-[3px] border-mac-black p-4 flex flex-col md:flex-row gap-4 cursor-pointer hover:bg-mac-black/5 transition-colors" onClick={() => setEditDatasetId(ds.id)}>
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <FileText className="w-6 h-6" />
                       <h3 className="font-display text-xl font-bold uppercase">{ds.name}</h3>
                       <RetroBadge>ID: {ds.id}</RetroBadge>
                     </div>
-                    <p className="text-lg line-clamp-2 mb-4 bg-mac-black/5 p-2 border-l-4 border-mac-black">
-                      System Prompt: {ds.systemPrompt}
-                    </p>
                     <div className="flex items-center space-x-2 text-sm">
                       <span className="font-bold">STATUS:</span>
                       {ds.privacyStatus === 'clean' ? <ShieldCheck className="w-5 h-5" /> : null}
@@ -119,7 +119,10 @@ export default function Datasets() {
                     )}
                   </div>
                   
-                  <div className="flex flex-col space-y-2 justify-center md:w-48 border-l-[3px] border-mac-black pl-4">
+                  <div className="flex flex-col space-y-2 justify-center md:w-48 border-l-[3px] border-mac-black pl-4" onClick={(e) => e.stopPropagation()}>
+                    <RetroButton size="sm" onClick={() => setEditDatasetId(ds.id)}>
+                      <Edit3 className="w-4 h-4 mr-1 inline" /> VIEW / EDIT
+                    </RetroButton>
                     <RetroButton size="sm" onClick={() => openActionDialog("privacy", ds.id)}>
                       SCAN PRIVACY
                     </RetroButton>
@@ -171,7 +174,77 @@ export default function Datasets() {
           </div>
         </RetroDialog>
       )}
+
+      {editDatasetId !== null && (
+        <DatasetEditDialog
+          datasetId={editDatasetId}
+          onClose={() => setEditDatasetId(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function DatasetEditDialog({ datasetId, onClose }: { datasetId: number; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { updateDataset: updateVaultDataset } = useVault();
+  const { data: dataset, isLoading } = useGetDataset(datasetId);
+  const updateMutation = useUpdateDataset();
+  const [editName, setEditName] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  if (dataset && !initialized) {
+    setEditName(dataset.name);
+    setEditContent(dataset.content);
+    setInitialized(true);
+  }
+
+  const handleSave = async () => {
+    const result = await updateMutation.mutateAsync({
+      id: datasetId,
+      data: { name: editName, content: editContent },
+    });
+    updateVaultDataset({
+      id: result.id,
+      name: result.name,
+      content: result.content,
+      privacyStatus: result.privacyStatus ?? "unchecked",
+      privacyReport: result.privacyReport ?? null,
+      createdAt: result.createdAt,
+    });
+    queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
+    onClose();
+  };
+
+  return (
+    <RetroDialog title={`DATASET: ${dataset?.name ?? "..."}`} onClose={onClose}>
+      {isLoading ? (
+        <div className="p-8 text-center font-display text-xl animate-pulse">LOADING...</div>
+      ) : dataset ? (
+        <div className="space-y-4">
+          <RetroFormField label="Name">
+            <RetroInput value={editName} onChange={(e) => setEditName(e.target.value)} />
+          </RetroFormField>
+          <RetroFormField label="Content (Markdown)">
+            <RetroTextarea
+              rows={15}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="font-mono text-sm"
+            />
+          </RetroFormField>
+          <div className="flex space-x-3 pt-2">
+            <RetroButton className="flex-1" onClick={handleSave} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "SAVING..." : "SAVE CHANGES"}
+            </RetroButton>
+            <RetroButton variant="secondary" onClick={onClose}>CANCEL</RetroButton>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 text-center">DATASET NOT FOUND.</div>
+      )}
+    </RetroDialog>
   );
 }
 
@@ -182,7 +255,6 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const uploadMutation = useUploadDataset();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
-  const [prompt, setPrompt] = useState("");
   const [content, setContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [inputMode, setInputMode] = useState<"file" | "text">("file");
@@ -203,15 +275,14 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     let result;
     if (inputMode === "file" && selectedFile) {
-      result = await uploadMutation.mutateAsync({ data: { file: selectedFile as Blob, name, systemPrompt: prompt } });
+      result = await uploadMutation.mutateAsync({ data: { file: selectedFile as Blob, name } });
     } else {
-      result = await createMutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
+      result = await createMutation.mutateAsync({ data: { name, content } });
     }
     addDataset({
       id: result.id,
       name: result.name,
       content: result.content,
-      systemPrompt: result.systemPrompt,
       privacyStatus: result.privacyStatus ?? "unchecked",
       privacyReport: result.privacyReport ?? null,
       createdAt: result.createdAt,
@@ -235,9 +306,6 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <RetroFormField label="Dataset Name">
           <RetroInput required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Math Riddles" />
-        </RetroFormField>
-        <RetroFormField label="System Prompt">
-          <RetroTextarea required rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="You are a helpful assistant..." />
         </RetroFormField>
         {inputMode === "file" ? (
           <RetroFormField label="Markdown File (.md)">
@@ -293,7 +361,7 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
-  const [prompt, setPrompt] = useState("");
+  const [examples, setExamples] = useState("");
   const [count, setCount] = useState(5);
   const [gatewayId, setGatewayId] = useState("");
   const [modelId, setModelId] = useState("");
@@ -307,8 +375,8 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
       data: { 
         name, 
         topic, 
-        systemPrompt: prompt, 
         numberOfItems: count,
+        ...(examples.trim() ? { examples: examples.trim() } : {}),
         gatewayId: Number(gatewayId),
         modelId
       } 
@@ -317,7 +385,6 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
       id: result.id,
       name: result.name,
       content: result.content,
-      systemPrompt: result.systemPrompt,
       privacyStatus: result.privacyStatus ?? "unchecked",
       privacyReport: result.privacyReport ?? null,
       createdAt: result.createdAt,
@@ -338,12 +405,12 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
           </RetroFormField>
         </div>
         
-        <RetroFormField label="Topic / Domain">
-          <RetroInput required value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g., Quantum Physics queries" />
+        <RetroFormField label="Description">
+          <RetroTextarea required rows={2} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Describe the data to generate, e.g.: Math word problems for grade school students" />
         </RetroFormField>
 
-        <RetroFormField label="Target System Prompt">
-          <RetroTextarea required rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="The prompt the models will be tested against..." />
+        <RetroFormField label="Examples (optional)">
+          <RetroTextarea rows={6} value={examples} onChange={(e) => setExamples(e.target.value)} placeholder={"Provide example items to guide style and format, e.g.:\n\n## Item 1\nA train travels 120 km in 2 hours. What is its average speed?\n\n## Item 2\nIf a rectangle has a width of 5 cm and a length of 12 cm, what is the area?"} className="font-mono text-sm" />
         </RetroFormField>
 
         <div className="border-[3px] border-mac-black p-4 bg-dither">

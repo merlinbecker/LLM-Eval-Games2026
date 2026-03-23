@@ -6,6 +6,8 @@ import {
   CreateDatasetBody,
   GetDatasetParams,
   DeleteDatasetParams,
+  UpdateDatasetParams,
+  UpdateDatasetBody,
   PrivacyCheckDatasetParams,
   PrivacyCheckDatasetBody,
   AnonymizeDatasetParams,
@@ -22,7 +24,6 @@ function datasetToJson(d: Dataset) {
     id: d.id,
     name: d.name,
     content: d.content,
-    systemPrompt: d.systemPrompt,
     privacyStatus: d.privacyStatus,
     privacyReport: d.privacyReport ?? null,
     createdAt: d.createdAt,
@@ -39,7 +40,6 @@ router.post("/datasets", (req, res) => {
   const dataset = store.createDataset(req.sessionId!, {
     name: data.name,
     content: data.content,
-    systemPrompt: data.systemPrompt,
   });
   res.status(201).json(datasetToJson(dataset));
 });
@@ -64,13 +64,8 @@ router.post("/datasets/upload", upload.single("file"), (req, res) => {
   }
 
   const name = (req.body.name as string) || originalName.replace(/\.md$/, "");
-  const systemPrompt = req.body.systemPrompt as string;
-  if (!systemPrompt) {
-    res.status(400).json({ message: "systemPrompt is required" });
-    return;
-  }
 
-  const dataset = store.createDataset(req.sessionId!, { name, content, systemPrompt });
+  const dataset = store.createDataset(req.sessionId!, { name, content });
   res.status(201).json(datasetToJson(dataset));
 });
 
@@ -82,6 +77,18 @@ router.get("/datasets/:id", (req, res) => {
     return;
   }
   res.json(datasetToJson(dataset));
+});
+
+router.put("/datasets/:id", (req, res) => {
+  const { id } = UpdateDatasetParams.parse(req.params);
+  const data = UpdateDatasetBody.parse(req.body);
+  const dataset = store.getDataset(req.sessionId!, id);
+  if (!dataset) {
+    res.status(404).json({ error: "Dataset not found" });
+    return;
+  }
+  const updated = store.updateDataset(req.sessionId!, id, data);
+  res.json(datasetToJson(updated!));
 });
 
 router.delete("/datasets/:id", (req, res) => {
@@ -202,21 +209,21 @@ router.post("/datasets/generate", async (req, res) => {
     return;
   }
 
+  const examplesSection = data.examples
+    ? `\n\nHere are example items to guide the style, format, and complexity:\n\n${data.examples}\n\nGenerate new items following the same pattern, style, and level of detail as the examples above.`
+    : "";
+
   const result = await chatCompletion(
     { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
     data.modelId,
     [
       {
         role: "system",
-        content: `You are a test data generator. Generate ${data.numberOfItems} test items as a well-structured Markdown document for the topic: "${data.topic}".
-
-Each test item should be a separate section with a heading (## Item N) containing a realistic prompt or question that could be given to an LLM using this system prompt: "${data.systemPrompt}".
-
-Output only the Markdown document, nothing else.`,
+        content: `You are a test data generator. Generate ${data.numberOfItems} test items as a well-structured Markdown document.\n\nDescription of data to generate: "${data.topic}"${examplesSection}\n\nEach item should be a separate section with a heading (## Item N). The items should be realistic and diverse.\n\nOutput only the Markdown document, nothing else.`,
       },
       {
         role: "user",
-        content: `Generate ${data.numberOfItems} test items about: ${data.topic}`,
+        content: `Generate ${data.numberOfItems} test items for: ${data.topic}`,
       },
     ],
     req.sessionId,
@@ -225,7 +232,6 @@ Output only the Markdown document, nothing else.`,
   const dataset = store.createDataset(req.sessionId!, {
     name: data.name,
     content: result.content,
-    systemPrompt: data.systemPrompt,
   });
 
   res.status(201).json(datasetToJson(dataset));

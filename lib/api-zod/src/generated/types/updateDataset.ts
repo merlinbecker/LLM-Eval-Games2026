@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateDataset {
-  name: string;
-  content: string;
+export interface UpdateDataset {
+  name?: string;
+  content?: string;
 }

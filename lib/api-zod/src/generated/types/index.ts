@@ -36,4 +36,5 @@ export * from "./privacyFinding";
 export * from "./sessionSyncRequest";
 export * from "./sessionSyncResponse";
 export * from "./successMessage";
+export * from "./updateDataset";
 export * from "./uploadDatasetBody";

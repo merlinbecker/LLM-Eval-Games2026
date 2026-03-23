@@ -10,7 +10,6 @@ export interface VaultDataset {
   id: number;
   name: string;
   content: string;
-  systemPrompt: string;
   privacyStatus: string;
   privacyReport: string | null;
   createdAt: string;

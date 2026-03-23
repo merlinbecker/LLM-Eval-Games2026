@@ -25,5 +25,6 @@ export type {
   PrivacyCheckResultStatus,
   PrivacyFinding,
   SuccessMessage,
+  UpdateDataset,
   UploadDatasetBody,
 } from "./generated/types";

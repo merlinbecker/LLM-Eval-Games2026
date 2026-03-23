@@ -192,12 +192,8 @@ paths:
                 name:
                   type: string
                   description: Dataset name (defaults to filename if omitted)
-                systemPrompt:
-                  type: string
-                  description: System prompt for evaluating responses
               required:
                 - file
-                - systemPrompt
       responses:
         "201":
           description: Dataset created from uploaded file
@@ -226,6 +222,29 @@ paths:
       responses:
         "200":
           description: Dataset detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+    put:
+      operationId: updateDataset
+      tags: [datasets]
+      summary: Update a dataset (name, content, systemPrompt)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDataset"
+      responses:
+        "200":
+          description: Updated dataset
           content:
             application/json:
               schema:
@@ -540,8 +559,6 @@ components:
           type: string
         content:
           type: string
-        systemPrompt:
-          type: string
         privacyStatus:
           type: string
           enum: [unchecked, clean, issues_found, anonymized]
@@ -554,7 +571,6 @@ components:
         - id
         - name
         - content
-        - systemPrompt
         - privacyStatus
         - createdAt
 
@@ -565,12 +581,9 @@ components:
           type: string
         content:
           type: string
-        systemPrompt:
-          type: string
       required:
         - name
         - content
-        - systemPrompt
 
     PrivacyCheckRequest:
       type: object
@@ -625,6 +638,14 @@ components:
         - gatewayId
         - modelId
 
+    UpdateDataset:
+      type: object
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+
     GenerateDatasetRequest:
       type: object
       properties:
@@ -632,10 +653,12 @@ components:
           type: string
         topic:
           type: string
-        systemPrompt:
-          type: string
+          description: Description of the data to generate
         numberOfItems:
           type: integer
+        examples:
+          type: string
+          description: Optional example items to guide the generation style and format
         gatewayId:
           type: integer
         modelId:
@@ -643,7 +666,6 @@ components:
       required:
         - name
         - topic
-        - systemPrompt
         - numberOfItems
         - gatewayId
         - modelId

@@ -11,7 +11,6 @@ export interface Dataset {
   id: number;
   name: string;
   content: string;
-  systemPrompt: string;
   privacyStatus: DatasetPrivacyStatus;
   /** @nullable */
   privacyReport?: string | null;
