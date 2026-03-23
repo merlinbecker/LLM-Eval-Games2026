@@ -386,3 +386,27 @@ export const RunCompetitionResponse = zod.object({
   ),
   createdAt: zod.date(),
 });
+
+/**
+ * @summary List all LLM call logs for the current session
+ */
+export const ListLlmLogsResponseItem = zod.object({
+  id: zod.number(),
+  timestamp: zod.date(),
+  gatewayType: zod.string(),
+  modelId: zod.string(),
+  requestUrl: zod.string(),
+  requestBody: zod.object({}).passthrough(),
+  responseStatus: zod.number(),
+  responseBody: zod.object({}).passthrough(),
+  durationMs: zod.number(),
+  error: zod.string().nullable(),
+});
+export const ListLlmLogsResponse = zod.array(ListLlmLogsResponseItem);
+
+/**
+ * @summary Clear all LLM call logs for the current session
+ */
+export const ClearLlmLogsResponse = zod.object({
+  message: zod.string(),
+});

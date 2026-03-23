@@ -148,11 +148,11 @@ C4Container
 
     System_Boundary(monorepo, "LLM Championship Monorepo") {
 
-        Container(frontend, "LLM Championship Frontend", "React 19, Vite, TypeScript, Tailwind CSS", "Single Page Application mit Retro-UI (Macintosh System 5). Client-Vault (AES-256-GCM, LocalStorage). Seiten: Dashboard, Gateways, Datasets, NewCompetition, CompetitionResults")
+        Container(frontend, \"LLM Championship Frontend\", \"React 19, Vite, TypeScript, Tailwind CSS\", \"Single Page Application mit Retro-UI (Macintosh System 5). Client-Vault (AES-256-GCM, LocalStorage). Seiten: Dashboard, Gateways, Datasets, NewCompetition, CompetitionResults, Logs\")
 
         Container(apiClient, "API Client React", "TypeScript, React Query, Orval", "Generierte React-Query-Hooks und Fetch-Wrapper für alle API-Endpunkte")
 
-        Container(apiServer, "API Server", "Express 5, Node.js 24, TypeScript", "REST-API mit Session-Management, In-Memory-Store, Routen für Gateways, Datasets, Competitions und Health. LLM-Gateway-Integration und Evaluations-Engine")
+        Container(apiServer, \"API Server\", \"Express 5, Node.js 24, TypeScript\", \"REST-API mit Session-Management, In-Memory-Store, Routen für Gateways, Datasets, Competitions, Logs und Health. LLM-Gateway-Integration, Evaluations-Engine und automatisches LLM-Call-Logging\")
 
         Container(storeLib, "Store Library", "TypeScript", "In-Memory-Store mit session-scoped Maps; TypeScript-Interfaces für Gateway, Dataset, Competition")
 
@@ -217,7 +217,9 @@ C4Component
 
         Component(competitionsRoute, "Competitions Router", "express.Router", "CRUD für Wettbewerbe; POST /competitions/:id/run startet asynchrone Evaluation")
 
-        Component(llmGateway, "LLM Gateway Module", "TypeScript", "chatCompletion(), listModelsFromGateway(), validateGatewayUrl() — Sichere LLM-Kommunikation mit SSRF-Schutz")
+        Component(logsRoute, "Logs Router", "express.Router", "GET /logs — Alle LLM-Call-Logs abrufen; DELETE /logs — Logs löschen")
+
+        Component(llmGateway, "LLM Gateway Module", "TypeScript", "chatCompletion(), listModelsFromGateway(), validateGatewayUrl() — Sichere LLM-Kommunikation mit SSRF-Schutz und automatischem Call-Logging")
 
         Component(logger, "Logger", "Pino", "Strukturiertes Logging; JSON (Prod) / Pretty-Print (Dev); redaktiert Auth-Header")
     }
@@ -231,6 +233,7 @@ C4Component
     Rel(app, gatewaysRoute, "Routet zu", "(geschützt)")
     Rel(app, datasetsRoute, "Routet zu", "(geschützt)")
     Rel(app, competitionsRoute, "Routet zu", "(geschützt)")
+    Rel(app, logsRoute, "Routet zu", "(geschützt)")
 
     Rel(gatewaysRoute, llmGateway, "Nutzt", "Modelle auflisten")
     Rel(datasetsRoute, llmGateway, "Nutzt", "Privacy-Check, Anonymisierung, Generierung")
@@ -239,6 +242,7 @@ C4Component
     Rel(gatewaysRoute, storeLib, "Liest/Schreibt", "session-scoped Gateways")
     Rel(datasetsRoute, storeLib, "Liest/Schreibt", "session-scoped Datasets")
     Rel(competitionsRoute, storeLib, "Liest/Schreibt", "session-scoped Competitions")
+    Rel(logsRoute, storeLib, "Liest/Löscht", "session-scoped LLM-Logs")
     Rel(sessionRoute, storeLib, "Erstellt/Löscht", "Sessions + Bulk-Import")
 
     Rel(llmGateway, llmAPIs, "HTTPS", "/chat/completions, /models")
@@ -259,7 +263,8 @@ C4Component
 | **Gateways Router**     | `GET/POST /gateways`, `DELETE /gateways/:id`, `GET /gateways/:id/models`; validiert und speichert Gateway-Konfigurationen          |
 | **Datasets Router**     | `GET/POST /datasets`, `POST /datasets/upload` (Multer, 5MB, .md), `DELETE /datasets/:id`, Privacy-Check/Anonymisierung/Generierung |
 | **Competitions Router** | `GET/POST /competitions`, `GET/DELETE /competitions/:id`, `POST /competitions/:id/run` (Evaluations-Engine)                        |
-| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz                |
+| **Logs Router**         | `GET /logs` — LLM-Call-Logs der aktuellen Session abrufen (neueste zuerst); `DELETE /logs` — alle Logs löschen                    |
+| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; automatisches Call-Logging (Request/Response) in den Session-Store |
 | **Logger**              | Pino-Logger; strukturiertes JSON-Logging in Produktion; Pretty-Print in Entwicklung; Redaktion sensibler Header                    |
 
 ---
@@ -288,6 +293,8 @@ C4Component
 
         Component(competitionResults, "Competition Results", "React, Recharts", "Podium, Radar-Chart, Telemetrie-Karten, Bewertungsprotokolle, Live-Polling")
 
+        Component(logsPage, "Logs Page", "React", "LLM-Call-Log-Viewer: expandierbare Einträge mit Status, Modell, Dauer, Timestamp; einklappbare JSON-Ansicht für Request/Response; Auto-Refresh (5s); Clear-Funktion")
+
         Component(retroComponents, "Retro-Komponentenbibliothek", "React, Tailwind CSS", "RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge")
     }
 
@@ -300,6 +307,7 @@ C4Component
     Rel(appShell, datasetsPage, "Route: /datasets")
     Rel(appShell, newCompetition, "Route: /competitions/new")
     Rel(appShell, competitionResults, "Route: /competitions/:id")
+    Rel(appShell, logsPage, "Route: /logs")
 
     Rel(vaultSystem, apiClient, "POST /session/sync, DELETE /session")
     Rel(arenaDashboard, apiClient, "useListCompetitions()")
@@ -307,12 +315,14 @@ C4Component
     Rel(datasetsPage, apiClient, "useListDatasets(), useCreateDataset(), useUploadDataset(), useGenerateDataset(), usePrivacyCheckDataset()")
     Rel(newCompetition, apiClient, "useCreateCompetition(), useListGateways(), useListGatewayModels()")
     Rel(competitionResults, apiClient, "useGetCompetition(), useRunCompetition()")
+    Rel(logsPage, apiClient, "useListLlmLogs(), useClearLlmLogs()")
 
     Rel(arenaDashboard, retroComponents, "Nutzt")
     Rel(gatewaysPage, retroComponents, "Nutzt")
     Rel(datasetsPage, retroComponents, "Nutzt")
     Rel(newCompetition, retroComponents, "Nutzt")
     Rel(competitionResults, retroComponents, "Nutzt")
+    Rel(logsPage, retroComponents, "Nutzt")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
@@ -329,7 +339,7 @@ C4Component
 
         Component(storeIndex, "InMemoryStore", "TypeScript", "Singleton-Klasse mit session-scoped Maps; CRUD für Gateways, Datasets, Competitions; Bulk-Import; Cleanup-Timer (5min Intervall, 2h TTL)")
 
-        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces: Gateway, Dataset, Competition, CreateGateway, CreateDataset, CreateCompetition, ModelSelection, CompetitionResultEntry")
+        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces: Gateway, Dataset, Competition, LlmLog, CreateGateway, CreateDataset, CreateCompetition, ModelSelection, CompetitionResultEntry")
     }
 
     Container(apiServer, "API Server", "Express 5")
@@ -345,8 +355,9 @@ C4Component
 | **Gateway**         | `id`, `name`, `type` (openrouter/github_copilot/custom), `baseUrl`, `apiKey`, `createdAt`                |
 | **Dataset**         | `id`, `name`, `content` (Markdown), `systemPrompt`, `privacyStatus`, `privacyReport`, `createdAt`        |
 | **Competition**     | `id`, `name`, `datasetId`, `systemPrompt`, `status`, `contestantModels`, `judgeModels`, `results`, `createdAt` |
+| **LlmLog**          | `id`, `timestamp`, `gatewayType`, `modelId`, `requestUrl`, `requestBody`, `responseStatus`, `responseBody`, `durationMs`, `error` |
 
-Jede Session hat eigene Counter (`nextId`) und Maps; Sessions werden nach 2 Stunden Inaktivität automatisch bereinigt.
+Jede Session hat eigene Counter (`nextId`) und Maps; Sessions werden nach 2 Stunden Inaktivität automatisch bereinigt. LLM-Logs werden als Array pro Session gespeichert (max. 500 Einträge, FIFO).
 
 ---
 
@@ -682,6 +693,7 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 - Request-Serialisierung: nur `id`, `method`, `url` (ohne Query-Params)
 - Response-Serialisierung: nur `statusCode`
 - Sensible Daten (`authorization`, `cookie`) werden automatisch redaktiert
+- **LLM-Call-Logging:** Jeder `chatCompletion()`-Aufruf wird automatisch im session-scoped In-Memory-Store geloggt (Request-Body, Response-Body, Status, Dauer, Fehler). Logs sind über `GET /api/logs` abrufbar und über die Logs-Seite im Frontend einsehbar. Pro Session werden maximal 500 Logs gespeichert (älteste werden verworfen). Die Logs-Seite bietet expandierbare Einträge mit einklappbarer, pretty-printed JSON-Ansicht und Auto-Refresh (5 Sekunden).
 
 ---
 

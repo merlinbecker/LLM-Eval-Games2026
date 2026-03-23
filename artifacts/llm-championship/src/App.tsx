@@ -10,6 +10,7 @@ import Datasets from "@/pages/Datasets";
 import Gateways from "@/pages/Gateways";
 import NewCompetition from "@/pages/NewCompetition";
 import CompetitionResults from "@/pages/CompetitionResults";
+import Logs from "@/pages/Logs";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/gateways" component={Gateways} />
       <Route path="/competitions/new" component={NewCompetition} />
       <Route path="/competitions/:id" component={CompetitionResults} />
+      <Route path="/logs" component={Logs} />
       <Route component={NotFound} />
     </Switch>
   );

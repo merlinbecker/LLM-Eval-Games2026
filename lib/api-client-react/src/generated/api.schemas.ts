@@ -211,6 +211,24 @@ export interface CompetitionDetail {
   createdAt: string;
 }
 
+export type LlmLogRequestBody = { [key: string]: unknown };
+
+export type LlmLogResponseBody = { [key: string]: unknown };
+
+export interface LlmLog {
+  id: number;
+  timestamp: string;
+  gatewayType: string;
+  modelId: string;
+  requestUrl: string;
+  requestBody: LlmLogRequestBody;
+  responseStatus: number;
+  responseBody: LlmLogResponseBody;
+  durationMs: number;
+  /** @nullable */
+  error: string | null;
+}
+
 export type UploadDatasetBody = {
   /** A .md (Markdown) file */
   file: Blob;

@@ -11,6 +11,7 @@ export function TopMenu() {
     { href: "/datasets", label: "Datasets" },
     { href: "/gateways", label: "Gateways" },
     { href: "/competitions/new", label: "New Competition" },
+    { href: "/logs", label: "Logs" },
   ];
 
   return (

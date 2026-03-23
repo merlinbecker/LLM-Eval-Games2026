@@ -6,6 +6,7 @@ import type {
   Competition,
   CreateCompetition,
   CompetitionResultEntry,
+  LlmLog,
 } from "./types";
 
 declare function setInterval(callback: () => void, ms: number): unknown;
@@ -15,7 +16,8 @@ interface SessionStore {
   gateways: Map<number, Gateway>;
   datasets: Map<number, Dataset>;
   competitions: Map<number, Competition>;
-  counters: { gateways: number; datasets: number; competitions: number };
+  llmLogs: LlmLog[];
+  counters: { gateways: number; datasets: number; competitions: number; llmLogs: number };
   lastAccess: number;
 }
 
@@ -70,7 +72,8 @@ class InMemoryStore {
       gateways: new Map(),
       datasets: new Map(),
       competitions: new Map(),
-      counters: { gateways: 1, datasets: 1, competitions: 1 },
+      llmLogs: [],
+      counters: { gateways: 1, datasets: 1, competitions: 1, llmLogs: 1 },
       lastAccess: Date.now(),
     };
     this.sessions.set(sessionId, session);
@@ -215,6 +218,31 @@ class InMemoryStore {
     return session.competitions.delete(id);
   }
 
+  // --- LLM Logs ---
+
+  addLlmLog(sessionId: string, data: Omit<LlmLog, "id">): LlmLog {
+    const session = this.getSession(sessionId);
+    if (!session) throw new Error("Session not found");
+    const log: LlmLog = { id: session.counters.llmLogs++, ...data };
+    session.llmLogs.push(log);
+    // Keep at most 500 logs per session
+    if (session.llmLogs.length > 500) {
+      session.llmLogs = session.llmLogs.slice(-500);
+    }
+    return log;
+  }
+
+  listLlmLogs(sessionId: string): LlmLog[] {
+    const session = this.getSession(sessionId);
+    if (!session) return [];
+    return session.llmLogs;
+  }
+
+  clearLlmLogs(sessionId: string): void {
+    const session = this.getSession(sessionId);
+    if (session) session.llmLogs = [];
+  }
+
   // --- Bulk import (for session sync) ---
 
   importGateways(sessionId: string, gateways: Gateway[]): void {
@@ -242,5 +270,5 @@ class InMemoryStore {
 
 export const store = new InMemoryStore();
 
-export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition };
+export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition, LlmLog };
 export type { JudgeScoreEntry, ModelResponseEntry, CompetitionResultEntry, ModelSelection } from "./types";

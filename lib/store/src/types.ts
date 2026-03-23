@@ -83,3 +83,16 @@ export interface CreateCompetition {
   contestantModels: ModelSelection[];
   judgeModels: ModelSelection[];
 }
+
+export interface LlmLog {
+  id: number;
+  timestamp: string;
+  gatewayType: string;
+  modelId: string;
+  requestUrl: string;
+  requestBody: unknown;
+  responseStatus: number;
+  responseBody: unknown;
+  durationMs: number;
+  error: string | null;
+}

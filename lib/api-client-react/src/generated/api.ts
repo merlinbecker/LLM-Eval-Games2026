@@ -27,6 +27,7 @@ import type {
   Gateway,
   GenerateDatasetRequest,
   HealthStatus,
+  LlmLog,
   ModelInfo,
   PrivacyCheckRequest,
   PrivacyCheckResult,
@@ -1717,4 +1718,158 @@ export const useRunCompetition = <
   TContext
 > => {
   return useMutation(getRunCompetitionMutationOptions(options));
+};
+
+/**
+ * @summary List all LLM call logs for the current session
+ */
+export const getListLlmLogsUrl = () => {
+  return `/api/logs`;
+};
+
+export const listLlmLogs = async (options?: RequestInit): Promise<LlmLog[]> => {
+  return customFetch<LlmLog[]>(getListLlmLogsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListLlmLogsQueryKey = () => {
+  return [`/api/logs`] as const;
+};
+
+export const getListLlmLogsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLlmLogs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listLlmLogs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListLlmLogsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listLlmLogs>>> = ({
+    signal,
+  }) => listLlmLogs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLlmLogs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLlmLogsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLlmLogs>>
+>;
+export type ListLlmLogsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all LLM call logs for the current session
+ */
+
+export function useListLlmLogs<
+  TData = Awaited<ReturnType<typeof listLlmLogs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listLlmLogs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLlmLogsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Clear all LLM call logs for the current session
+ */
+export const getClearLlmLogsUrl = () => {
+  return `/api/logs`;
+};
+
+export const clearLlmLogs = async (
+  options?: RequestInit,
+): Promise<SuccessMessage> => {
+  return customFetch<SuccessMessage>(getClearLlmLogsUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getClearLlmLogsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearLlmLogs>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearLlmLogs>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["clearLlmLogs"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearLlmLogs>>,
+    void
+  > = () => {
+    return clearLlmLogs(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClearLlmLogsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearLlmLogs>>
+>;
+
+export type ClearLlmLogsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Clear all LLM call logs for the current session
+ */
+export const useClearLlmLogs = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearLlmLogs>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof clearLlmLogs>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getClearLlmLogsMutationOptions(options));
 };

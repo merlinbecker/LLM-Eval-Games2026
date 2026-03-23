@@ -18,6 +18,8 @@ tags:
     description: Test dataset management
   - name: competitions
     description: Competition management
+  - name: logs
+    description: LLM call logs
   - name: models
     description: Model listing from gateways
 
@@ -401,6 +403,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CompetitionDetail"
+
+  /logs:
+    get:
+      operationId: listLlmLogs
+      tags: [logs]
+      summary: List all LLM call logs for the current session
+      responses:
+        "200":
+          description: List of LLM logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LlmLog"
+    delete:
+      operationId: clearLlmLogs
+      tags: [logs]
+      summary: Clear all LLM call logs for the current session
+      responses:
+        "200":
+          description: Logs cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
 
 components:
   schemas:
@@ -795,3 +823,39 @@ components:
         - judgeModelName
         - score
         - reasoning
+
+    LlmLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        gatewayType:
+          type: string
+        modelId:
+          type: string
+        requestUrl:
+          type: string
+        requestBody:
+          type: object
+        responseStatus:
+          type: integer
+        responseBody:
+          type: object
+        durationMs:
+          type: number
+        error:
+          type: ["string", "null"]
+      required:
+        - id
+        - timestamp
+        - gatewayType
+        - modelId
+        - requestUrl
+        - requestBody
+        - responseStatus
+        - responseBody
+        - durationMs
+        - error

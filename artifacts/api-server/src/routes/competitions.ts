@@ -175,6 +175,7 @@ async function runCompetitionAsync(
             { role: "system", content: competition.systemPrompt },
             { role: "user", content: item },
           ],
+          sessionId,
         );
 
         const cost = estimateCost(result.promptTokens, result.completionTokens);
@@ -199,6 +200,7 @@ async function runCompetitionAsync(
                   content: `System prompt: ${competition.systemPrompt}\n\nUser prompt: ${item}\n\nLLM Response: ${result.content}`,
                 },
               ],
+              sessionId,
             );
 
             let parsed: { score: number; reasoning: string };

@@ -130,6 +130,7 @@ Only output the JSON, nothing else.`,
         content: dataset.content,
       },
     ],
+    req.sessionId,
   );
 
   let parsed;
@@ -185,6 +186,7 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
         content: dataset.content,
       },
     ],
+    req.sessionId,
   );
 
   const updated = store.updateDataset(req.sessionId!, id, { content: result.content, privacyStatus: "anonymized" });
@@ -217,6 +219,7 @@ Output only the Markdown document, nothing else.`,
         content: `Generate ${data.numberOfItems} test items about: ${data.topic}`,
       },
     ],
+    req.sessionId,
   );
 
   const dataset = store.createDataset(req.sessionId!, {

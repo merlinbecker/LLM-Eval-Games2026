@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import { resolve4, resolve6 } from "node:dns/promises";
+import { store } from "@workspace/store";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -144,6 +145,7 @@ export async function chatCompletion(
   gateway: GatewayConfig,
   modelId: string,
   messages: ChatMessage[],
+  sessionId?: string,
 ): Promise<ChatCompletionResult> {
   await validateGatewayUrl(gateway.baseUrl || getDefaultBase(gateway.type));
   const startTime = Date.now();
@@ -165,7 +167,15 @@ export async function chatCompletion(
 
   if (!response.ok) {
     const errorText = await response.text();
+    const durationMs = Date.now() - startTime;
     logger.error({ status: response.status, errorText, modelId, provider: gateway.type }, "LLM API error");
+
+    logLlmCall(sessionId, {
+      gatewayType: gateway.type, modelId, requestUrl: chatUrl,
+      requestBody: body, responseStatus: response.status,
+      responseBody: { error: errorText }, durationMs, error: errorText,
+    });
+
     throw new Error(`LLM API error (${response.status}): ${errorText}`);
   }
 
@@ -176,7 +186,23 @@ export async function chatCompletion(
   const promptTokens = data.usage?.prompt_tokens ?? 0;
   const completionTokens = data.usage?.completion_tokens ?? 0;
 
+  logLlmCall(sessionId, {
+    gatewayType: gateway.type, modelId, requestUrl: chatUrl,
+    requestBody: body, responseStatus: response.status,
+    responseBody: data, durationMs, error: null,
+  });
+
   return { content, promptTokens, completionTokens, durationMs };
+}
+
+function logLlmCall(
+  sessionId: string | undefined,
+  data: Omit<import("@workspace/store").LlmLog, "id" | "timestamp">,
+): void {
+  if (!sessionId) return;
+  try {
+    store.addLlmLog(sessionId, { timestamp: new Date().toISOString(), ...data });
+  } catch { /* ignore logging errors */ }
 }
 
 export async function listModelsFromGateway(
