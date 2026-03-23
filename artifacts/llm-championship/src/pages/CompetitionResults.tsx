@@ -216,13 +216,30 @@ export default function CompetitionResults() {
             <div className="space-y-12">
               {comp.results[0]?.responses.map((_, itemIndex) => (
                 <div key={itemIndex} className="border-[4px] border-black bg-white p-6 retro-shadow">
+                  {/** Quick completeness indicator for this test item */}
+                  {(() => {
+                    const totalModels = comp.results.length;
+                    const respondedModels = comp.results.filter((modelResult) => {
+                      const text = modelResult.responses?.[itemIndex]?.response;
+                      return typeof text === "string" && text.trim().length > 0;
+                    }).length;
+
+                    return (
+                      <>
                   <h3 className="text-3xl font-display uppercase border-b-[4px] border-black pb-2 mb-6">
                     Test Item #{itemIndex + 1}
                   </h3>
+                        <p className="mb-6 inline-block border-[2px] border-black px-3 py-1 text-sm font-bold uppercase bg-black/5">
+                          Responses: {respondedModels}/{totalModels} models
+                        </p>
+                      </>
+                    );
+                  })()}
                   
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     {comp.results.map(modelResult => {
-                      const response = modelResult.responses[itemIndex];
+                      const response = modelResult.responses?.[itemIndex];
+                      const judgeScores = response?.judgeScores ?? [];
                       return (
                         <div key={modelResult.modelId} className="border-[3px] border-black p-4 flex flex-col">
                           <h4 className="font-bold text-xl uppercase mb-2 bg-black text-white p-1 px-2 inline-block self-start">
@@ -230,13 +247,16 @@ export default function CompetitionResults() {
                           </h4>
                           
                           <div className="bg-black/5 p-4 border-[2px] border-black font-mono text-base mb-4 max-h-48 overflow-y-auto">
-                            {response.response}
+                            {response?.response ?? "No response available for this test item."}
                           </div>
                           
                           <div className="mt-auto border-t-[3px] border-black pt-4">
                             <h5 className="font-display uppercase mb-2">Judges:</h5>
                             <div className="space-y-3">
-                              {response.judgeScores.map((score, jIdx) => (
+                              {judgeScores.length === 0 && (
+                                <div className="text-sm italic">No judge scores available.</div>
+                              )}
+                              {judgeScores.map((score, jIdx) => (
                                 <div key={jIdx} className="text-sm flex border-b-2 border-dashed border-black pb-2">
                                   <div className="w-12 font-display text-2xl font-bold">{score.score}</div>
                                   <div className="flex-1">

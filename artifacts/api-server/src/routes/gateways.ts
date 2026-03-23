@@ -9,6 +9,14 @@ import { listModelsFromGateway } from "../lib/llm-gateway";
 
 const router: IRouter = Router();
 
+function resolveGatewayBaseUrl(type: string, baseUrl: string): string {
+  const normalized = baseUrl.trim();
+  if (normalized) return normalized;
+  if (type === "openrouter") return "https://openrouter.ai/api/v1";
+  if (type === "github_copilot") return "https://models.inference.ai.azure.com";
+  return "";
+}
+
 router.get("/gateways", (req, res) => {
   const gateways = store.listGateways(req.sessionId!);
   const safe = gateways.map((g) => ({
@@ -23,10 +31,15 @@ router.get("/gateways", (req, res) => {
 
 router.post("/gateways", (req, res) => {
   const data = CreateGatewayBody.parse(req.body);
+  const baseUrl = resolveGatewayBaseUrl(data.type, data.baseUrl);
+  if (!baseUrl) {
+    res.status(400).json({ error: "Base URL is required for custom gateways" });
+    return;
+  }
   const gateway = store.createGateway(req.sessionId!, {
     name: data.name,
     type: data.type,
-    baseUrl: data.baseUrl,
+    baseUrl,
     apiKey: data.apiKey,
   });
   res.status(201).json({
@@ -53,11 +66,18 @@ router.get("/gateways/:id/models", async (req, res) => {
     return;
   }
 
-  const models = await listModelsFromGateway({
-    type: gateway.type,
-    baseUrl: gateway.baseUrl,
-    apiKey: gateway.apiKey,
-  });
+  let models: Array<{ id: string; name: string }> = [];
+  try {
+    models = await listModelsFromGateway({
+      type: gateway.type,
+      baseUrl: gateway.baseUrl,
+      apiKey: gateway.apiKey,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to list models";
+    res.status(400).json({ error: message });
+    return;
+  }
 
   res.json(
     models.map((m) => ({

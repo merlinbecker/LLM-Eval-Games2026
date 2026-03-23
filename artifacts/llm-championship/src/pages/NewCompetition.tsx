@@ -153,21 +153,25 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
   const { data: gateways } = useListGateways();
   const [gatewayId, setGatewayId] = useState("");
   const [modelId, setModelId] = useState("");
+  const [modelName, setModelName] = useState("");
   
   const gwId = Number(gatewayId) || 0;
   const { data: models } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!gatewayId }});
 
   const handleAdd = () => {
     if (!gatewayId || !modelId) return;
-    const model = models?.find(m => m.id === modelId);
-    if (model) {
-      onAdd({ gatewayId: Number(gatewayId), modelId: model.id, modelName: model.name });
-      setModelId("");
-    }
+    const selected = models?.find(m => m.id === modelId);
+    onAdd({
+      gatewayId: Number(gatewayId),
+      modelId,
+      modelName: modelName.trim() || selected?.name || modelId,
+    });
+    setModelId("");
+    setModelName("");
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-end">
+    <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 items-end">
       <div className="sm:col-span-2">
         <label className="block font-display text-sm mb-1 uppercase">Gateway</label>
         <RetroSelect value={gatewayId} onChange={e => setGatewayId(e.target.value)}>
@@ -176,16 +180,43 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
         </RetroSelect>
       </div>
       <div className="sm:col-span-2">
-        <label className="block font-display text-sm mb-1 uppercase">Model</label>
-        <RetroSelect value={modelId} onChange={e => setModelId(e.target.value)} disabled={!models?.length}>
-          <option value="">- SELECT -</option>
+        <label className="block font-display text-sm mb-1 uppercase">Model (List)</label>
+        <RetroSelect
+          value={models?.some((m) => m.id === modelId) ? modelId : ""}
+          onChange={e => {
+            const id = e.target.value;
+            setModelId(id);
+            const selected = models?.find((m) => m.id === id);
+            if (selected) setModelName(selected.name);
+          }}
+          disabled={!gatewayId || !models?.length}
+        >
+          <option value="">- OPTIONAL -</option>
           {models?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </RetroSelect>
+      </div>
+      <div className="sm:col-span-2">
+        <label className="block font-display text-sm mb-1 uppercase">Model Identifier</label>
+        <RetroInput
+          value={modelId}
+          onChange={e => setModelId(e.target.value)}
+          placeholder="z. B. openai/gpt-4o-mini"
+          disabled={!gatewayId}
+        />
       </div>
       <div className="sm:col-span-1">
         <RetroButton type="button" onClick={handleAdd} className="w-full flex items-center justify-center p-2" disabled={!modelId || disabled}>
           {icon} ADD
         </RetroButton>
+      </div>
+      <div className="sm:col-span-7">
+        <label className="block font-display text-sm mb-1 uppercase">Display Name (optional)</label>
+        <RetroInput
+          value={modelName}
+          onChange={e => setModelName(e.target.value)}
+          placeholder="Falls leer, wird Name aus Liste oder Identifier genutzt"
+          disabled={!gatewayId}
+        />
       </div>
     </div>
   );
