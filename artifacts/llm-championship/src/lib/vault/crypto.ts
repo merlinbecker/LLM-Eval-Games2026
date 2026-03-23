@@ -34,12 +34,8 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
   );
 }
 
-async function gzip(data: Uint8Array): Promise<Uint8Array> {
-  const cs = new CompressionStream("gzip");
-  const writer = cs.writable.getWriter();
-  writer.write(data.buffer as ArrayBuffer);
-  writer.close();
-  const reader = cs.readable.getReader();
+async function streamToBytes(readable: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+  const reader = readable.getReader();
   const chunks: Uint8Array[] = [];
   for (;;) {
     const { done, value } = await reader.read();
@@ -57,27 +53,19 @@ async function gzip(data: Uint8Array): Promise<Uint8Array> {
   return result;
 }
 
-async function gunzip(data: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream("gzip");
-  const writer = ds.writable.getWriter();
+function pipeThrough(data: Uint8Array, stream: { writable: WritableStream; readable: ReadableStream<Uint8Array> }): Promise<Uint8Array> {
+  const writer = stream.writable.getWriter();
   writer.write(data.buffer as ArrayBuffer);
   writer.close();
-  const reader = ds.readable.getReader();
-  const chunks: Uint8Array[] = [];
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  let total = 0;
-  for (const c of chunks) total += c.length;
-  const result = new Uint8Array(total);
-  let offset = 0;
-  for (const c of chunks) {
-    result.set(c, offset);
-    offset += c.length;
-  }
-  return result;
+  return streamToBytes(stream.readable);
+}
+
+async function gzip(data: Uint8Array): Promise<Uint8Array> {
+  return pipeThrough(data, new CompressionStream("gzip"));
+}
+
+async function gunzip(data: Uint8Array): Promise<Uint8Array> {
+  return pipeThrough(data, new DecompressionStream("gzip"));
 }
 
 export async function encrypt(

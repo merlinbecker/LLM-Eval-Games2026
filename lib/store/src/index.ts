@@ -67,6 +67,12 @@ class InMemoryStore {
     return session;
   }
 
+  private requireSession(sessionId: string): SessionStore {
+    const session = this.getSession(sessionId);
+    if (!session) throw new Error("Session not found");
+    return session;
+  }
+
   createSession(sessionId: string): SessionStore {
     const session: SessionStore = {
       gateways: new Map(),
@@ -92,19 +98,15 @@ class InMemoryStore {
   // --- Gateways ---
 
   listGateways(sessionId: string): Gateway[] {
-    const session = this.getSession(sessionId);
-    if (!session) return [];
-    return Array.from(session.gateways.values());
+    return Array.from(this.getSession(sessionId)?.gateways.values() ?? []);
   }
 
   getGateway(sessionId: string, id: number): Gateway | undefined {
-    const session = this.getSession(sessionId);
-    return session?.gateways.get(id);
+    return this.getSession(sessionId)?.gateways.get(id);
   }
 
   createGateway(sessionId: string, data: CreateGateway): Gateway {
-    const session = this.getSession(sessionId);
-    if (!session) throw new Error("Session not found");
+    const session = this.requireSession(sessionId);
     const id = session.counters.gateways++;
     const gateway: Gateway = {
       id,
@@ -119,27 +121,21 @@ class InMemoryStore {
   }
 
   deleteGateway(sessionId: string, id: number): boolean {
-    const session = this.getSession(sessionId);
-    if (!session) return false;
-    return session.gateways.delete(id);
+    return this.getSession(sessionId)?.gateways.delete(id) ?? false;
   }
 
   // --- Datasets ---
 
   listDatasets(sessionId: string): Dataset[] {
-    const session = this.getSession(sessionId);
-    if (!session) return [];
-    return Array.from(session.datasets.values());
+    return Array.from(this.getSession(sessionId)?.datasets.values() ?? []);
   }
 
   getDataset(sessionId: string, id: number): Dataset | undefined {
-    const session = this.getSession(sessionId);
-    return session?.datasets.get(id);
+    return this.getSession(sessionId)?.datasets.get(id);
   }
 
   createDataset(sessionId: string, data: CreateDataset): Dataset {
-    const session = this.getSession(sessionId);
-    if (!session) throw new Error("Session not found");
+    const session = this.requireSession(sessionId);
     const id = session.counters.datasets++;
     const dataset: Dataset = {
       id,
@@ -154,37 +150,29 @@ class InMemoryStore {
   }
 
   updateDataset(sessionId: string, id: number, data: Partial<Omit<Dataset, "id">>): Dataset | undefined {
-    const session = this.getSession(sessionId);
-    if (!session) return undefined;
-    const existing = session.datasets.get(id);
+    const existing = this.getSession(sessionId)?.datasets.get(id);
     if (!existing) return undefined;
     const updated = { ...existing, ...data };
-    session.datasets.set(id, updated);
+    this.sessions.get(sessionId)!.datasets.set(id, updated);
     return updated;
   }
 
   deleteDataset(sessionId: string, id: number): boolean {
-    const session = this.getSession(sessionId);
-    if (!session) return false;
-    return session.datasets.delete(id);
+    return this.getSession(sessionId)?.datasets.delete(id) ?? false;
   }
 
   // --- Competitions ---
 
   listCompetitions(sessionId: string): Competition[] {
-    const session = this.getSession(sessionId);
-    if (!session) return [];
-    return Array.from(session.competitions.values());
+    return Array.from(this.getSession(sessionId)?.competitions.values() ?? []);
   }
 
   getCompetition(sessionId: string, id: number): Competition | undefined {
-    const session = this.getSession(sessionId);
-    return session?.competitions.get(id);
+    return this.getSession(sessionId)?.competitions.get(id);
   }
 
   createCompetition(sessionId: string, data: CreateCompetition): Competition {
-    const session = this.getSession(sessionId);
-    if (!session) throw new Error("Session not found");
+    const session = this.requireSession(sessionId);
     const id = session.counters.competitions++;
     const competition: Competition = {
       id,
@@ -202,29 +190,23 @@ class InMemoryStore {
   }
 
   updateCompetition(sessionId: string, id: number, data: Partial<Omit<Competition, "id">>): Competition | undefined {
-    const session = this.getSession(sessionId);
-    if (!session) return undefined;
-    const existing = session.competitions.get(id);
+    const existing = this.getSession(sessionId)?.competitions.get(id);
     if (!existing) return undefined;
     const updated = { ...existing, ...data };
-    session.competitions.set(id, updated);
+    this.sessions.get(sessionId)!.competitions.set(id, updated);
     return updated;
   }
 
   deleteCompetition(sessionId: string, id: number): boolean {
-    const session = this.getSession(sessionId);
-    if (!session) return false;
-    return session.competitions.delete(id);
+    return this.getSession(sessionId)?.competitions.delete(id) ?? false;
   }
 
   // --- LLM Logs ---
 
   addLlmLog(sessionId: string, data: Omit<LlmLog, "id">): LlmLog {
-    const session = this.getSession(sessionId);
-    if (!session) throw new Error("Session not found");
+    const session = this.requireSession(sessionId);
     const log: LlmLog = { id: session.counters.llmLogs++, ...data };
     session.llmLogs.push(log);
-    // Keep at most 500 logs per session
     if (session.llmLogs.length > 500) {
       session.llmLogs = session.llmLogs.slice(-500);
     }
@@ -232,9 +214,7 @@ class InMemoryStore {
   }
 
   listLlmLogs(sessionId: string): LlmLog[] {
-    const session = this.getSession(sessionId);
-    if (!session) return [];
-    return session.llmLogs;
+    return this.getSession(sessionId)?.llmLogs ?? [];
   }
 
   clearLlmLogs(sessionId: string): void {
@@ -244,26 +224,29 @@ class InMemoryStore {
 
   // --- Bulk import (for session sync) ---
 
-  importGateways(sessionId: string, gateways: Gateway[]): void {
+  private bulkImport<T extends { id: number }>(
+    sessionId: string,
+    items: T[],
+    map: (session: SessionStore) => Map<number, T>,
+    counterKey: keyof SessionStore["counters"],
+  ): void {
     const session = this.getSession(sessionId);
     if (!session) return;
+    const target = map(session);
     let maxId = 0;
-    for (const gw of gateways) {
-      session.gateways.set(gw.id, gw);
-      if (gw.id >= maxId) maxId = gw.id;
+    for (const item of items) {
+      target.set(item.id, item);
+      if (item.id >= maxId) maxId = item.id;
     }
-    session.counters.gateways = Math.max(session.counters.gateways, maxId + 1);
+    session.counters[counterKey] = Math.max(session.counters[counterKey], maxId + 1);
+  }
+
+  importGateways(sessionId: string, gateways: Gateway[]): void {
+    this.bulkImport(sessionId, gateways, (s) => s.gateways, "gateways");
   }
 
   importDatasets(sessionId: string, datasets: Dataset[]): void {
-    const session = this.getSession(sessionId);
-    if (!session) return;
-    let maxId = 0;
-    for (const ds of datasets) {
-      session.datasets.set(ds.id, ds);
-      if (ds.id >= maxId) maxId = ds.id;
-    }
-    session.counters.datasets = Math.max(session.counters.datasets, maxId + 1);
+    this.bulkImport(sessionId, datasets, (s) => s.datasets, "datasets");
   }
 }
 

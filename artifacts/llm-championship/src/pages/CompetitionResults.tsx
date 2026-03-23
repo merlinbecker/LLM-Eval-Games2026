@@ -8,6 +8,27 @@ import {
 import { RetroWindow, RetroButton, RetroBadge, RobotIcon } from "@/components/retro";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { Play, Loader2, Award, Zap, Coins } from "lucide-react";
+import type { CompetitionResult } from "@workspace/api-client-react";
+
+const PODIUM_CONFIG = [
+  { index: 1, label: "2ND", iconSize: "w-20 h-20", textSize: "text-xl", cardWidth: "w-36", cardBg: "bg-mac-white", pedestalH: "h-16", z: "" },
+  { index: 0, label: "1ST", iconSize: "w-24 h-24", textSize: "text-2xl", cardWidth: "w-44", cardBg: "bg-mac-black text-mac-white", pedestalH: "h-24", z: "z-30" },
+  { index: 2, label: "3RD", iconSize: "w-16 h-16", textSize: "text-xl", cardWidth: "w-32", cardBg: "bg-mac-white", pedestalH: "h-10", z: "" },
+] as const;
+
+function PodiumEntry({ result, config }: { result: CompetitionResult; config: typeof PODIUM_CONFIG[number] }) {
+  return (
+    <div className={`flex flex-col items-center ${config.z}`}>
+      <RobotIcon className={`${config.iconSize} text-mac-black bg-mac-white border-4 border-mac-black p-2 retro-shadow-sm`} />
+      <div className={`mt-2 ${config.cardBg} border-4 border-mac-black p-2 text-center ${config.cardWidth} font-bold uppercase`}>
+        <p className={`font-display ${config.textSize}`}>{config.label}</p>
+        <p className="text-sm truncate">{result.modelName.split('/').pop()}</p>
+        <p className={config.textSize}>{result.avgQuality.toFixed(1)}/10</p>
+      </div>
+      <div className={`${config.cardWidth} ${config.pedestalH} bg-mac-black border-2 border-mac-black mt-1`} />
+    </div>
+  );
+}
 
 export default function CompetitionResults() {
   const [, params] = useRoute("/competitions/:id");
@@ -97,47 +118,10 @@ export default function CompetitionResults() {
             <div className="relative w-full min-h-[420px] border-b-[3px] border-mac-black bg-dither overflow-hidden flex flex-col items-center justify-end p-8">
               
               <div className="flex items-end justify-center w-full max-w-4xl relative z-20 space-x-2 md:space-x-8 pb-4">
-                {/* 2nd Place */}
-                {sortedResults[1] && (
-                  <div className="flex flex-col items-center">
-                    <RobotIcon className="w-20 h-20 text-mac-black bg-mac-white border-4 border-mac-black p-2 retro-shadow-sm" />
-                    <div className="mt-2 bg-mac-white border-4 border-mac-black p-2 text-center w-36 font-bold uppercase">
-                      <p className="font-display text-xl">2ND</p>
-                      <p className="text-sm truncate">{sortedResults[1].modelName.split('/').pop()}</p>
-                      <p className="text-xl">{sortedResults[1].avgQuality.toFixed(1)}/10</p>
-                    </div>
-                    {/* pedestal */}
-                    <div className="w-36 h-16 bg-mac-black border-2 border-mac-black mt-1" />
-                  </div>
-                )}
-                
-                {/* 1st Place */}
-                {sortedResults[0] && (
-                  <div className="flex flex-col items-center z-30">
-                    <RobotIcon className="w-24 h-24 text-mac-black bg-mac-white border-4 border-mac-black p-2 retro-shadow-sm" />
-                    <div className="mt-2 bg-mac-black text-mac-white border-4 border-mac-black p-3 text-center w-44 font-bold uppercase">
-                      <p className="font-display text-2xl">1ST</p>
-                      <p className="text-sm truncate">{sortedResults[0].modelName.split('/').pop()}</p>
-                      <p className="text-2xl">{sortedResults[0].avgQuality.toFixed(1)}/10</p>
-                    </div>
-                    {/* pedestal */}
-                    <div className="w-44 h-24 bg-mac-black border-2 border-mac-black mt-1" />
-                  </div>
-                )}
-
-                {/* 3rd Place */}
-                {sortedResults[2] && (
-                  <div className="flex flex-col items-center">
-                    <RobotIcon className="w-16 h-16 text-mac-black bg-mac-white border-4 border-mac-black p-2 retro-shadow-sm" />
-                    <div className="mt-2 bg-mac-white border-4 border-mac-black p-2 text-center w-32 font-bold uppercase">
-                      <p className="font-display text-xl">3RD</p>
-                      <p className="text-sm truncate">{sortedResults[2].modelName.split('/').pop()}</p>
-                      <p className="text-xl">{sortedResults[2].avgQuality.toFixed(1)}/10</p>
-                    </div>
-                    {/* pedestal */}
-                    <div className="w-32 h-10 bg-mac-black border-2 border-mac-black mt-1" />
-                  </div>
-                )}
+                {PODIUM_CONFIG.map((config) => {
+                  const result = sortedResults[config.index];
+                  return result ? <PodiumEntry key={config.label} result={result} config={config} /> : null;
+                })}
               </div>
             </div>
           </RetroWindow>
@@ -217,27 +201,21 @@ export default function CompetitionResults() {
           {/* DETAILED LOGS */}
           <RetroWindow title="RAW JUDGMENT LOGS">
             <div className="space-y-12">
-              {comp.results[0]?.responses.map((_, itemIndex) => (
-                <div key={itemIndex} className="border-[4px] border-mac-black bg-mac-white p-6 retro-shadow">
-                  {/** Quick completeness indicator for this test item */}
-                  {(() => {
-                    const totalModels = comp.results.length;
-                    const respondedModels = comp.results.filter((modelResult) => {
-                      const text = modelResult.responses?.[itemIndex]?.response;
-                      return typeof text === "string" && text.trim().length > 0;
-                    }).length;
+              {comp.results[0]?.responses.map((_, itemIndex) => {
+                const totalModels = comp.results.length;
+                const respondedModels = comp.results.filter((modelResult) => {
+                  const text = modelResult.responses?.[itemIndex]?.response;
+                  return typeof text === "string" && text.trim().length > 0;
+                }).length;
 
-                    return (
-                      <>
+                return (
+                <div key={itemIndex} className="border-[4px] border-mac-black bg-mac-white p-6 retro-shadow">
                   <h3 className="text-3xl font-display uppercase border-b-[4px] border-mac-black pb-2 mb-6">
                     Test Item #{itemIndex + 1}
                   </h3>
-                        <p className="mb-6 inline-block border-[2px] border-mac-black px-3 py-1 text-sm font-bold uppercase bg-mac-black/5">
-                          Responses: {respondedModels}/{totalModels} models
-                        </p>
-                      </>
-                    );
-                  })()}
+                  <p className="mb-6 inline-block border-[2px] border-mac-black px-3 py-1 text-sm font-bold uppercase bg-mac-black/5">
+                    Responses: {respondedModels}/{totalModels} models
+                  </p>
                   
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     {comp.results.map(modelResult => {
@@ -275,7 +253,7 @@ export default function CompetitionResults() {
                     })}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </RetroWindow>
         </>

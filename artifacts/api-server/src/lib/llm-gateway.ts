@@ -240,7 +240,7 @@ export async function listModelsFromGateway(
   }
 }
 
-function getDefaultBase(type: string): string {
+export function getDefaultBase(type: string): string {
   switch (type) {
     case "github_copilot":
       return GITHUB_MODELS_BASE;

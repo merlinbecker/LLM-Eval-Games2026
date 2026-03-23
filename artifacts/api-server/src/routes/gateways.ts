@@ -5,16 +5,12 @@ import {
   DeleteGatewayParams,
   ListGatewayModelsParams,
 } from "@workspace/api-zod";
-import { listModelsFromGateway } from "../lib/llm-gateway";
+import { listModelsFromGateway, getDefaultBase } from "../lib/llm-gateway";
 
 const router: IRouter = Router();
 
 function resolveGatewayBaseUrl(type: string, baseUrl: string): string {
-  const normalized = baseUrl.trim();
-  if (normalized) return normalized;
-  if (type === "openrouter") return "https://openrouter.ai/api/v1";
-  if (type === "github_copilot") return "https://models.inference.ai.azure.com";
-  return "";
+  return baseUrl.trim() || getDefaultBase(type);
 }
 
 router.get("/gateways", (req, res) => {

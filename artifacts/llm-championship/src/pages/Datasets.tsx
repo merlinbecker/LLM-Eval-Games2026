@@ -19,6 +19,19 @@ import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroS
 import { formatDate } from "@/lib/utils";
 import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit, Edit3 } from "lucide-react";
 import { useVault } from "@/lib/vault/vault-store";
+import type { VaultDataset } from "@/lib/vault/types";
+import type { Dataset } from "@workspace/api-client-react";
+
+function toVaultDataset(d: Dataset): VaultDataset {
+  return {
+    id: d.id,
+    name: d.name,
+    content: d.content,
+    privacyStatus: d.privacyStatus ?? "unchecked",
+    privacyReport: d.privacyReport ?? null,
+    createdAt: d.createdAt,
+  };
+}
 
 export default function Datasets() {
   const queryClient = useQueryClient();
@@ -205,14 +218,7 @@ function DatasetEditDialog({ datasetId, onClose }: { datasetId: number; onClose:
       id: datasetId,
       data: { name: editName, content: editContent },
     });
-    updateVaultDataset({
-      id: result.id,
-      name: result.name,
-      content: result.content,
-      privacyStatus: result.privacyStatus ?? "unchecked",
-      privacyReport: result.privacyReport ?? null,
-      createdAt: result.createdAt,
-    });
+    updateVaultDataset(toVaultDataset(result));
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     onClose();
   };
@@ -279,14 +285,7 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
     } else {
       result = await createMutation.mutateAsync({ data: { name, content } });
     }
-    addDataset({
-      id: result.id,
-      name: result.name,
-      content: result.content,
-      privacyStatus: result.privacyStatus ?? "unchecked",
-      privacyReport: result.privacyReport ?? null,
-      createdAt: result.createdAt,
-    });
+    addDataset(toVaultDataset(result));
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     onSuccess();
   };
@@ -381,14 +380,7 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
         modelId
       } 
     });
-    addDataset({
-      id: result.id,
-      name: result.name,
-      content: result.content,
-      privacyStatus: result.privacyStatus ?? "unchecked",
-      privacyReport: result.privacyReport ?? null,
-      createdAt: result.createdAt,
-    });
+    addDataset(toVaultDataset(result));
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     onSuccess();
   };

@@ -1,4 +1,4 @@
-import type { VaultData, VaultGateway, VaultDataset } from "./types";
+import type { VaultGateway, VaultDataset } from "./types";
 
 const API_BASE = "/api";
 
@@ -25,12 +25,4 @@ export async function deleteSession(): Promise<void> {
   });
 }
 
-export function buildSyncPayload(vault: VaultData): {
-  gateways: VaultGateway[];
-  datasets: VaultDataset[];
-} {
-  return {
-    gateways: vault.gateways,
-    datasets: vault.datasets,
-  };
-}
+
