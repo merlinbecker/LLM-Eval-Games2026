@@ -6,8 +6,7 @@ import {
   useDeleteGateway,
   getListGatewaysQueryKey,
 } from "@workspace/api-client-react";
-import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect } from "@/components/retro";
-import { formatDate } from "@/lib/utils";
+import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect, RetroFormField } from "@/components/retro";
 import { Server, Trash2 } from "lucide-react";
 import type { CreateGatewayType } from "@workspace/api-client-react";
 import { useVault } from "@/lib/vault/vault-store";
@@ -64,14 +63,14 @@ export default function Gateways() {
           ) : (
             <div className="space-y-4">
               {gateways.map(g => (
-                <div key={g.id} className="border-[3px] border-black p-4 flex items-center justify-between hover:bg-black/5 transition-colors">
+                <div key={g.id} className="border-[3px] border-mac-black p-4 flex items-center justify-between hover:bg-mac-black/5 transition-colors">
                   <div className="flex items-center space-x-4">
                     <Server className="w-8 h-8" />
                     <div>
                       <h3 className="font-display text-xl font-bold uppercase">{g.name}</h3>
                       <div className="text-sm space-x-2">
                         <RetroBadge>{g.type}</RetroBadge>
-                        <span className="text-black/60">{g.baseUrl}</span>
+                        <span className="text-mac-black/60">{g.baseUrl}</span>
                       </div>
                     </div>
                   </div>
@@ -88,26 +87,22 @@ export default function Gateways() {
       <div className="lg:col-span-1">
         <RetroWindow title="ADD GATEWAY">
           <form onSubmit={handleCreate} className="space-y-4">
-            <div>
-              <label className="block font-display mb-1 uppercase text-sm">Identifier</label>
+            <RetroFormField label="Identifier">
               <RetroInput required value={name} onChange={e => setName(e.target.value)} placeholder="Main OpenRouter" />
-            </div>
-            <div>
-              <label className="block font-display mb-1 uppercase text-sm">Protocol Type</label>
+            </RetroFormField>
+            <RetroFormField label="Protocol Type">
               <RetroSelect required value={type} onChange={e => setType(e.target.value as CreateGatewayType)}>
                 <option value="openrouter">OpenRouter</option>
                 <option value="github_copilot">GitHub Copilot</option>
                 <option value="custom">Custom (OpenAI-compat)</option>
               </RetroSelect>
-            </div>
-            <div>
-              <label className="block font-display mb-1 uppercase text-sm">Base URL</label>
+            </RetroFormField>
+            <RetroFormField label="Base URL">
               <RetroInput value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder={getDefaultBaseUrl(type) || "https://..."} />
-            </div>
-            <div>
-              <label className="block font-display mb-1 uppercase text-sm">Access Token</label>
+            </RetroFormField>
+            <RetroFormField label="Access Token">
               <RetroInput type="password" required value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." />
-            </div>
+            </RetroFormField>
             <div className="pt-4">
               <RetroButton type="submit" disabled={createMutation.isPending} className="w-full">
                 {createMutation.isPending ? "INITIALIZING..." : "ESTABLISH LINK"}

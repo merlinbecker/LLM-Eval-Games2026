@@ -1,105 +1,108 @@
 @import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap');
 @import "tailwindcss";
 
+/* ─── 1-BIT THEME: only black & white ─── */
 @theme inline {
+  --color-mac-black: #000;
+  --color-mac-white: #fff;
+
   --font-display: 'Silkscreen', cursive;
   --font-sans: 'VT323', monospace;
 
-  --color-background: #ffffff;
-  --color-foreground: #000000;
-  --color-border: #000000;
-  --color-primary: #000000;
-  --color-primary-foreground: #ffffff;
-  --color-muted: #ffffff;
-  --color-muted-foreground: #000000;
-  --color-card: #ffffff;
-  --color-card-foreground: #000000;
-  --color-ring: #000000;
+  --color-background: var(--color-mac-white);
+  --color-foreground: var(--color-mac-black);
+  --color-border: var(--color-mac-black);
+  --color-primary: var(--color-mac-black);
+  --color-primary-foreground: var(--color-mac-white);
+  --color-muted: var(--color-mac-white);
+  --color-muted-foreground: var(--color-mac-black);
+  --color-card: var(--color-mac-white);
+  --color-card-foreground: var(--color-mac-black);
+  --color-ring: var(--color-mac-black);
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #000000;
-  --border: #000000;
-  --primary: #000000;
-  --primary-foreground: #ffffff;
-}
-
+/* ─── BASE ─── */
 @layer base {
   body {
-    @apply bg-background text-foreground antialiased font-sans text-xl leading-tight selection:bg-black selection:text-white;
-    background-image: 
-      linear-gradient(45deg, #000 25%, transparent 25%),
-      linear-gradient(-45deg, #000 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #000 75%),
-      linear-gradient(-45deg, transparent 75%, #000 75%);
+    @apply bg-background text-foreground antialiased font-sans text-xl leading-tight
+           selection:bg-mac-black selection:text-mac-white;
+    background-image:
+      linear-gradient( 45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient( 45deg, transparent 75%, var(--color-mac-black) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--color-mac-black) 75%);
     background-size: 4px 4px;
-    background-position: 0 0, 0 2px, 2px -2px, -2px 0px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight uppercase;
   }
 
-  /* Custom Scrollbar for Retro Feel */
-  ::-webkit-scrollbar {
-    width: 16px;
-    height: 16px;
-    background: #fff;
-    border-left: 2px solid #000;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #000;
-    border: 2px solid #fff;
-  }
-  ::-webkit-scrollbar-button {
-    background: #fff;
-    border: 2px solid #000;
-    display: block;
-    height: 16px;
-    width: 16px;
-  }
+  ::-webkit-scrollbar       { width: 16px; height: 16px; background: var(--color-mac-white); border-left: 2px solid var(--color-mac-black); }
+  ::-webkit-scrollbar-thumb  { background: var(--color-mac-black); border: 2px solid var(--color-mac-white); }
+  ::-webkit-scrollbar-button { background: var(--color-mac-white); border: 2px solid var(--color-mac-black); display: block; height: 16px; width: 16px; }
 }
 
+/* ─── UTILITIES ─── */
 @layer utilities {
-  .retro-shadow {
-    box-shadow: 6px 6px 0px 0px #000000;
-  }
-  .retro-shadow-sm {
-    box-shadow: 4px 4px 0px 0px #000000;
-  }
-  
+  /* Shadows */
+  .retro-shadow    { box-shadow: 6px 6px 0 0 var(--color-mac-black); }
+  .retro-shadow-sm { box-shadow: 4px 4px 0 0 var(--color-mac-black); }
+
+  /* Classic Mac title-bar horizontal stripes */
   .title-stripes {
     background: repeating-linear-gradient(
       0deg,
-      #fff,
-      #fff 2px,
-      #000 2px,
-      #000 4px
+      var(--color-mac-white) 0 2px,
+      var(--color-mac-black) 2px 4px
     );
   }
 
+  /* Checkerboard dither (pure CSS, no image) */
   .bg-dither {
-    background-image: 
-      linear-gradient(45deg, #000 25%, transparent 25%),
-      linear-gradient(-45deg, #000 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #000 75%),
-      linear-gradient(-45deg, transparent 75%, #000 75%);
+    background-image:
+      linear-gradient( 45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient( 45deg, transparent 75%, var(--color-mac-black) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--color-mac-black) 75%);
     background-size: 4px 4px;
-    background-position: 0 0, 0 2px, 2px -2px, -2px 0px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0;
   }
 
+  /* Horizontal-lines dither variant */
+  .bg-dither-lines {
+    background: repeating-linear-gradient(
+      0deg,
+      var(--color-mac-white) 0 1px,
+      var(--color-mac-black) 1px 2px
+    );
+  }
+
+  /* CRT scan-line overlay */
   .scanlines::before {
-    content: " ";
-    display: block;
+    content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
-    background-size: 100% 4px;
-    z-index: 50;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      rgba(0,0,0,.1) 2px 4px
+    );
     pointer-events: none;
+    z-index: 50;
+  }
+
+  /* 1-bit error styling (replaces red) */
+  .retro-error {
+    @apply border-2 border-dashed border-mac-black bg-mac-white px-2 py-1 text-sm font-sans;
+  }
+
+  /* Status dot (replaces coloured dots) */
+  .retro-dot {
+    @apply inline-block w-3 h-3 border-2 border-mac-black bg-mac-white;
+  }
+  .retro-dot-on {
+    @apply inline-block w-3 h-3 border-2 border-mac-black bg-mac-black;
   }
 }

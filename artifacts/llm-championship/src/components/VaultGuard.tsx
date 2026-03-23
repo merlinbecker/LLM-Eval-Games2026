@@ -1,6 +1,6 @@
 import { useState, useRef, type FormEvent, type ReactNode } from "react";
 import { useVault } from "@/lib/vault/vault-store";
-import { RetroWindow, RetroButton, RetroInput } from "@/components/retro";
+import { RetroWindow, RetroButton, RetroInput, RetroError } from "@/components/retro";
 
 export function VaultGuard({ children }: { children: ReactNode }) {
   const { status, error, createVault, unlock, importVault } = useVault();
@@ -52,11 +52,7 @@ function UnlockForm({
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
           />
-          {error && (
-            <p className="text-sm font-sans text-red-600 border-2 border-red-600 px-2 py-1">
-              {error}
-            </p>
-          )}
+          {error && <RetroError>{error}</RetroError>}
           <RetroButton type="submit" disabled={!password || loading} className="w-full">
             {loading ? "Unlocking..." : "Unlock Vault"}
           </RetroButton>
@@ -144,13 +140,9 @@ function WelcomeForm({
               onChange={(e) => setConfirm(e.target.value)}
             />
             {password && confirm && password !== confirm && (
-              <p className="text-sm font-sans text-red-600">Passwords do not match.</p>
+              <RetroError>Passwords do not match.</RetroError>
             )}
-            {error && (
-              <p className="text-sm font-sans text-red-600 border-2 border-red-600 px-2 py-1">
-                {error}
-              </p>
-            )}
+            {error && <RetroError>{error}</RetroError>}
             <div className="flex gap-4">
               <RetroButton
                 type="submit"
@@ -188,11 +180,7 @@ function WelcomeForm({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            {error && (
-              <p className="text-sm font-sans text-red-600 border-2 border-red-600 px-2 py-1">
-                {error}
-              </p>
-            )}
+            {error && <RetroError>{error}</RetroError>}
             <div className="flex gap-4">
               <RetroButton
                 type="submit"

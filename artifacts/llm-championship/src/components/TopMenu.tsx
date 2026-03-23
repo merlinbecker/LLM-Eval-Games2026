@@ -14,9 +14,9 @@ export function TopMenu() {
   ];
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-10 bg-white border-b-[3px] border-black flex items-center px-4 z-50">
+    <div className="fixed top-0 left-0 right-0 h-10 bg-mac-white border-b-[3px] border-mac-black flex items-center px-4 z-50">
       <div className="font-display font-bold text-xl mr-8 flex items-center">
-        <span className="bg-black text-white px-2 py-0.5 mr-2">LLM</span>
+        <span className="bg-mac-black text-mac-white px-2 py-0.5 mr-2">LLM</span>
         CHAMPIONSHIP
       </div>
       <nav className="flex space-x-1">
@@ -27,8 +27,8 @@ export function TopMenu() {
             className={cn(
               "px-4 py-1 font-display text-sm uppercase transition-colors border-2 border-transparent",
               location === link.href
-                ? "bg-black text-white"
-                : "text-black hover:border-black"
+                ? "bg-mac-black text-mac-white"
+                : "text-mac-black hover:border-mac-black"
             )}
           >
             {link.label}
@@ -38,21 +38,18 @@ export function TopMenu() {
       {status === "unlocked" && (
         <div className="ml-auto flex items-center gap-2">
           <span
-            className={cn(
-              "inline-block w-2 h-2 rounded-full border border-black",
-              synced ? "bg-green-500" : "bg-yellow-400",
-            )}
+            className={cn(synced ? "retro-dot-on" : "retro-dot")}
             title={synced ? "Synced" : "Syncing..."}
           />
           <button
             onClick={exportVault}
-            className="px-2 py-0.5 font-display text-xs uppercase border-2 border-black hover:bg-black hover:text-white transition-colors"
+            className="px-2 py-0.5 font-display text-xs uppercase border-2 border-mac-black hover:bg-mac-black hover:text-mac-white transition-colors"
           >
             Export
           </button>
           <button
             onClick={lock}
-            className="px-2 py-0.5 font-display text-xs uppercase border-2 border-black hover:bg-black hover:text-white transition-colors"
+            className="px-2 py-0.5 font-display text-xs uppercase border-2 border-mac-black hover:bg-mac-black hover:text-mac-white transition-colors"
           >
             Lock
           </button>

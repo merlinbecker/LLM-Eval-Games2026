@@ -9,7 +9,7 @@ import {
   useCreateCompetition,
   getListCompetitionsQueryKey
 } from "@workspace/api-client-react";
-import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge } from "@/components/retro";
+import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge, RetroFormField } from "@/components/retro";
 import { Bot, Swords, Gavel } from "lucide-react";
 import type { ModelSelection } from "@workspace/api-client-react";
 
@@ -57,20 +57,17 @@ export default function NewCompetition() {
         <RetroWindow title="COMPETITION PARAMS">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <div>
-                <label className="block font-display mb-2 uppercase">Event Name</label>
+              <RetroFormField label="Event Name">
                 <RetroInput required value={name} onChange={e => setName(e.target.value)} placeholder="Q1 Logic Brawl" />
-              </div>
-              <div>
-                <label className="block font-display mb-2 uppercase">Test Dataset</label>
+              </RetroFormField>
+              <RetroFormField label="Test Dataset">
                 <RetroSelect required value={datasetId} onChange={e => setDatasetId(e.target.value)}>
                   <option value="">-- SELECT DATASET --</option>
                   {datasets?.map(ds => <option key={ds.id} value={ds.id}>{ds.name}</option>)}
                 </RetroSelect>
-              </div>
+              </RetroFormField>
             </div>
-            <div>
-              <label className="block font-display mb-2 uppercase">Global System Prompt (Override)</label>
+            <RetroFormField label="Global System Prompt (Override)">
               <RetroTextarea 
                 required 
                 rows={5} 
@@ -78,7 +75,7 @@ export default function NewCompetition() {
                 onChange={e => setSystemPrompt(e.target.value)} 
                 placeholder="You are an expert answering questions from the dataset..."
               />
-            </div>
+            </RetroFormField>
           </div>
         </RetroWindow>
 
@@ -92,19 +89,19 @@ export default function NewCompetition() {
                 icon={<Swords className="w-4 h-4 mr-2" />}
               />
               
-              <div className="mt-6 flex-1 border-t-[3px] border-black pt-4">
+              <div className="mt-6 flex-1 border-t-[3px] border-mac-black pt-4">
                 <h4 className="font-display uppercase mb-4">Roster ({contestants.length})</h4>
                 <div className="space-y-2">
                   {contestants.map((c, i) => (
-                    <div key={i} className="flex justify-between items-center border-[3px] border-black p-2 bg-black/5">
+                    <div key={i} className="flex justify-between items-center border-[3px] border-mac-black p-2 bg-mac-black/5">
                       <div className="flex items-center space-x-2">
                         <Bot className="w-5 h-5" />
                         <span className="font-bold">{c.modelName}</span>
                       </div>
-                      <button type="button" onClick={() => setContestants(contestants.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-black hover:text-white">&times;</button>
+                      <button type="button" onClick={() => setContestants(contestants.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-mac-black hover:text-mac-white">&times;</button>
                     </div>
                   ))}
-                  {contestants.length === 0 && <div className="text-center p-4 border-2 border-dashed border-black">NO CONTESTANTS</div>}
+                  {contestants.length === 0 && <div className="text-center p-4 border-2 border-dashed border-mac-black">NO CONTESTANTS</div>}
                 </div>
               </div>
             </div>
@@ -120,19 +117,19 @@ export default function NewCompetition() {
                 disabled={judges.length >= 5}
               />
               
-              <div className="mt-6 flex-1 border-t-[3px] border-black pt-4">
+              <div className="mt-6 flex-1 border-t-[3px] border-mac-black pt-4">
                 <h4 className="font-display uppercase mb-4">Panel ({judges.length})</h4>
                 <div className="space-y-2">
                   {judges.map((c, i) => (
-                    <div key={i} className="flex justify-between items-center border-[3px] border-black p-2 bg-black/5">
+                    <div key={i} className="flex justify-between items-center border-[3px] border-mac-black p-2 bg-mac-black/5">
                       <div className="flex items-center space-x-2">
                         <Bot className="w-5 h-5" />
                         <span className="font-bold">{c.modelName}</span>
                       </div>
-                      <button type="button" onClick={() => setJudges(judges.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-black hover:text-white">&times;</button>
+                      <button type="button" onClick={() => setJudges(judges.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-mac-black hover:text-mac-white">&times;</button>
                     </div>
                   ))}
-                  {judges.length === 0 && <div className="text-center p-4 border-2 border-dashed border-black">NO JUDGES (3–5 REQUIRED)</div>}
+                  {judges.length === 0 && <div className="text-center p-4 border-2 border-dashed border-mac-black">NO JUDGES (3–5 REQUIRED)</div>}
                 </div>
               </div>
             </div>
@@ -172,15 +169,13 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 items-end">
-      <div className="sm:col-span-2">
-        <label className="block font-display text-sm mb-1 uppercase">Gateway</label>
+      <RetroFormField label="Gateway" className="sm:col-span-2">
         <RetroSelect value={gatewayId} onChange={e => setGatewayId(e.target.value)}>
           <option value="">- SELECT -</option>
           {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </RetroSelect>
-      </div>
-      <div className="sm:col-span-2">
-        <label className="block font-display text-sm mb-1 uppercase">Model (List)</label>
+      </RetroFormField>
+      <RetroFormField label="Model (List)" className="sm:col-span-2">
         <RetroSelect
           value={models?.some((m) => m.id === modelId) ? modelId : ""}
           onChange={e => {
@@ -194,30 +189,28 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
           <option value="">- OPTIONAL -</option>
           {models?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </RetroSelect>
-      </div>
-      <div className="sm:col-span-2">
-        <label className="block font-display text-sm mb-1 uppercase">Model Identifier</label>
+      </RetroFormField>
+      <RetroFormField label="Model Identifier" className="sm:col-span-2">
         <RetroInput
           value={modelId}
           onChange={e => setModelId(e.target.value)}
           placeholder="z. B. openai/gpt-4o-mini"
           disabled={!gatewayId}
         />
-      </div>
+      </RetroFormField>
       <div className="sm:col-span-1">
         <RetroButton type="button" onClick={handleAdd} className="w-full flex items-center justify-center p-2" disabled={!modelId || disabled}>
           {icon} ADD
         </RetroButton>
       </div>
-      <div className="sm:col-span-7">
-        <label className="block font-display text-sm mb-1 uppercase">Display Name (optional)</label>
+      <RetroFormField label="Display Name (optional)" className="sm:col-span-7">
         <RetroInput
           value={modelName}
           onChange={e => setModelName(e.target.value)}
           placeholder="Falls leer, wird Name aus Liste oder Identifier genutzt"
           disabled={!gatewayId}
         />
-      </div>
+      </RetroFormField>
     </div>
   );
 }
