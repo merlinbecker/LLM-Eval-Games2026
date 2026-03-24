@@ -3,7 +3,7 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: LLM Eiskunstlauf Championship API
+  description: LLM Eval Games 2026 API
 servers:
   - url: /api
     description: Base API path
@@ -652,6 +652,12 @@ components:
           type: integer
         modelId:
           type: string
+        inputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million input tokens (optional override)
+        outputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million output tokens (optional override)
         createdAt:
           type: string
           format: date-time
@@ -671,6 +677,12 @@ components:
           type: integer
         modelId:
           type: string
+        inputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million input tokens (optional)
+        outputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million output tokens (optional)
       required:
         - name
         - gatewayId
@@ -868,6 +880,12 @@ components:
           type: string
         modelName:
           type: string
+        inputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million input tokens (optional override)
+        outputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million output tokens (optional override)
       required:
         - gatewayId
         - modelId

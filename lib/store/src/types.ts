@@ -61,6 +61,8 @@ export interface ConfiguredModel {
   name: string;
   gatewayId: number;
   modelId: string;
+  inputCostPerMillionTokens: number | null;
+  outputCostPerMillionTokens: number | null;
   createdAt: string;
 }
 
@@ -68,12 +70,16 @@ export interface CreateConfiguredModel {
   name: string;
   gatewayId: number;
   modelId: string;
+  inputCostPerMillionTokens?: number | null;
+  outputCostPerMillionTokens?: number | null;
 }
 
 export interface ModelSelection {
   gatewayId: number;
   modelId: string;
   modelName: string;
+  inputCostPerMillionTokens?: number | null;
+  outputCostPerMillionTokens?: number | null;
 }
 
 export interface Competition {

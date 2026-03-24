@@ -108,6 +108,8 @@ router.post("/configured-models", (req, res) => {
     name: data.name,
     gatewayId: data.gatewayId,
     modelId: data.modelId,
+    inputCostPerMillionTokens: data.inputCostPerMillionTokens,
+    outputCostPerMillionTokens: data.outputCostPerMillionTokens,
   });
   res.status(201).json(model);
 });

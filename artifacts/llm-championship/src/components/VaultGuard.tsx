@@ -102,7 +102,7 @@ function WelcomeForm({
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <RetroWindow title="LLM Championship — Vault Setup" className="w-full max-w-lg">
+      <RetroWindow title="LLM Eval Games — Vault Setup" className="w-full max-w-lg">
         {mode === "choose" && (
           <div className="space-y-4 text-center">
             <p className="font-sans text-sm">

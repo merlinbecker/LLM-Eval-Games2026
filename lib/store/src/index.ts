@@ -227,6 +227,8 @@ class InMemoryStore {
       name: data.name,
       gatewayId: data.gatewayId,
       modelId: data.modelId,
+      inputCostPerMillionTokens: data.inputCostPerMillionTokens ?? null,
+      outputCostPerMillionTokens: data.outputCostPerMillionTokens ?? null,
       createdAt: new Date().toISOString(),
     };
     session.configuredModels.set(id, model);

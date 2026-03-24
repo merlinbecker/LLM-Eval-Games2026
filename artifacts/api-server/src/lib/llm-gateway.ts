@@ -122,8 +122,8 @@ function getProviderEndpoints(gateway: GatewayConfig): { chatUrl: string; models
     case "openrouter": {
       const base = gateway.baseUrl || "https://openrouter.ai/api/v1";
       headers["Authorization"] = `Bearer ${gateway.apiKey}`;
-      headers["HTTP-Referer"] = "https://llm-championship.replit.app";
-      headers["X-Title"] = "LLM Championship";
+      headers["HTTP-Referer"] = "https://llm-eval-games.replit.app";
+      headers["X-Title"] = "LLM Eval Games 2026";
       return {
         chatUrl: `${base}/chat/completions`,
         modelsUrl: `${base}/models`,

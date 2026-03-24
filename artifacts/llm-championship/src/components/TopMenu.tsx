@@ -113,7 +113,7 @@ export function TopMenu() {
     <div className="fixed top-0 left-0 right-0 h-10 bg-mac-white border-b-[3px] border-mac-black flex items-center px-4 z-50">
       <div className="font-display font-bold text-xl mr-8 flex items-center">
         <span className="bg-mac-black text-mac-white px-2 py-0.5 mr-2">LLM</span>
-        CHAMPIONSHIP
+        EVAL GAMES
       </div>
       <nav className="flex space-x-1">
         {links.map((link) => (

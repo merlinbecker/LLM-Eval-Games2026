@@ -14,7 +14,7 @@ export default function ArenaDashboard() {
       <RetroWindow title="THE ARENA" className="bg-mac-white">
         <div className="relative w-full h-[400px] border-b-[3px] border-mac-black bg-dither overflow-hidden flex flex-col items-center justify-end p-8">
           <div className="absolute top-4 left-4 bg-mac-white p-2 border-2 border-mac-black retro-shadow-sm">
-            <h1 className="text-3xl font-display uppercase tracking-widest">WINTER GAMES '85</h1>
+            <h1 className="text-3xl font-display uppercase tracking-widest">LLM EVAL GAMES '26</h1>
             <p className="font-sans text-xl uppercase">1-Bit Large Language Model Evaluation</p>
           </div>
           <PodiumIcon className="w-full max-w-md h-auto relative z-10 text-mac-black" />

@@ -37,6 +37,8 @@ export default function Gateways() {
   const [selectedGatewayId, setSelectedGatewayId] = useState("");
   const [selectedModelId, setSelectedModelId] = useState("");
   const [modelDisplayName, setModelDisplayName] = useState("");
+  const [inputCost, setInputCost] = useState("");
+  const [outputCost, setOutputCost] = useState("");
 
   const gwId = Number(selectedGatewayId) || 0;
   const { data: gatewayModels } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!selectedGatewayId }});
@@ -73,10 +75,20 @@ export default function Gateways() {
     if (!selectedGatewayId || !selectedModelId) return;
     const selected = gatewayModels?.find(m => m.id === selectedModelId);
     const displayName = modelDisplayName.trim() || selected?.name || selectedModelId;
-    await createModelMutation.mutateAsync({ data: { name: displayName, gatewayId: Number(selectedGatewayId), modelId: selectedModelId } });
+    const parsedInputCost = inputCost.trim() ? Number(inputCost) : null;
+    const parsedOutputCost = outputCost.trim() ? Number(outputCost) : null;
+    await createModelMutation.mutateAsync({ data: { 
+      name: displayName, 
+      gatewayId: Number(selectedGatewayId), 
+      modelId: selectedModelId,
+      inputCostPerMillionTokens: parsedInputCost,
+      outputCostPerMillionTokens: parsedOutputCost,
+    } });
     queryClient.invalidateQueries({ queryKey: getListConfiguredModelsQueryKey() });
     setSelectedModelId("");
     setModelDisplayName("");
+    setInputCost("");
+    setOutputCost("");
   };
 
   const handleDeleteModel = async (id: number) => {
@@ -171,6 +183,12 @@ export default function Gateways() {
                             <RetroBadge>{gw?.name ?? `GW #${m.gatewayId}`}</RetroBadge>
                             <span className="text-mac-black/60">{m.modelId}</span>
                           </div>
+                          {(m.inputCostPerMillionTokens != null || m.outputCostPerMillionTokens != null) && (
+                            <div className="text-xs text-mac-black/50 mt-1">
+                              {m.inputCostPerMillionTokens != null && <span>Input: ${m.inputCostPerMillionTokens}/M </span>}
+                              {m.outputCostPerMillionTokens != null && <span>Output: ${m.outputCostPerMillionTokens}/M</span>}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <RetroButton size="sm" variant="danger" onClick={() => handleDeleteModel(m.id)}>
@@ -222,6 +240,30 @@ export default function Gateways() {
                   disabled={!selectedGatewayId}
                 />
               </RetroFormField>
+              <div className="grid grid-cols-2 gap-4">
+                <RetroFormField label="Input $/M Tokens">
+                  <RetroInput
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={inputCost}
+                    onChange={e => setInputCost(e.target.value)}
+                    placeholder="z. B. 3.00"
+                    disabled={!selectedGatewayId}
+                  />
+                </RetroFormField>
+                <RetroFormField label="Output $/M Tokens">
+                  <RetroInput
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={outputCost}
+                    onChange={e => setOutputCost(e.target.value)}
+                    placeholder="z. B. 15.00"
+                    disabled={!selectedGatewayId}
+                  />
+                </RetroFormField>
+              </div>
               <div className="pt-4">
                 <RetroButton type="submit" disabled={createModelMutation.isPending || !selectedModelId} className="w-full">
                   {createModelMutation.isPending ? "SAVING..." : "SAVE MODEL"}

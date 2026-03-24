@@ -51,7 +51,7 @@ export default function NewCompetition() {
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
-      <h1 className="text-4xl font-display text-center mb-8 uppercase tracking-widest">Setup Championship</h1>
+      <h1 className="text-4xl font-display text-center mb-8 uppercase tracking-widest">Setup Competition</h1>
 
       <form onSubmit={handleCreate} className="space-y-8">
         {/* Basic Config */}
@@ -139,7 +139,7 @@ export default function NewCompetition() {
 
         <div className="flex justify-center pt-8">
           <RetroButton type="submit" size="lg" disabled={createMutation.isPending} className="text-2xl px-12 py-6">
-            {createMutation.isPending ? "INITIALIZING..." : "START CHAMPIONSHIP"}
+            {createMutation.isPending ? "INITIALIZING..." : "START COMPETITION"}
           </RetroButton>
         </div>
       </form>
@@ -168,6 +168,8 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
         gatewayId: cm.gatewayId,
         modelId: cm.modelId,
         modelName: cm.name,
+        inputCostPerMillionTokens: cm.inputCostPerMillionTokens,
+        outputCostPerMillionTokens: cm.outputCostPerMillionTokens,
       });
       setConfiguredModelId("");
     } else {

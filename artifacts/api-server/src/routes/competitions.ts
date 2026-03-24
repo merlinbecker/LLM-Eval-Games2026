@@ -18,6 +18,8 @@ interface ModelSel {
   gatewayId: number;
   modelId: string;
   modelName: string;
+  inputCostPerMillionTokens?: number | null;
+  outputCostPerMillionTokens?: number | null;
 }
 
 async function runWithConcurrency<T>(
@@ -192,7 +194,7 @@ async function runCompetitionAsync(
           sessionId,
         );
 
-        const cost = estimateCost(result.promptTokens, result.completionTokens);
+        const cost = estimateCost(result.promptTokens, result.completionTokens, contestant.inputCostPerMillionTokens, contestant.outputCostPerMillionTokens);
 
         const judgeTasks = judges.map((judge) => async (): Promise<JudgeScoreEntry> => {
           const judgeGw = gatewayMap.get(judge.gatewayId);
@@ -328,10 +330,10 @@ function parseMarkdownItems(content: string): string[] {
   return paragraphs.length > 0 ? paragraphs : [content];
 }
 
-function estimateCost(promptTokens: number, completionTokens: number): number {
-  const inputCostPer1k = 0.001;
-  const outputCostPer1k = 0.002;
-  return (promptTokens / 1000) * inputCostPer1k + (completionTokens / 1000) * outputCostPer1k;
+function estimateCost(promptTokens: number, completionTokens: number, inputCostPerMillionTokens?: number | null, outputCostPerMillionTokens?: number | null): number {
+  const inputCostPerToken = (inputCostPerMillionTokens ?? 1.0) / 1_000_000;
+  const outputCostPerToken = (outputCostPerMillionTokens ?? 2.0) / 1_000_000;
+  return promptTokens * inputCostPerToken + completionTokens * outputCostPerToken;
 }
 
 export default router;
