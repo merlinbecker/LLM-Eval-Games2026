@@ -5,10 +5,13 @@ import {
   useAcknowledgeActivity,
   getListActivitiesQueryKey,
   getListDatasetsQueryKey,
+  getListDatasetsQueryOptions,
   getListCompetitionsQueryKey,
 } from "@workspace/api-client-react";
 import type { Activity, ActivityType } from "@workspace/api-client-react";
 import { toast } from "sonner";
+import { useVault } from "@/lib/vault/vault-store";
+import type { VaultDataset } from "@/lib/vault/types";
 
 const COMPLETION_CONFIG: Record<ActivityType, { queryKey: () => readonly unknown[]; message: string }> = {
   dataset_generate: { queryKey: getListDatasetsQueryKey, message: "Dataset wurde erfolgreich generiert" },
@@ -40,6 +43,9 @@ export function useBackgroundActivities() {
 export function BackgroundActivityProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const ackMutation = useAcknowledgeActivity();
+  const { vault, addDataset } = useVault();
+  const vaultRef = useRef(vault);
+  useEffect(() => { vaultRef.current = vault; }, [vault]);
   const prevActivitiesRef = useRef<Map<number, Activity>>(new Map());
 
   const { data: activities = [] } = useListActivities({
@@ -66,6 +72,29 @@ export function BackgroundActivityProvider({ children }: { children: React.React
             duration: 8000,
           });
           queryClient.invalidateQueries({ queryKey: config.queryKey() });
+
+          // Sync newly generated datasets into the vault
+          if (activity.type === "dataset_generate") {
+            queryClient.fetchQuery({ ...getListDatasetsQueryOptions(), staleTime: 0 }).then((datasets) => {
+              const currentVault = vaultRef.current;
+              if (datasets && currentVault) {
+                const vaultIds = new Set(currentVault.datasets.map(d => d.id));
+                for (const ds of datasets) {
+                  if (!vaultIds.has(ds.id)) {
+                    const vaultDs: VaultDataset = {
+                      id: ds.id,
+                      name: ds.name,
+                      content: ds.content,
+                      privacyStatus: ds.privacyStatus ?? "unchecked",
+                      privacyReport: ds.privacyReport ?? null,
+                      createdAt: ds.createdAt,
+                    };
+                    addDataset(vaultDs);
+                  }
+                }
+              }
+            }).catch(() => { /* sync best-effort */ });
+          }
         } else if (activity.status === "error") {
           toast.error(activity.title, {
             description: activity.error || "Ein Fehler ist aufgetreten",

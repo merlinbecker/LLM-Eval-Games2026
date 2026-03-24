@@ -4,13 +4,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { 
   useGetCompetition, 
   useRunCompetition,
-  getGetCompetitionQueryKey
+  useListActivities,
+  useGetDataset,
+  getGetCompetitionQueryKey,
+  getListActivitiesQueryKey
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroBadge, RetroSelect, RobotIcon } from "@/components/retro";
 import { Commentator } from "@/components/Commentator";
+import { JudgesScoreReveal } from "@/components/JudgesScoreReveal";
 import { TriangleChart } from "@/components/TriangleChart";
 import { formatCost } from "@/lib/utils";
-import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText } from "lucide-react";
+import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText, ChevronDown, ChevronUp, MessageSquareText } from "lucide-react";
 import type { CompetitionResult, CompetitionDetail, JudgeScore } from "@workspace/api-client-react";
 
 // ─── HELPERS ───
@@ -22,6 +26,18 @@ function shortName(name: string): string {
 function formatMs(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function parseDatasetItems(content: string): string[] {
+  const sections = content.split(/^## /m).filter(Boolean);
+  if (sections.length > 1) {
+    return sections.map((s) => s.trim());
+  }
+  const paragraphs = content
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  return paragraphs.length > 0 ? paragraphs : [content];
 }
 
 
@@ -52,7 +68,7 @@ function PodiumEntry({ result, config }: { result: CompetitionResult; config: ty
         <p className={`font-display ${config.textSize}`}>{config.label}</p>
         <p className="text-sm truncate">{shortName(result.modelName)}</p>
         <p className={config.textSize}>{result.avgQuality.toFixed(1)}/10</p>
-        <p className="text-xs mt-1">{formatMs(result.avgSpeed)} · {formatCost(result.avgCost)}</p>
+        <p className="text-xs mt-1">{formatMs(result.avgSpeed)} · {formatCost(result.totalCost)}</p>
       </div>
       <div className={`${config.cardWidth} ${config.pedestalH} bg-mac-black border-2 border-mac-black mt-1`} />
     </div>
@@ -97,6 +113,202 @@ function StatCard({ icon, label, value, subValue }: { icon: React.ReactNode; lab
 }
 
 // ═══════════════════════════════════════════════
+// LIVE RUN PROGRESS VIEW (shown while competition is running)
+// ═══════════════════════════════════════════════
+
+function RunProgressView({
+  comp,
+  activeModelProgress,
+}: {
+  comp: CompetitionDetail;
+  activeModelProgress: string | undefined;
+}) {
+  const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
+  const results = comp.results ?? [];
+
+  // Parse which model is currently active from activity progress string.
+  // Expected format from backend: "ModelName: item X/Y" (see competitions.ts savePartialResults)
+  const activeModelName = activeModelProgress
+    ? activeModelProgress.split(":")[0]?.trim() ?? null
+    : null;
+
+  const toggleModel = (modelId: string) => {
+    setExpandedModels((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  };
+
+  // Estimate total items from any model's progress text (format: "ModelName: item X/Y")
+  const estimatedTotal = (() => {
+    if (activeModelProgress) {
+      const slashIdx = activeModelProgress.indexOf("/");
+      if (slashIdx !== -1) {
+        const after = activeModelProgress.substring(slashIdx + 1).trim();
+        const total = parseInt(after, 10);
+        if (!Number.isNaN(total) && total > 0) return total;
+      }
+    }
+    return results.reduce((max, r) => Math.max(max, r.responses?.length ?? 0), 0);
+  })();
+
+  // Sort by current average quality descending
+  const sorted = [...results].sort((a, b) => b.avgQuality - a.avgQuality);
+
+  return (
+    <RetroWindow title="LAUF-ÜBERSICHT">
+      <div className="space-y-4">
+        {sorted.length === 0 && (
+          <div className="text-center py-8 font-display text-lg animate-pulse">
+            Warte auf erste Ergebnisse...
+          </div>
+        )}
+        {sorted.map((result, rank) => {
+          const name = shortName(result.modelName);
+          const isActive = activeModelName === result.modelName || activeModelName === name;
+          const isExpanded = expandedModels.has(result.modelId);
+          const completedItems = result.responses?.filter(
+            (r) => r.response && r.response.trim().length > 0 && !r.response.startsWith("Error:"),
+          ).length ?? 0;
+          const totalItems = estimatedTotal || completedItems;
+          const pct = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+
+          return (
+            <div
+              key={result.modelId}
+              className={`border-[3px] ${isActive ? "border-mac-black bg-mac-black/5" : "border-mac-black/40 bg-mac-white"} transition-all`}
+            >
+              {/* Model Header */}
+              <button
+                onClick={() => toggleModel(result.modelId)}
+                className="w-full text-left p-3 flex items-center gap-3"
+              >
+                <RobotIcon className={`w-8 h-8 flex-shrink-0 ${isActive ? "animate-pulse" : ""}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-sm uppercase font-bold">#{rank + 1}</span>
+                    <span className="font-display text-lg uppercase truncate">{name}</span>
+                    {isActive && (
+                      <span className="border-[2px] border-mac-black bg-mac-black text-mac-white px-2 py-0.5 text-xs font-display uppercase animate-pulse">
+                        AKTIV
+                      </span>
+                    )}
+                    {completedItems === totalItems && totalItems > 0 && !isActive && (
+                      <span className="border-[2px] border-mac-black bg-mac-white px-2 py-0.5 text-xs font-display uppercase">
+                        FERTIG
+                      </span>
+                    )}
+                  </div>
+                  {/* Progress bar */}
+                  <div className="w-full h-3 border-[2px] border-mac-black bg-mac-white mt-1">
+                    <div
+                      className={`h-full transition-all duration-500 ${isActive ? "bg-mac-black" : "bg-mac-black/60"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="flex gap-4 text-xs font-bold uppercase mt-1">
+                    <span>{completedItems}/{totalItems} Items</span>
+                    {result.avgQuality > 0 && <span>⌀ {result.avgQuality.toFixed(1)}/10</span>}
+                    {result.avgSpeed > 0 && <span>⌀ {formatMs(result.avgSpeed)}</span>}
+                    {result.totalCost > 0 && <span>Σ {formatCost(result.totalCost)}</span>}
+                  </div>
+                </div>
+                {isExpanded ? <ChevronUp className="w-5 h-5 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 flex-shrink-0" />}
+              </button>
+
+              {/* Expanded: Individual item scores */}
+              {isExpanded && result.responses && result.responses.length > 0 && (
+                <div className="border-t-[2px] border-mac-black px-3 pb-3">
+                  <table className="w-full text-left mt-2">
+                    <thead>
+                      <tr className="border-b-[2px] border-mac-black">
+                        <th className="p-1.5 font-display text-xs">ITEM</th>
+                        <th className="p-1.5 font-display text-xs text-center">JUDGE Ø</th>
+                        <th className="p-1.5 font-display text-xs text-center">ZEIT</th>
+                        <th className="p-1.5 font-display text-xs text-center">KOSTEN</th>
+                        <th className="p-1.5 font-display text-xs text-center">TOKENS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.responses.map((resp, i) => {
+                        const avgJudge = resp.judgeScores.length > 0
+                          ? resp.judgeScores.reduce((s, js) => s + js.score, 0) / resp.judgeScores.length
+                          : 0;
+                        const isNewItem = i === result.responses.length - 1 && isActive;
+                        return (
+                          <tr
+                            key={i}
+                            className={`border-b border-mac-black/20 ${isNewItem ? "bg-mac-black/10 font-bold" : ""}`}
+                          >
+                            <td className="p-1.5 font-display text-sm">#{i + 1}</td>
+                            <td className="p-1.5 text-center font-display text-sm">
+                              {avgJudge > 0 ? avgJudge.toFixed(1) : "—"}
+                            </td>
+                            <td className="p-1.5 text-center text-sm">{resp.durationMs > 0 ? formatMs(resp.durationMs) : "—"}</td>
+                            <td className="p-1.5 text-center text-sm">{resp.cost > 0 ? formatCost(resp.cost) : "—"}</td>
+                            <td className="p-1.5 text-center text-sm">
+                              {resp.promptTokens + resp.completionTokens > 0
+                                ? (resp.promptTokens + resp.completionTokens).toLocaleString()
+                                : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    {/* Running total */}
+                    <tfoot>
+                      <tr className="border-t-[2px] border-mac-black font-bold">
+                        <td className="p-1.5 font-display text-xs uppercase">Summe / ⌀</td>
+                        <td className="p-1.5 text-center font-display text-sm">{result.avgQuality > 0 ? result.avgQuality.toFixed(1) : "—"}</td>
+                        <td className="p-1.5 text-center text-sm">{result.avgSpeed > 0 ? formatMs(result.avgSpeed) : "—"}</td>
+                        <td className="p-1.5 text-center text-sm">{result.totalCost > 0 ? formatCost(result.totalCost) : "—"}</td>
+                        <td className="p-1.5 text-center text-sm">{result.totalTokens > 0 ? result.totalTokens.toLocaleString() : "—"}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </RetroWindow>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// CEREMONY HEADER (shown after competition completes)
+// ═══════════════════════════════════════════════
+
+function CeremonyHeader({ sortedResults }: { sortedResults: CompetitionResult[] }) {
+  const winner = sortedResults[0];
+  if (!winner) return null;
+
+  return (
+    <div className="border-[4px] border-mac-black bg-mac-black text-mac-white retro-shadow overflow-hidden">
+      <div className="text-center py-8 px-6 space-y-4">
+        <Trophy className="w-16 h-16 mx-auto" />
+        <p className="font-display text-sm tracking-[0.3em] uppercase">Siegerehrung</p>
+        <p className="font-display text-4xl uppercase">{shortName(winner.modelName)}</p>
+        <p className="font-display text-6xl">{winner.avgQuality.toFixed(1)}<span className="text-2xl">/10</span></p>
+        <div className="flex justify-center gap-8 text-sm">
+          <div>
+            <Zap className="w-5 h-5 mx-auto mb-1" />
+            <span>{formatMs(winner.avgSpeed)}</span>
+          </div>
+          <div>
+            <Coins className="w-5 h-5 mx-auto mb-1" />
+            <span>{formatCost(winner.totalCost)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
 // TAB 1: ÜBERSICHT / CHEAT SHEET
 // ═══════════════════════════════════════════════
 
@@ -107,15 +319,40 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
     ? [...sortedResults].sort((a, b) => a.avgSpeed - b.avgSpeed)[0]
     : null;
   const cheapest = sortedResults.length > 0
-    ? [...sortedResults].sort((a, b) => a.avgCost - b.avgCost)[0]
+    ? [...sortedResults].sort((a, b) => a.totalCost - b.totalCost)[0]
     : null;
 
-  const radarData = comp.results?.map(r => ({
-    name: shortName(r.modelName),
-    speedScore: Math.max(0, 10 - (r.avgSpeed / 1000)),
-    costScore: Math.max(0, 10 - (r.avgCost * 100)),
-    qualityScore: r.avgQuality,
-  })) || [];
+  // Normalize scores 1–10 relative to best/worst across all models.
+  // Quality: higher is better. Speed & Cost: lower is better (inverted).
+  const allResults = comp.results ?? [];
+  const worstCost = allResults.length > 0 ? Math.max(...allResults.map(r => r.totalCost)) : undefined;
+  const worstLatency = allResults.length > 0 ? Math.max(...allResults.map(r => r.avgSpeed)) : undefined;
+  const radarData = (() => {
+    if (allResults.length === 0) return [];
+
+    const speeds = allResults.map(r => r.avgSpeed);
+    const costs = allResults.map(r => r.totalCost);
+    const qualities = allResults.map(r => r.avgQuality);
+
+    const minSpeed = Math.min(...speeds);
+    const maxSpeed = Math.max(...speeds);
+    const minCost = Math.min(...costs);
+    const maxCost = Math.max(...costs);
+    const minQuality = Math.min(...qualities);
+    const maxQuality = Math.max(...qualities);
+
+    // Map value into 1–10 range. If all values are identical, use 5.
+    const normalize = (value: number, min: number, max: number) =>
+      max > min ? 1 + ((value - min) / (max - min)) * 9 : 5;
+
+    return allResults.map(r => ({
+      name: shortName(r.modelName),
+      // Speed & Cost inverted: best (lowest) → 10, worst (highest) → 1
+      speedScore: normalize(maxSpeed - r.avgSpeed, 0, maxSpeed - minSpeed),
+      costScore: normalize(maxCost - r.totalCost, 0, maxCost - minCost),
+      qualityScore: normalize(r.avgQuality, minQuality, maxQuality),
+    }));
+  })();
 
   return (
     <div className="space-y-6">
@@ -131,15 +368,15 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
           <div className="flex gap-6 text-center">
             <div>
               <p className="font-display text-4xl">{winner.avgQuality.toFixed(1)}</p>
-              <p className="text-xs uppercase tracking-wider">Quality</p>
+              <p className="text-xs uppercase tracking-wider">Qualität</p>
             </div>
             <div>
               <p className="font-display text-4xl">{formatMs(winner.avgSpeed)}</p>
-              <p className="text-xs uppercase tracking-wider">Avg Speed</p>
+              <p className="text-xs uppercase tracking-wider">Ø Tempo</p>
             </div>
             <div>
-              <p className="font-display text-4xl">{formatCost(winner.avgCost)}</p>
-              <p className="text-xs uppercase tracking-wider">Avg Cost</p>
+              <p className="font-display text-4xl">{formatCost(winner.totalCost)}</p>
+              <p className="text-xs uppercase tracking-wider">Σ Kosten</p>
             </div>
           </div>
         </div>
@@ -189,7 +426,7 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider">Günstigstes Modell</p>
                 <p className="font-display text-xl">{shortName(cheapest.modelName)}</p>
-                <p className="text-sm">{formatCost(cheapest.avgCost)} avg</p>
+                <p className="text-sm">{formatCost(cheapest.totalCost)} gesamt</p>
               </div>
             </div>
           )}
@@ -201,7 +438,7 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
         {/* Performance Triangle */}
         <RetroWindow title="PERFORMANCE DREIECK">
           <div className="w-full bg-mac-white flex items-center justify-center p-2">
-            <TriangleChart data={radarData} />
+            <TriangleChart data={radarData} worstCost={worstCost} worstLatency={worstLatency} formatCost={formatCost} formatLatency={formatMs} />
           </div>
           <div className="p-3 border-t-[3px] border-mac-black bg-mac-black/5">
             <p className="text-xs uppercase font-bold mb-1">Leserichtung:</p>
@@ -230,7 +467,7 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
                     <td className="p-2 font-bold truncate max-w-[10rem]" title={r.modelId}>{shortName(r.modelName)}</td>
                     <td className="p-2 text-center font-display">{r.avgQuality.toFixed(1)}</td>
                     <td className="p-2 text-center">{formatMs(r.avgSpeed)}</td>
-                    <td className="p-2 text-center">{formatCost(r.avgCost)}</td>
+                    <td className="p-2 text-center">{formatCost(r.totalCost)}</td>
                     <td className="p-2 text-center">{r.totalTokens.toLocaleString()}</td>
                   </tr>
                 ))}
@@ -318,8 +555,8 @@ function WinnersTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedRe
               </div>
               <div className="border-[4px] border-mac-black bg-mac-white p-6 text-center retro-shadow">
                 <Coins className="w-10 h-10 mx-auto mb-2" />
-                <p className="font-display text-5xl">{formatCost(selectedResult.avgCost)}</p>
-                <p className="font-display text-sm mt-2 uppercase tracking-widest">Avg Cost / Response</p>
+                <p className="font-display text-5xl">{formatCost(selectedResult.totalCost)}</p>
+                <p className="font-display text-sm mt-2 uppercase tracking-widest">Gesamtkosten</p>
               </div>
             </div>
 
@@ -401,6 +638,11 @@ function DetailsTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedRe
   const totalQuestions = comp.results?.[0]?.responses?.length ?? 0;
   const [selectedQuestion, setSelectedQuestion] = useState(0);
 
+  // Fetch dataset to show original questions
+  const { data: dataset } = useGetDataset(comp.datasetId);
+  const dataItems = dataset?.content ? parseDatasetItems(dataset.content) : [];
+  const currentQuestion = dataItems[selectedQuestion] ?? null;
+
   if (totalQuestions === 0) {
     return <p className="font-display text-xl text-center py-12">Keine Antworten vorhanden.</p>;
   }
@@ -440,6 +682,15 @@ function DetailsTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedRe
           </RetroButton>
         </div>
       </div>
+
+      {/* Original question from dataset */}
+      {currentQuestion && (
+           <RetroWindow title="Ursprüngliche Frage (Datensatz)">
+             <div className="bg-mac-white border-[2px] border-mac-black p-4 font-mono text-sm max-h-48 overflow-y-auto whitespace-pre-wrap">
+               {currentQuestion}
+             </div>
+           </RetroWindow>
+      )}
 
       {/* Responses for this question */}
       <div className="space-y-6">
@@ -529,6 +780,20 @@ export default function CompetitionResults() {
   });
   const runMutation = useRunCompetition();
 
+  // Fetch activities to get progress text for identifying active model
+  const { data: activities } = useListActivities({
+    query: {
+      queryKey: getListActivitiesQueryKey(),
+      refetchInterval: comp?.status === "running" ? 2000 : false,
+    },
+  });
+  const runningActivity = activities?.find(
+    (a) => a.type === "competition_run" && a.status === "running" && a.resultId === id,
+  ) ?? activities?.find(
+    (a) => a.type === "competition_run" && a.status === "running",
+  );
+  const activityProgress = runningActivity?.progress;
+
   const handleRun = () => {
     runMutation.mutate({ id }, {
       onSuccess: () => {
@@ -542,48 +807,62 @@ export default function CompetitionResults() {
 
   const isCompleted = comp.status === 'completed';
   const isRunning = comp.status === 'running';
-  const hasResults = (comp.results?.length ?? 0) > 0;
   const sortedResults = [...(comp.results || [])].sort((a, b) => b.avgQuality - a.avgQuality);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
-      {/* Header Bar */}
-      <div className="border-[4px] border-mac-black bg-mac-white p-6 flex flex-col md:flex-row justify-between items-center retro-shadow">
-        <div>
-          <h1 className="text-4xl font-display uppercase tracking-widest">{comp.name}</h1>
-          <div className="flex flex-wrap space-x-4 mt-2 font-bold text-lg">
-            <p>ID: {comp.id}</p>
-            <p>|</p>
-            <p>DATASET: #{comp.datasetId}</p>
-            <p>|</p>
-            <p className="flex items-center">
-              STATUS: 
-              <RetroBadge className="ml-2 px-3 py-1 text-sm">{comp.status}</RetroBadge>
-            </p>
-          </div>
-        </div>
-        
-        {comp.status === 'draft' && (
-          <RetroButton size="lg" onClick={handleRun} disabled={runMutation.isPending} className="mt-4 md:mt-0 animate-pulse">
-            <Play className="w-6 h-6 mr-2 inline" /> INITIATE RUN
-          </RetroButton>
-        )}
-        {isRunning && (
-          <div className="mt-4 md:mt-0 border-4 border-mac-black p-4 bg-dither text-center">
-            <div className="bg-mac-white px-4 py-2 border-2 border-mac-black flex items-center font-display text-xl">
-              <Loader2 className="w-6 h-6 mr-3 animate-spin" /> EVALUATING...
+      {/* Header Bar — used as anchor for the overlay */}
+      <div className="relative">
+        <div className={`border-[4px] border-mac-black p-6 flex flex-col md:flex-row justify-between items-center retro-shadow ${isRunning ? "bg-dither" : "bg-mac-white"}`}>
+          <div>
+            <h1 className="text-4xl font-display uppercase tracking-widest">{comp.name}</h1>
+            <div className="flex flex-wrap space-x-4 mt-2 font-bold text-lg">
+              <p>ID: {comp.id}</p>
+              <p>|</p>
+              <p>DATASET: #{comp.datasetId}</p>
+              <p>|</p>
+              <p className="flex items-center">
+                STATUS: 
+                <RetroBadge className="ml-2 px-3 py-1 text-sm">{comp.status}</RetroBadge>
+              </p>
             </div>
           </div>
-        )}
+          
+          {comp.status === 'draft' && (
+            <RetroButton size="lg" onClick={handleRun} disabled={runMutation.isPending} className="mt-4 md:mt-0 animate-pulse">
+              <Play className="w-6 h-6 mr-2 inline" /> INITIATE RUN
+            </RetroButton>
+          )}
+          {isRunning && (
+            <div className="mt-4 md:mt-0 border-4 border-mac-black p-4 bg-mac-black text-mac-white text-center">
+              <div className="px-4 py-2 flex items-center font-display text-xl">
+                <Loader2 className="w-6 h-6 mr-3 animate-spin" /> WETTBEWERB LÄUFT
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Judges Score Overlay — floats above the header, anchored to bottom */}
+        {isRunning && <JudgesScoreReveal competition={comp} />}
       </div>
 
-      {/* Live Commentator — visible while running or just completed */}
-      {(isRunning || isCompleted) && (
-        <Commentator competition={comp} />
+      {/* ─── RUNNING STATE: Live progress only, no final results ─── */}
+      {isRunning && (
+        <>
+          <Commentator competition={comp} />
+          <RunProgressView comp={comp} activeModelProgress={activityProgress} />
+        </>
       )}
 
-      {(isCompleted || (isRunning && hasResults)) && (
+      {/* ─── COMPLETED STATE: Ceremony + results tabs ─── */}
+      {isCompleted && (
         <>
+          {/* Siegerehrung */}
+          <CeremonyHeader sortedResults={sortedResults} />
+
+          {/* Live Commentator with final results */}
+          <Commentator competition={comp} />
+
           {/* Tab Navigation */}
           <div className="flex flex-wrap gap-2 border-[3px] border-mac-black bg-mac-white p-2 retro-shadow-sm">
             {TAB_CONFIG.map((tab) => (

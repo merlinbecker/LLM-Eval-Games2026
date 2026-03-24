@@ -479,7 +479,7 @@ export const GetCompetitionResponse = zod.object({
       modelId: zod.string(),
       modelName: zod.string(),
       avgSpeed: zod.number(),
-      avgCost: zod.number(),
+      totalCost: zod.number(),
       avgQuality: zod.number(),
       totalTokens: zod.number(),
       responses: zod.array(
@@ -565,7 +565,7 @@ export const RunCompetitionResponse = zod.object({
       modelId: zod.string(),
       modelName: zod.string(),
       avgSpeed: zod.number(),
-      avgCost: zod.number(),
+      totalCost: zod.number(),
       avgQuality: zod.number(),
       totalTokens: zod.number(),
       responses: zod.array(

@@ -7,28 +7,49 @@ export function RetroWindow({
   children,
   className,
   onClose,
+  collapsible = false,
+  defaultCollapsed = false,
 }: {
   title: string;
   children: React.ReactNode;
   className?: string;
   onClose?: () => void;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+  const handleHeaderClick = () => {
+    if (collapsible) setCollapsed((c) => !c);
+  };
+
   return (
     <div className={cn("border-[3px] border-mac-black bg-mac-white retro-shadow flex flex-col relative", className)}>
-      <div className="h-8 border-b-[3px] border-mac-black title-stripes flex items-center justify-between px-1 relative">
+      <div
+        className={cn(
+          "h-8 border-b-[3px] border-mac-black title-stripes flex items-center justify-between px-1 relative",
+          collapsible && "cursor-pointer select-none",
+        )}
+        onClick={handleHeaderClick}
+      >
         {onClose && (
           <button
-            onClick={onClose}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
             className="w-6 h-6 bg-mac-white border-[3px] border-mac-black flex items-center justify-center hover:bg-mac-black hover:text-mac-white absolute left-1 z-10"
           >
             <span className="font-display leading-none -mt-1 block">x</span>
           </button>
         )}
-        <div className="bg-mac-white border-[3px] border-mac-black px-4 font-display text-sm uppercase tracking-widest absolute left-1/2 -translate-x-1/2">
+        <div className="bg-mac-white border-[3px] border-mac-black px-4 font-display text-sm uppercase tracking-widest absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
           {title}
+          {collapsible && (
+            <span className="font-display text-xs">{collapsed ? "▶" : "▼"}</span>
+          )}
         </div>
       </div>
-      <div className="p-4 flex-1 flex flex-col bg-mac-white z-0">{children}</div>
+      {!collapsed && (
+        <div className="p-4 flex-1 flex flex-col bg-mac-white z-0">{children}</div>
+      )}
     </div>
   );
 }
@@ -308,19 +329,106 @@ export function RobotIcon({ className }: { className?: string }) {
   );
 }
 
-/** CSS/SVG podium — 1st / 2nd / 3rd blocks */
+/** 1-bit medal icon — gold/silver/bronze variant */
+export function MedalIcon({ variant, className }: { variant: "gold" | "silver" | "bronze"; className?: string }) {
+  const label = variant === "gold" ? "1" : variant === "silver" ? "2" : "3";
+  // Dithering pattern differentiation: gold = solid fill, silver = horizontal lines, bronze = dots
+  const patternId = `medal-fill-${variant}`;
+  return (
+    <svg viewBox="0 0 16 20" fill="none" className={cn("inline-block", className)} aria-hidden>
+      <defs>
+        {variant === "silver" && (
+          <pattern id={patternId} width="4" height="4" patternUnits="userSpaceOnUse">
+            <rect width="4" height="4" fill="white" />
+            <line x1="0" y1="1" x2="4" y2="1" stroke="currentColor" strokeWidth="1" />
+            <line x1="0" y1="3" x2="4" y2="3" stroke="currentColor" strokeWidth="1" />
+          </pattern>
+        )}
+        {variant === "bronze" && (
+          <pattern id={patternId} width="4" height="4" patternUnits="userSpaceOnUse">
+            <rect width="4" height="4" fill="white" />
+            <rect x="1" y="1" width="1" height="1" fill="currentColor" />
+            <rect x="3" y="3" width="1" height="1" fill="currentColor" />
+          </pattern>
+        )}
+      </defs>
+      {/* ribbon */}
+      <polygon points="5,0 2,6 8,4" fill="currentColor" />
+      <polygon points="11,0 14,6 8,4" fill="currentColor" />
+      {/* medal circle */}
+      <circle cx="8" cy="12" r="7" stroke="currentColor" strokeWidth="2"
+        fill={variant === "gold" ? "currentColor" : `url(#${patternId})`} />
+      {/* number */}
+      <text x="8" y="16" textAnchor="middle" fill={variant === "gold" ? "white" : "currentColor"}
+        fontFamily="monospace" fontSize="9" fontWeight="bold">{label}</text>
+    </svg>
+  );
+}
+
+/** CSS/SVG podium with robot avatars and medals — 1-bit */
 export function PodiumIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 120 80" fill="none" className={cn("inline-block", className)} aria-hidden>
-      {/* 2nd place block */}
-      <rect x="5" y="30" width="35" height="50" fill="currentColor" stroke="currentColor" strokeWidth="2" />
-      <text x="22" y="55" textAnchor="middle" fill="white" fontFamily="monospace" fontSize="16" fontWeight="bold">2</text>
-      {/* 1st place block */}
-      <rect x="42" y="10" width="36" height="70" fill="currentColor" stroke="currentColor" strokeWidth="2" />
-      <text x="60" y="45" textAnchor="middle" fill="white" fontFamily="monospace" fontSize="20" fontWeight="bold">1</text>
-      {/* 3rd place block */}
-      <rect x="80" y="45" width="35" height="35" fill="currentColor" stroke="currentColor" strokeWidth="2" />
-      <text x="97" y="65" textAnchor="middle" fill="white" fontFamily="monospace" fontSize="14" fontWeight="bold">3</text>
+    <svg viewBox="0 0 120 100" fill="none" className={cn("inline-block", className)} aria-hidden>
+      <defs>
+        <pattern id="podium-silver-fill" width="4" height="4" patternUnits="userSpaceOnUse">
+          <rect width="4" height="4" fill="white" />
+          <line x1="0" y1="1" x2="4" y2="1" stroke="currentColor" strokeWidth="1" />
+          <line x1="0" y1="3" x2="4" y2="3" stroke="currentColor" strokeWidth="1" />
+        </pattern>
+        <pattern id="podium-bronze-fill" width="4" height="4" patternUnits="userSpaceOnUse">
+          <rect width="4" height="4" fill="white" />
+          <rect x="1" y="1" width="1" height="1" fill="currentColor" />
+          <rect x="3" y="3" width="1" height="1" fill="currentColor" />
+        </pattern>
+      </defs>
+
+      {/* ── 2nd place (left) ── */}
+      {/* medal */}
+      <polygon points="18,22 15,27 21,25.5" fill="currentColor" />
+      <polygon points="26,22 29,27 23,25.5" fill="currentColor" />
+      <circle cx="22" cy="32" r="6" stroke="currentColor" strokeWidth="1.5" fill="url(#podium-silver-fill)" />
+      <text x="22" y="35" textAnchor="middle" fill="currentColor" fontFamily="monospace" fontSize="7" fontWeight="bold">2</text>
+      {/* robot */}
+      <line x1="22" y1="38" x2="22" y2="41" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="22" cy="38" r="1" fill="currentColor" />
+      <rect x="14" y="41" width="16" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <rect x="17" y="45" width="2.5" height="2.5" fill="currentColor" />
+      <rect x="24" y="45" width="2.5" height="2.5" fill="currentColor" />
+      <line x1="18" y1="50" x2="26" y2="50" stroke="currentColor" strokeWidth="1.5" />
+      {/* pedestal */}
+      <rect x="5" y="55" width="35" height="45" fill="currentColor" stroke="currentColor" strokeWidth="2" />
+
+      {/* ── 1st place (center) ── */}
+      {/* medal */}
+      <polygon points="55,2 52,7 58,5.5" fill="currentColor" />
+      <polygon points="65,2 68,7 62,5.5" fill="currentColor" />
+      <circle cx="60" cy="12" r="7" stroke="currentColor" strokeWidth="1.5" fill="currentColor" />
+      <text x="60" y="15.5" textAnchor="middle" fill="white" fontFamily="monospace" fontSize="9" fontWeight="bold">1</text>
+      {/* robot */}
+      <line x1="60" y1="19" x2="60" y2="23" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="60" cy="19" r="1" fill="currentColor" />
+      <rect x="50" y="23" width="20" height="15" rx="1" stroke="currentColor" strokeWidth="2" fill="none" />
+      <rect x="54" y="28" width="3" height="3" fill="currentColor" />
+      <rect x="63" y="28" width="3" height="3" fill="currentColor" />
+      <line x1="55" y1="34" x2="65" y2="34" stroke="currentColor" strokeWidth="2" />
+      {/* pedestal */}
+      <rect x="42" y="40" width="36" height="60" fill="currentColor" stroke="currentColor" strokeWidth="2" />
+
+      {/* ── 3rd place (right) ── */}
+      {/* medal */}
+      <polygon points="93,32 90,37 96,35.5" fill="currentColor" />
+      <polygon points="101,32 104,37 98,35.5" fill="currentColor" />
+      <circle cx="97" cy="42" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="url(#podium-bronze-fill)" />
+      <text x="97" y="45" textAnchor="middle" fill="currentColor" fontFamily="monospace" fontSize="7" fontWeight="bold">3</text>
+      {/* robot */}
+      <line x1="97" y1="48" x2="97" y2="51" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="97" cy="48" r="1" fill="currentColor" />
+      <rect x="89" y="51" width="16" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <rect x="92" y="55" width="2.5" height="2.5" fill="currentColor" />
+      <rect x="99" y="55" width="2.5" height="2.5" fill="currentColor" />
+      <line x1="93" y1="60" x2="101" y2="60" stroke="currentColor" strokeWidth="1.5" />
+      {/* pedestal */}
+      <rect x="80" y="65" width="35" height="35" fill="currentColor" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }
