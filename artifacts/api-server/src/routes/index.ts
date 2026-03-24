@@ -5,6 +5,7 @@ import gatewaysRouter from "./gateways";
 import datasetsRouter from "./datasets";
 import competitionsRouter from "./competitions";
 import logsRouter from "./logs";
+import activitiesRouter from "./activities";
 import { sessionMiddleware } from "../middlewares/session";
 
 const router: IRouter = Router();
@@ -16,5 +17,6 @@ router.use(gatewaysRouter);
 router.use(datasetsRouter);
 router.use(competitionsRouter);
 router.use(logsRouter);
+router.use(activitiesRouter);
 
 export default router;

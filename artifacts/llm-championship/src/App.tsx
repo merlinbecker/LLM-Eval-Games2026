@@ -1,9 +1,11 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import NotFound from "@/pages/not-found";
 import { TopMenu } from "@/components/TopMenu";
 import { VaultProvider } from "@/lib/vault/vault-store";
 import { VaultGuard } from "@/components/VaultGuard";
+import { BackgroundActivityProvider } from "@/lib/background-activities";
 
 import ArenaDashboard from "@/pages/ArenaDashboard";
 import Datasets from "@/pages/Datasets";
@@ -41,10 +43,18 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <VaultGuard>
-            <TopMenu />
-            <div className="pt-16 px-4 md:px-8 min-h-screen">
-              <Router />
-            </div>
+            <BackgroundActivityProvider>
+              <TopMenu />
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  className: "border-[3px] border-mac-black font-display text-sm bg-mac-white text-mac-black retro-shadow-sm",
+                }}
+              />
+              <div className="pt-16 px-4 md:px-8 min-h-screen">
+                <Router />
+              </div>
+            </BackgroundActivityProvider>
           </VaultGuard>
         </WouterRouter>
       </QueryClientProvider>

@@ -10,7 +10,7 @@ import {
   getListCompetitionsQueryKey,
   useListConfiguredModels,
 } from "@workspace/api-client-react";
-import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge, RetroFormField } from "@/components/retro";
+import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroCombobox, RetroBadge, RetroFormField } from "@/components/retro";
 import { Bot, Swords, Gavel } from "lucide-react";
 import type { ModelSelection } from "@workspace/api-client-react";
 
@@ -225,19 +225,17 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
               </RetroSelect>
             </RetroFormField>
             <RetroFormField label="Model (List)" className="sm:col-span-2">
-              <RetroSelect
+              <RetroCombobox
+                options={models?.map(m => ({ value: m.id, label: m.name })) ?? []}
                 value={models?.some((m) => m.id === modelId) ? modelId : ""}
-                onChange={e => {
-                  const id = e.target.value;
+                onChange={(id) => {
                   setModelId(id);
                   const selected = models?.find((m) => m.id === id);
                   if (selected) setModelName(selected.name);
                 }}
                 disabled={!gatewayId || !models?.length}
-              >
-                <option value="">- OPTIONAL -</option>
-                {models?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </RetroSelect>
+                placeholder="- OPTIONAL -"
+              />
             </RetroFormField>
             <RetroFormField label="Model Identifier" className="sm:col-span-2">
               <RetroInput

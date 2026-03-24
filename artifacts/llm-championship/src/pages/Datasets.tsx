@@ -12,8 +12,7 @@ import {
   useGetDataset,
   getListDatasetsQueryKey,
   useListGateways,
-  useListGatewayModels,
-  getListGatewayModelsQueryKey
+  useListConfiguredModels,
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroSelect, RetroDialog, RetroFormField } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
@@ -42,14 +41,11 @@ export default function Datasets() {
   const anonymizeMutation = useAnonymizeDataset();
 
   const { data: gateways } = useListGateways();
+  const { data: configuredModels } = useListConfiguredModels();
   const [activeTab, setActiveTab] = useState<"list" | "upload" | "generate">("list");
   const [actionDialog, setActionDialog] = useState<{ type: "privacy" | "anonymize"; datasetId: number } | null>(null);
   const [editDatasetId, setEditDatasetId] = useState<number | null>(null);
-  const [dialogGatewayId, setDialogGatewayId] = useState("");
-  const [dialogModelId, setDialogModelId] = useState("");
-
-  const dialogGwId = Number(dialogGatewayId) || 0;
-  const { data: dialogModels } = useListGatewayModels(dialogGwId, { query: { queryKey: getListGatewayModelsQueryKey(dialogGwId), enabled: !!dialogGatewayId }});
+  const [dialogConfiguredModelId, setDialogConfiguredModelId] = useState("");
 
   const handleDelete = async (id: number) => {
     if (confirm("DELETE DATASET? THIS CANNOT BE UNDONE.")) {
@@ -60,18 +56,19 @@ export default function Datasets() {
   };
 
   const openActionDialog = (type: "privacy" | "anonymize", datasetId: number) => {
-    setDialogGatewayId("");
-    setDialogModelId("");
+    setDialogConfiguredModelId("");
     setActionDialog({ type, datasetId });
   };
 
   const handleDialogSubmit = async () => {
-    if (!actionDialog || !dialogGatewayId || !dialogModelId) return;
+    if (!actionDialog || !dialogConfiguredModelId) return;
+    const cm = configuredModels?.find(m => m.id === Number(dialogConfiguredModelId));
+    if (!cm) return;
     const { type, datasetId } = actionDialog;
     if (type === "privacy") {
-      await privacyMutation.mutateAsync({ id: datasetId, data: { gatewayId: Number(dialogGatewayId), modelId: dialogModelId } });
+      await privacyMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
     } else {
-      await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: Number(dialogGatewayId), modelId: dialogModelId } });
+      await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
     }
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     setActionDialog(null);
@@ -163,23 +160,20 @@ export default function Datasets() {
           title={actionDialog.type === "privacy" ? "PRIVACY SCAN CONFIG" : "ANONYMIZE CONFIG"}
           onClose={() => setActionDialog(null)}
         >
-          <RetroFormField label="Gateway">
-            <RetroSelect value={dialogGatewayId} onChange={(e) => { setDialogGatewayId(e.target.value); setDialogModelId(""); }}>
-              <option value="">-- SELECT GATEWAY --</option>
-              {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </RetroSelect>
-          </RetroFormField>
-          <RetroFormField label="Model">
-            <RetroSelect value={dialogModelId} onChange={(e) => setDialogModelId(e.target.value)} disabled={!dialogModels?.length}>
+          <RetroFormField label="Configured Model">
+            <RetroSelect value={dialogConfiguredModelId} onChange={(e) => setDialogConfiguredModelId(e.target.value)}>
               <option value="">-- SELECT MODEL --</option>
-              {dialogModels?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              {configuredModels?.map(m => {
+                const gw = gateways?.find(g => g.id === m.gatewayId);
+                return <option key={m.id} value={m.id}>{m.name} ({gw?.name ?? `GW #${m.gatewayId}`})</option>;
+              })}
             </RetroSelect>
           </RetroFormField>
           <div className="flex space-x-3 pt-2">
             <RetroButton 
               className="flex-1" 
               onClick={handleDialogSubmit} 
-              disabled={!dialogGatewayId || !dialogModelId || privacyMutation.isPending || anonymizeMutation.isPending}
+              disabled={!dialogConfiguredModelId || privacyMutation.isPending || anonymizeMutation.isPending}
             >
               {(privacyMutation.isPending || anonymizeMutation.isPending) ? "PROCESSING..." : actionDialog.type === "privacy" ? "START SCAN" : "ANONYMIZE"}
             </RetroButton>
@@ -353,35 +347,32 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
-  const queryClient = useQueryClient();
-  const { addDataset } = useVault();
   const mutation = useGenerateDataset();
   const { data: gateways } = useListGateways();
+  const { data: configuredModels } = useListConfiguredModels();
   
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
   const [examples, setExamples] = useState("");
   const [count, setCount] = useState(5);
-  const [gatewayId, setGatewayId] = useState("");
-  const [modelId, setModelId] = useState("");
-
-  const gwId = Number(gatewayId) || 0;
-  const { data: models } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!gatewayId }});
+  const [configuredModelId, setConfiguredModelId] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await mutation.mutateAsync({ 
+    const cm = configuredModels?.find(m => m.id === Number(configuredModelId));
+    if (!cm) return;
+    await mutation.mutateAsync({ 
       data: { 
         name, 
         topic, 
         numberOfItems: count,
         ...(examples.trim() ? { examples: examples.trim() } : {}),
-        gatewayId: Number(gatewayId),
-        modelId
+        gatewayId: cm.gatewayId,
+        modelId: cm.modelId
       } 
     });
-    addDataset(toVaultDataset(result));
-    queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
+    // Dataset generation now runs in background — the BackgroundActivityProvider
+    // will show a toast and invalidate queries when done.
     onSuccess();
   };
 
@@ -408,25 +399,20 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
         <div className="border-[3px] border-mac-black p-4 bg-dither">
           <div className="bg-mac-white p-4 text-mac-black border-[3px] border-mac-black">
             <h4 className="font-display flex items-center mb-4"><BrainCircuit className="w-5 h-5 mr-2"/> Generator Model Config</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <RetroFormField label="Gateway">
-                <RetroSelect required value={gatewayId} onChange={(e) => setGatewayId(e.target.value)}>
-                  <option value="">-- SELECT --</option>
-                  {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </RetroSelect>
-              </RetroFormField>
-              <RetroFormField label="Model">
-                <RetroSelect required value={modelId} onChange={(e) => setModelId(e.target.value)} disabled={!models?.length}>
-                  <option value="">-- SELECT --</option>
-                  {models?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </RetroSelect>
-              </RetroFormField>
-            </div>
+            <RetroFormField label="Configured Model">
+              <RetroSelect required value={configuredModelId} onChange={(e) => setConfiguredModelId(e.target.value)}>
+                <option value="">-- SELECT MODEL --</option>
+                {configuredModels?.map(m => {
+                  const gw = gateways?.find(g => g.id === m.gatewayId);
+                  return <option key={m.id} value={m.id}>{m.name} ({gw?.name ?? `GW #${m.gatewayId}`})</option>;
+                })}
+              </RetroSelect>
+            </RetroFormField>
           </div>
         </div>
 
         <RetroButton type="submit" disabled={mutation.isPending} size="lg" className="w-full">
-          {mutation.isPending ? "SYNTHESIZING..." : "GENERATE DATASET"}
+          {mutation.isPending ? "STARTING..." : "GENERATE DATASET"}
         </RetroButton>
       </form>
     </RetroWindow>

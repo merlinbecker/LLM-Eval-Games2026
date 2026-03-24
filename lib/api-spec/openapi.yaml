@@ -24,6 +24,8 @@ tags:
     description: Model listing from gateways
   - name: configured-models
     description: Pre-configured model selections
+  - name: activities
+    description: Background activity tracking
 
 paths:
   /healthz:
@@ -374,7 +376,7 @@ paths:
     post:
       operationId: generateDataset
       tags: [datasets]
-      summary: Generate a test dataset using an LLM
+      summary: Generate a test dataset using an LLM (runs in background)
       requestBody:
         required: true
         content:
@@ -382,12 +384,12 @@ paths:
             schema:
               $ref: "#/components/schemas/GenerateDatasetRequest"
       responses:
-        "201":
-          description: Generated dataset
+        "202":
+          description: Dataset generation started in background
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Dataset"
+                $ref: "#/components/schemas/BackgroundJobAccepted"
 
   /competitions:
     get:
@@ -501,6 +503,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessMessage"
+
+  /activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      summary: List all background activities for the current session
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+
+  /activities/{id}:
+    get:
+      operationId: getActivity
+      tags: [activities]
+      summary: Get a specific background activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+
+  /activities/{id}/ack:
+    post:
+      operationId: acknowledgeActivity
+      tags: [activities]
+      summary: Acknowledge (mark as read) a completed activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
 
 components:
   schemas:
@@ -969,3 +1024,49 @@ components:
         - responseBody
         - durationMs
         - error
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [competition_run, dataset_generate]
+        status:
+          type: string
+          enum: [running, completed, error]
+        title:
+          type: string
+        progress:
+          type: string
+        resultId:
+          type: integer
+        error:
+          type: string
+        acknowledged:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - status
+        - title
+        - acknowledged
+        - createdAt
+
+    BackgroundJobAccepted:
+      type: object
+      properties:
+        activityId:
+          type: integer
+        message:
+          type: string
+      required:
+        - activityId
+        - message

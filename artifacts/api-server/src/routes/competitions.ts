@@ -121,12 +121,22 @@ router.post("/competitions/:id/run", (req, res) => {
     return;
   }
 
-  const running = store.updateCompetition(sessionId, id, { status: "running", results: [] });
-  res.json(competitionToJson(running!));
+  const activity = store.createActivity(sessionId, {
+    type: "competition_run",
+    title: `Run: ${competition.name}`,
+  });
 
-  runCompetitionAsync(sessionId, id, competition, dataset).catch((err) => {
+  const running = store.updateCompetition(sessionId, id, { status: "running", results: [] });
+  res.json({ ...competitionToJson(running!), activityId: activity.id });
+
+  runCompetitionAsync(sessionId, id, competition, dataset, activity.id).catch((err) => {
     logger.error({ err, competitionId: id }, "Competition run failed");
     store.updateCompetition(sessionId, id, { status: "error" });
+    store.updateActivity(sessionId, activity.id, {
+      status: "error",
+      error: (err as Error).message,
+      completedAt: new Date().toISOString(),
+    });
   });
 });
 
@@ -139,6 +149,7 @@ async function runCompetitionAsync(
   id: number,
   competition: Competition,
   dataset: { content: string },
+  activityId: number,
 ): Promise<void> {
   const dataItems = parseMarkdownItems(dataset.content);
   const contestants: ModelSel[] = competition.contestantModels;
@@ -167,6 +178,9 @@ async function runCompetitionAsync(
 
     for (let i = 0; i < dataItems.length; i++) {
       const item = dataItems[i];
+      store.updateActivity(sessionId, activityId, {
+        progress: `${contestant.modelName}: item ${i + 1}/${dataItems.length}`,
+      });
       try {
         const result = await chatCompletion(
           { type: gw.type, baseUrl: gw.baseUrl, apiKey: gw.apiKey },
@@ -266,6 +280,12 @@ async function runCompetitionAsync(
   const finalResults: CompetitionResultEntry[] = rawResults.filter((r): r is CompetitionResultEntry => r !== null);
 
   store.updateCompetition(sessionId, id, { status: "completed", results: finalResults });
+  store.updateActivity(sessionId, activityId, {
+    status: "completed",
+    progress: `${finalResults.length} models evaluated`,
+    resultId: id,
+    completedAt: new Date().toISOString(),
+  });
 }
 
 function buildResultEntry(contestant: ModelSel, responses: ModelResponseEntry[]): CompetitionResultEntry {

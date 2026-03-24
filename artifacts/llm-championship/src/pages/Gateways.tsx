@@ -12,7 +12,7 @@ import {
   useDeleteConfiguredModel,
   getListConfiguredModelsQueryKey,
 } from "@workspace/api-client-react";
-import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect, RetroFormField } from "@/components/retro";
+import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect, RetroCombobox, RetroFormField } from "@/components/retro";
 import { Server, Trash2, Bot } from "lucide-react";
 import type { CreateGatewayType } from "@workspace/api-client-react";
 import { useVault } from "@/lib/vault/vault-store";
@@ -194,19 +194,17 @@ export default function Gateways() {
                 </RetroSelect>
               </RetroFormField>
               <RetroFormField label="Model (from List)">
-                <RetroSelect
+                <RetroCombobox
+                  options={gatewayModels?.map(m => ({ value: m.id, label: m.name })) ?? []}
                   value={gatewayModels?.some(m => m.id === selectedModelId) ? selectedModelId : ""}
-                  onChange={e => {
-                    const id = e.target.value;
+                  onChange={(id) => {
                     setSelectedModelId(id);
                     const sel = gatewayModels?.find(m => m.id === id);
                     if (sel) setModelDisplayName(sel.name);
                   }}
                   disabled={!selectedGatewayId || !gatewayModels?.length}
-                >
-                  <option value="">-- SELECT MODEL --</option>
-                  {gatewayModels?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </RetroSelect>
+                  placeholder="-- SELECT MODEL --"
+                />
               </RetroFormField>
               <RetroFormField label="Model Identifier">
                 <RetroInput

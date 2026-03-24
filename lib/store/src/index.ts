@@ -9,6 +9,8 @@ import type {
   LlmLog,
   ConfiguredModel,
   CreateConfiguredModel,
+  Activity,
+  CreateActivity,
 } from "./types";
 
 declare function setInterval(callback: () => void, ms: number): unknown;
@@ -19,8 +21,9 @@ interface SessionStore {
   datasets: Map<number, Dataset>;
   competitions: Map<number, Competition>;
   configuredModels: Map<number, ConfiguredModel>;
+  activities: Map<number, Activity>;
   llmLogs: LlmLog[];
-  counters: { gateways: number; datasets: number; competitions: number; llmLogs: number; configuredModels: number };
+  counters: { gateways: number; datasets: number; competitions: number; llmLogs: number; configuredModels: number; activities: number };
   lastAccess: number;
 }
 
@@ -82,8 +85,9 @@ class InMemoryStore {
       datasets: new Map(),
       competitions: new Map(),
       configuredModels: new Map(),
+      activities: new Map(),
       llmLogs: [],
-      counters: { gateways: 1, datasets: 1, competitions: 1, llmLogs: 1, configuredModels: 1 },
+      counters: { gateways: 1, datasets: 1, competitions: 1, llmLogs: 1, configuredModels: 1, activities: 1 },
       lastAccess: Date.now(),
     };
     this.sessions.set(sessionId, session);
@@ -254,6 +258,43 @@ class InMemoryStore {
     if (session) session.llmLogs = [];
   }
 
+  // --- Activities ---
+
+  listActivities(sessionId: string): Activity[] {
+    return Array.from(this.getSession(sessionId)?.activities.values() ?? []);
+  }
+
+  getActivity(sessionId: string, id: number): Activity | undefined {
+    return this.getSession(sessionId)?.activities.get(id);
+  }
+
+  createActivity(sessionId: string, data: CreateActivity): Activity {
+    const session = this.requireSession(sessionId);
+    const id = session.counters.activities++;
+    const activity: Activity = {
+      id,
+      type: data.type,
+      status: "running",
+      title: data.title,
+      acknowledged: false,
+      createdAt: new Date().toISOString(),
+    };
+    session.activities.set(id, activity);
+    return activity;
+  }
+
+  updateActivity(sessionId: string, id: number, data: Partial<Omit<Activity, "id">>): Activity | undefined {
+    const existing = this.getSession(sessionId)?.activities.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...data };
+    this.sessions.get(sessionId)!.activities.set(id, updated);
+    return updated;
+  }
+
+  acknowledgeActivity(sessionId: string, id: number): Activity | undefined {
+    return this.updateActivity(sessionId, id, { acknowledged: true });
+  }
+
   // --- Bulk import (for session sync) ---
 
   private bulkImport<T extends { id: number }>(
@@ -284,5 +325,5 @@ class InMemoryStore {
 
 export const store = new InMemoryStore();
 
-export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition, LlmLog, ConfiguredModel, CreateConfiguredModel };
+export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition, LlmLog, ConfiguredModel, CreateConfiguredModel, Activity, CreateActivity };
 export type { JudgeScoreEntry, ModelResponseEntry, CompetitionResultEntry, ModelSelection } from "./types";

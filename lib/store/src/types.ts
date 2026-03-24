@@ -96,6 +96,24 @@ export interface CreateCompetition {
   judgeModels: ModelSelection[];
 }
 
+export interface Activity {
+  id: number;
+  type: "competition_run" | "dataset_generate";
+  status: "running" | "completed" | "error";
+  title: string;
+  progress?: string;
+  resultId?: number;
+  error?: string;
+  acknowledged: boolean;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface CreateActivity {
+  type: "competition_run" | "dataset_generate";
+  title: string;
+}
+
 export interface LlmLog {
   id: number;
   timestamp: string;

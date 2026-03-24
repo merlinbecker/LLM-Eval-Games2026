@@ -15,6 +15,7 @@ import {
   GenerateDatasetBody,
 } from "@workspace/api-zod";
 import { chatCompletion } from "../lib/llm-gateway";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -202,16 +203,42 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
 
 router.post("/datasets/generate", async (req, res) => {
   const data = GenerateDatasetBody.parse(req.body);
+  const sessionId = req.sessionId!;
 
-  const gateway = store.getGateway(req.sessionId!, data.gatewayId);
+  const gateway = store.getGateway(sessionId, data.gatewayId);
   if (!gateway) {
     res.status(404).json({ error: "Gateway not found" });
     return;
   }
 
+  const activity = store.createActivity(sessionId, {
+    type: "dataset_generate",
+    title: `Generate: ${data.name}`,
+  });
+
+  res.status(202).json({ activityId: activity.id, message: "Dataset generation started" });
+
+  generateDatasetAsync(sessionId, activity.id, data, gateway).catch((err) => {
+    logger.error({ err, activityId: activity.id }, "Dataset generation failed");
+    store.updateActivity(sessionId, activity.id, {
+      status: "error",
+      error: (err as Error).message,
+      completedAt: new Date().toISOString(),
+    });
+  });
+});
+
+async function generateDatasetAsync(
+  sessionId: string,
+  activityId: number,
+  data: { name: string; topic: string; numberOfItems: number; examples?: string; gatewayId: number; modelId: string },
+  gateway: { type: string; baseUrl: string; apiKey: string },
+): Promise<void> {
   const examplesSection = data.examples
     ? `\n\nHere are example items to guide the style, format, and complexity:\n\n${data.examples}\n\nGenerate new items following the same pattern, style, and level of detail as the examples above.`
     : "";
+
+  store.updateActivity(sessionId, activityId, { progress: "Generating content..." });
 
   const result = await chatCompletion(
     { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
@@ -226,15 +253,20 @@ router.post("/datasets/generate", async (req, res) => {
         content: `Generate ${data.numberOfItems} test items for: ${data.topic}`,
       },
     ],
-    req.sessionId,
+    sessionId,
   );
 
-  const dataset = store.createDataset(req.sessionId!, {
+  const dataset = store.createDataset(sessionId, {
     name: data.name,
     content: result.content,
   });
 
-  res.status(201).json(datasetToJson(dataset));
-});
+  store.updateActivity(sessionId, activityId, {
+    status: "completed",
+    progress: "Done",
+    resultId: dataset.id,
+    completedAt: new Date().toISOString(),
+  });
+}
 
 export default router;

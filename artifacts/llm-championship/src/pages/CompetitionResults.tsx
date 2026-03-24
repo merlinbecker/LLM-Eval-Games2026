@@ -6,6 +6,7 @@ import {
   getGetCompetitionQueryKey
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroBadge, RobotIcon } from "@/components/retro";
+import { Commentator } from "@/components/Commentator";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { Play, Loader2, Award, Zap, Coins } from "lucide-react";
 import type { CompetitionResult } from "@workspace/api-client-react";
@@ -110,6 +111,11 @@ export default function CompetitionResults() {
           </div>
         )}
       </div>
+
+      {/* Live Commentator — visible while running or just completed */}
+      {(isRunning || isCompleted) && (
+        <Commentator competition={comp} />
+      )}
 
       {(isCompleted || (isRunning && hasResults)) && (
         <>

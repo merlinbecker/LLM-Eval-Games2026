@@ -248,6 +248,40 @@ export interface LlmLog {
   error: string | null;
 }
 
+export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
+
+export const ActivityType = {
+  competition_run: "competition_run",
+  dataset_generate: "dataset_generate",
+} as const;
+
+export type ActivityStatus =
+  (typeof ActivityStatus)[keyof typeof ActivityStatus];
+
+export const ActivityStatus = {
+  running: "running",
+  completed: "completed",
+  error: "error",
+} as const;
+
+export interface Activity {
+  id: number;
+  type: ActivityType;
+  status: ActivityStatus;
+  title: string;
+  progress?: string;
+  resultId?: number;
+  error?: string;
+  acknowledged: boolean;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface BackgroundJobAccepted {
+  activityId: number;
+  message: string;
+}
+
 export type UploadDatasetBody = {
   /** A .md (Markdown) file */
   file: Blob;

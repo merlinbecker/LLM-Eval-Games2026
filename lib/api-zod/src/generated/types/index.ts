@@ -6,7 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./activity";
+export * from "./activityStatus";
+export * from "./activityType";
 export * from "./anonymizeRequest";
+export * from "./backgroundJobAccepted";
 export * from "./competition";
 export * from "./competitionDetail";
 export * from "./competitionDetailStatus";

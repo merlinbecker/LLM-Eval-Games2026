@@ -261,7 +261,7 @@ export const AnonymizeDatasetResponse = zod.object({
 });
 
 /**
- * @summary Generate a test dataset using an LLM
+ * @summary Generate a test dataset using an LLM (runs in background)
  */
 export const GenerateDatasetBody = zod.object({
   name: zod.string(),
@@ -463,4 +463,61 @@ export const ListLlmLogsResponse = zod.array(ListLlmLogsResponseItem);
  */
 export const ClearLlmLogsResponse = zod.object({
   message: zod.string(),
+});
+
+/**
+ * @summary List all background activities for the current session
+ */
+export const ListActivitiesResponseItem = zod.object({
+  id: zod.number(),
+  type: zod.enum(["competition_run", "dataset_generate"]),
+  status: zod.enum(["running", "completed", "error"]),
+  title: zod.string(),
+  progress: zod.string().optional(),
+  resultId: zod.number().optional(),
+  error: zod.string().optional(),
+  acknowledged: zod.boolean(),
+  createdAt: zod.date(),
+  completedAt: zod.date().optional(),
+});
+export const ListActivitiesResponse = zod.array(ListActivitiesResponseItem);
+
+/**
+ * @summary Get a specific background activity
+ */
+export const GetActivityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetActivityResponse = zod.object({
+  id: zod.number(),
+  type: zod.enum(["competition_run", "dataset_generate"]),
+  status: zod.enum(["running", "completed", "error"]),
+  title: zod.string(),
+  progress: zod.string().optional(),
+  resultId: zod.number().optional(),
+  error: zod.string().optional(),
+  acknowledged: zod.boolean(),
+  createdAt: zod.date(),
+  completedAt: zod.date().optional(),
+});
+
+/**
+ * @summary Acknowledge (mark as read) a completed activity
+ */
+export const AcknowledgeActivityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AcknowledgeActivityResponse = zod.object({
+  id: zod.number(),
+  type: zod.enum(["competition_run", "dataset_generate"]),
+  status: zod.enum(["running", "completed", "error"]),
+  title: zod.string(),
+  progress: zod.string().optional(),
+  resultId: zod.number().optional(),
+  error: zod.string().optional(),
+  acknowledged: zod.boolean(),
+  createdAt: zod.date(),
+  completedAt: zod.date().optional(),
 });

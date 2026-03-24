@@ -1,4 +1,4 @@
----
+ja---
 date: März 2026
 title: "LLM Championship — arc42 Architekturdokumentation"
 ---
@@ -133,6 +133,7 @@ C4Context
 | **SSRF-Schutzschicht**                   | Gateway-URLs werden auf HTTPS und öffentliche IPs validiert; DNS-Auflösung wird auf private IP-Bereiche geprüft  |
 | **Retro-UI-Komponentenbibliothek**       | Custom `Retro*`-Komponenten kapseln die Macintosh-System-5-Ästhetik einheitlich über alle Seiten                 |
 | **React Query mit Polling**              | Automatisches Polling (2s) für laufende Wettbewerbe ermöglicht Live-Updates ohne WebSockets                      |
+| **Background-Activity-System**           | Langläufige Operationen (Wettbewerbe, Dataset-Generierung) laufen async im Backend; Frontend pollt Activity-Status alle 3s und zeigt Toast-Notifications bei Abschluss; Nutzer kann frei navigieren |
 
 ---
 
@@ -219,6 +220,8 @@ C4Component
 
         Component(logsRoute, "Logs Router", "express.Router", "GET /logs — Alle LLM-Call-Logs abrufen; DELETE /logs — Logs löschen")
 
+        Component(activitiesRoute, "Activities Router", "express.Router", "GET /activities — Alle Background-Activities auflisten; GET /activities/:id — Einzelne Activity; POST /activities/:id/ack — Als gelesen markieren")
+
         Component(llmGateway, "LLM Gateway Module", "TypeScript", "chatCompletion(), listModelsFromGateway(), validateGatewayUrl() — Sichere LLM-Kommunikation mit SSRF-Schutz und automatischem Call-Logging")
 
         Component(logger, "Logger", "Pino", "Strukturiertes Logging; JSON (Prod) / Pretty-Print (Dev); redaktiert Auth-Header")
@@ -234,6 +237,9 @@ C4Component
     Rel(app, datasetsRoute, "Routet zu", "(geschützt)")
     Rel(app, competitionsRoute, "Routet zu", "(geschützt)")
     Rel(app, logsRoute, "Routet zu", "(geschützt)")
+    Rel(app, activitiesRoute, "Routet zu", "(geschützt)")
+
+    Rel(activitiesRoute, storeLib, "Liest/Schreibt", "session-scoped Activities")
 
     Rel(gatewaysRoute, llmGateway, "Nutzt", "Modelle auflisten")
     Rel(datasetsRoute, llmGateway, "Nutzt", "Privacy-Check, Anonymisierung, Generierung")
@@ -262,8 +268,9 @@ C4Component
 | **Health Router**       | `GET /healthz` → `{ status: "ok" }`                                                                                               |
 | **Gateways Router**     | `GET/POST /gateways`, `DELETE /gateways/:id`, `GET /gateways/:id/models`; validiert und speichert Gateway-Konfigurationen          |
 | **Datasets Router**     | `GET/POST /datasets`, `POST /datasets/upload` (Multer, 5MB, .md), `DELETE /datasets/:id`, Privacy-Check/Anonymisierung/Generierung |
-| **Competitions Router** | `GET/POST /competitions`, `GET/DELETE /competitions/:id`, `POST /competitions/:id/run` (Evaluations-Engine)                        |
+| **Competitions Router** | `GET/POST /competitions`, `GET/DELETE /competitions/:id`, `POST /competitions/:id/run` (Evaluations-Engine); erstellt Activity bei Run-Start mit Progress-Tracking |
 | **Logs Router**         | `GET /logs` — LLM-Call-Logs der aktuellen Session abrufen (neueste zuerst); `DELETE /logs` — alle Logs löschen                    |
+| **Activities Router**   | `GET /activities` — alle Background-Activities auflisten; `GET /activities/:id` — einzelne Activity; `POST /activities/:id/ack` — als gelesen markieren |
 | **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; automatisches Call-Logging (Request/Response) in den Session-Store |
 | **Logger**              | Pino-Logger; strukturiertes JSON-Logging in Produktion; Pretty-Print in Entwicklung; Redaktion sensibler Header                    |
 
@@ -277,11 +284,13 @@ C4Component
 
     Container_Boundary(frontend, "LLM Championship Frontend (React 19)") {
 
-        Component(appShell, "App Shell", "React, Wouter, React Query", "VaultProvider, QueryClientProvider, VaultGuard-Wrapper, Router-Setup, TopMenu-Layout")
+        Component(appShell, "App Shell", "React, Wouter, React Query", "VaultProvider, QueryClientProvider, VaultGuard-Wrapper, BackgroundActivityProvider, Toaster (sonner), Router-Setup, TopMenu-Layout")
 
         Component(vaultSystem, "Vault-System", "Web Crypto API, React Context", "VaultGuard (Login/Unlock-UI), VaultStore (State-Management), Crypto (AES-256-GCM, PBKDF2), Sync (Server-Session)")
 
-        Component(topMenu, "TopMenu", "React", "Navigationsleiste im Retro-Stil mit Links, Vault-Lock, Export, Sync-Indikator")
+        Component(bgActivities, "Background-Activity-System", "React Context, sonner", "BackgroundActivityProvider: Pollt GET /api/activities alle 3s; erkennt Status-Änderungen; zeigt Toast-Notifications bei Abschluss/Fehler; invalidiert Queries automatisch")
+
+        Component(topMenu, "TopMenu", "React", "Navigationsleiste im Retro-Stil mit Links, Vault-Lock, Export, Sync-Indikator, ActivityDropdown (Spinner + Badge für laufende Jobs)")
 
         Component(arenaDashboard, "Arena Dashboard", "React", "Hero-Bereich, Feature-Karten, aktuelle Wettbewerbe als Tabelle")
 
@@ -301,7 +310,10 @@ C4Component
     Container(apiClient, "API Client React", "React Query Hooks")
 
     Rel(appShell, vaultSystem, "Wraps")
+    Rel(appShell, bgActivities, "Wraps")
     Rel(appShell, topMenu, "Rendert")
+    Rel(topMenu, bgActivities, "useBackgroundActivities()")
+    Rel(bgActivities, apiClient, "useListActivities(), useAcknowledgeActivity()")
     Rel(appShell, arenaDashboard, "Route: /")
     Rel(appShell, gatewaysPage, "Route: /gateways")
     Rel(appShell, datasetsPage, "Route: /datasets")
@@ -337,9 +349,9 @@ C4Component
 
     Container_Boundary(storeLib, "Store Library (@workspace/store)") {
 
-        Component(storeIndex, "InMemoryStore", "TypeScript", "Singleton-Klasse mit session-scoped Maps; CRUD für Gateways, Datasets, Competitions; Bulk-Import; Cleanup-Timer (5min Intervall, 2h TTL)")
+        Component(storeIndex, "InMemoryStore", "TypeScript", "Singleton-Klasse mit session-scoped Maps; CRUD für Gateways, Datasets, Competitions, Activities; Bulk-Import; Cleanup-Timer (5min Intervall, 2h TTL)")
 
-        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces: Gateway, Dataset, Competition, LlmLog, CreateGateway, CreateDataset, CreateCompetition, ModelSelection, CompetitionResultEntry")
+        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces: Gateway, Dataset, Competition, Activity, LlmLog, CreateGateway, CreateDataset, CreateCompetition, CreateActivity, ModelSelection, CompetitionResultEntry")
     }
 
     Container(apiServer, "API Server", "Express 5")
@@ -356,8 +368,9 @@ C4Component
 | **Dataset**         | `id`, `name`, `content` (Markdown), `systemPrompt`, `privacyStatus`, `privacyReport`, `createdAt`        |
 | **Competition**     | `id`, `name`, `datasetId`, `systemPrompt`, `status`, `contestantModels`, `judgeModels`, `results`, `createdAt` |
 | **LlmLog**          | `id`, `timestamp`, `gatewayType`, `modelId`, `requestUrl`, `requestBody`, `responseStatus`, `responseBody`, `durationMs`, `error` |
+| **Activity**        | `id`, `type` (competition_run/dataset_generate), `status` (running/completed/error), `title`, `progress?`, `resultId?`, `error?`, `acknowledged`, `createdAt`, `completedAt?` |
 
-Jede Session hat eigene Counter (`nextId`) und Maps; Sessions werden nach 2 Stunden Inaktivität automatisch bereinigt. LLM-Logs werden als Array pro Session gespeichert (max. 500 Einträge, FIFO).
+Jede Session hat eigene Counter (`nextId`) und Maps; Sessions werden nach 2 Stunden Inaktivität automatisch bereinigt. LLM-Logs werden als Array pro Session gespeichert (max. 500 Einträge, FIFO). Activities tracken den Status langläufiger Hintergrund-Operationen und können vom Frontend als gelesen markiert werden.
 
 ---
 
@@ -466,11 +479,16 @@ sequenceDiagram
 
     User->>FE: "INITIATE RUN" klicken
     FE->>API: POST /api/competitions/:id/run
+    API->>Store: createActivity(type='competition_run', title)
     API->>Store: updateCompetition(status='running')
+    API-->>FE: CompetitionDetail + activityId
+
+    Note over FE: Nutzer kann frei navigieren<br/>Activity-Polling alle 3s
 
     loop Für jedes Teilnehmer-Modell
         API->>Store: getDataset(sessionId, datasetId)
         loop Für jedes Test-Item im Datensatz
+            API->>Store: updateActivity(progress)
             API->>LLM: POST /chat/completions (System-Prompt + Item)
             LLM-->>API: Response + Token-Nutzung
             loop Für jeden Richter (3-5 Modelle)
@@ -482,16 +500,22 @@ sequenceDiagram
     end
 
     API->>Store: updateCompetition(status='completed', results)
+    API->>Store: updateActivity(status='completed', resultId)
 
-    Note over FE: Polling alle 2s während status='running'
+    Note over FE: BackgroundActivityProvider erkennt<br/>Status-Änderung → Toast-Notification
+    FE->>FE: Query-Invalidierung (Competitions-Liste)
+    FE-->>User: Toast: "Wettbewerb abgeschlossen"
     FE-->>User: Podium, Radar-Chart, Bewertungsprotokolle
 ```
 
 **Besonderheiten:**
-- Die Evaluation läuft asynchron im API-Server; das Frontend pollt alle 2 Sekunden
+- Die Evaluation läuft asynchron im API-Server; `BackgroundActivityProvider` pollt Activity-Status alle 3 Sekunden
+- Zusätzlich pollt `CompetitionResults` die Competition-Daten alle 2 Sekunden für partielle Ergebnis-Updates
 - Teilnehmer-Modelle werden mit `max concurrency = 5` parallel evaluiert
 - Richter-Bewertungen laufen ebenfalls parallel (max 5)
 - Zwischenergebnisse werden nach jedem Item im In-Memory-Store aktualisiert (partielle Updates)
+- Activity-Progress zeigt aktuelles Modell und Item-Fortschritt (z.B. "ModelXY: item 3/10")
+- Bei Fehler: Activity-Status wird auf `error` gesetzt, Toast-Notification mit Fehlermeldung
 - Kostenschätzung: `input: $0.001/1k Tokens`, `output: $0.002/1k Tokens`
 
 ---
@@ -566,6 +590,41 @@ sequenceDiagram
         API->>Store: updateDataset(content, privacyStatus='anonymized')
         API-->>FE: Dataset { privacyStatus: 'anonymized' }
     end
+```
+
+## 6.5 Szenario: Datensatz asynchron generieren
+
+Datensatz-Generierung läuft als Background-Job; der Benutzer kann währenddessen frei navigieren.
+
+```mermaid
+sequenceDiagram
+    actor User as Benutzer
+    participant FE as Frontend SPA
+    participant BGP as BackgroundActivityProvider
+    participant API as API Server
+    participant Store as In-Memory Store
+    participant LLM as LLM Gateway API
+
+    User->>FE: Generierungs-Parameter eingeben
+    FE->>API: POST /api/datasets/generate
+    API->>Store: createActivity(type='dataset_generate', title)
+    API-->>FE: 202 Accepted { activityId, message }
+    FE-->>User: Toast: "Generierung gestartet"
+
+    Note over User: Nutzer navigiert frei<br/>(z.B. zu Wettbewerben)
+
+    API->>LLM: POST /chat/completions (Generierungs-Prompt)
+    LLM-->>API: Generierter Datensatz (Markdown)
+    API->>Store: createDataset(sessionId, parsedContent)
+    API->>Store: updateActivity(status='completed', resultId=datasetId)
+
+    loop Alle 3 Sekunden
+        BGP->>API: GET /api/activities
+        API-->>BGP: Activity[] (status-Änderung erkannt)
+    end
+
+    BGP->>FE: Toast-Notification: "Datensatz generiert"
+    BGP->>FE: Automatische Query-Invalidierung (Datasets-Liste)
 ```
 
 ---
@@ -694,6 +753,26 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 - Response-Serialisierung: nur `statusCode`
 - Sensible Daten (`authorization`, `cookie`) werden automatisch redaktiert
 - **LLM-Call-Logging:** Jeder `chatCompletion()`-Aufruf wird automatisch im session-scoped In-Memory-Store geloggt (Request-Body, Response-Body, Status, Dauer, Fehler). Logs sind über `GET /api/logs` abrufbar und über die Logs-Seite im Frontend einsehbar. Pro Session werden maximal 500 Logs gespeichert (älteste werden verworfen). Die Logs-Seite bietet expandierbare Einträge mit einklappbarer, pretty-printed JSON-Ansicht und Auto-Refresh (5 Sekunden).
+
+## 8.7 Background-Activity-Management
+
+Langläufige Operationen (Wettbewerb-Evaluation, Datensatz-Generierung) werden als **Background Activities** verwaltet, damit der Benutzer die Anwendung frei weiternutzen kann.
+
+**Backend-Pattern:**
+- Bei Start einer langläufigen Operation wird ein `Activity`-Objekt im In-Memory-Store erstellt (`status: 'running'`)
+- Der Endpunkt antwortet sofort (z.B. `202 Accepted`) und führt die Operation asynchron fort
+- Fortschritt wird im Activity-Objekt aktualisiert (`progress`-Feld, z.B. "ModelXY: item 3/10")
+- Bei Abschluss: `status: 'completed'`, `resultId` verweist auf das Ergebnis (Competition/Dataset-ID)
+- Bei Fehler: `status: 'error'`, `error`-Feld enthält die Fehlermeldung
+- REST-Endpunkte: `GET /api/activities` (alle), `GET /api/activities/:id` (einzeln), `POST /api/activities/:id/ack` (Kenntnisnahme)
+
+**Frontend-Pattern:**
+- `BackgroundActivityProvider` (React Context) pollt `GET /api/activities` alle 3 Sekunden
+- Vergleicht vorherigen mit aktuellem Zustand; erkennt Statusänderungen (running → completed/error)
+- Feuert **sonner**-Toast-Notifications bei Statuswechsel
+- Automatische **Query-Invalidierung** (TanStack React Query) für betroffene Ressourcen (Datasets, Competitions)
+- `ActivityDropdown` in der `TopMenu`-Leiste zeigt laufende/abgeschlossene Activities mit Badge-Counter
+- Benutzer kann einzelne Activities als „zur Kenntnis genommen" markieren (`acknowledge`)
 
 ---
 
@@ -836,3 +915,5 @@ mindmap
 | **React Query**          | Bibliothek für serverseitigen Zustandsmanagement in React; Caching, Refetching, Mutations                           |
 | **Wouter**               | Minimalistischer React-Router (~1.5kB); Alternative zu React Router                                                 |
 | **Retro-UI**             | UI-Designsystem im Stil des Macintosh System 5 (ca. 1985): 1-bit Monochrom, Pixel-Fonts, Dithering                 |
+| **Activity**             | Background-Job-Tracking-Objekt mit Status (`running`/`completed`/`error`), Fortschritt und Ergebnis-Referenz         |
+| **Background Job**       | Langläufige Operation (Wettbewerb-Evaluation, Datensatz-Generierung), die asynchron im Backend läuft und über eine Activity getrackt wird |

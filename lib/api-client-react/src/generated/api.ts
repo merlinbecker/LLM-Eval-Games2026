@@ -17,7 +17,9 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  Activity,
   AnonymizeRequest,
+  BackgroundJobAccepted,
   Competition,
   CompetitionDetail,
   ConfiguredModel,
@@ -1553,7 +1555,7 @@ export const useAnonymizeDataset = <
 };
 
 /**
- * @summary Generate a test dataset using an LLM
+ * @summary Generate a test dataset using an LLM (runs in background)
  */
 export const getGenerateDatasetUrl = () => {
   return `/api/datasets/generate`;
@@ -1562,8 +1564,8 @@ export const getGenerateDatasetUrl = () => {
 export const generateDataset = async (
   generateDatasetRequest: GenerateDatasetRequest,
   options?: RequestInit,
-): Promise<Dataset> => {
-  return customFetch<Dataset>(getGenerateDatasetUrl(), {
+): Promise<BackgroundJobAccepted> => {
+  return customFetch<BackgroundJobAccepted>(getGenerateDatasetUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1616,7 +1618,7 @@ export type GenerateDatasetMutationBody = BodyType<GenerateDatasetRequest>;
 export type GenerateDatasetMutationError = ErrorType<unknown>;
 
 /**
- * @summary Generate a test dataset using an LLM
+ * @summary Generate a test dataset using an LLM (runs in background)
  */
 export const useGenerateDataset = <
   TError = ErrorType<unknown>,
@@ -2206,4 +2208,250 @@ export const useClearLlmLogs = <
   TContext
 > => {
   return useMutation(getClearLlmLogsMutationOptions(options));
+};
+
+/**
+ * @summary List all background activities for the current session
+ */
+export const getListActivitiesUrl = () => {
+  return `/api/activities`;
+};
+
+export const listActivities = async (
+  options?: RequestInit,
+): Promise<Activity[]> => {
+  return customFetch<Activity[]>(getListActivitiesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListActivitiesQueryKey = () => {
+  return [`/api/activities`] as const;
+};
+
+export const getListActivitiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listActivities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listActivities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListActivitiesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivities>>> = ({
+    signal,
+  }) => listActivities({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listActivities>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListActivitiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listActivities>>
+>;
+export type ListActivitiesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all background activities for the current session
+ */
+
+export function useListActivities<
+  TData = Awaited<ReturnType<typeof listActivities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listActivities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListActivitiesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a specific background activity
+ */
+export const getGetActivityUrl = (id: number) => {
+  return `/api/activities/${id}`;
+};
+
+export const getActivity = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Activity> => {
+  return customFetch<Activity>(getGetActivityUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetActivityQueryKey = (id: number) => {
+  return [`/api/activities/${id}`] as const;
+};
+
+export const getGetActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetActivityQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivity>>> = ({
+    signal,
+  }) => getActivity(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActivity>>
+>;
+export type GetActivityQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a specific background activity
+ */
+
+export function useGetActivity<
+  TData = Awaited<ReturnType<typeof getActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActivityQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Acknowledge (mark as read) a completed activity
+ */
+export const getAcknowledgeActivityUrl = (id: number) => {
+  return `/api/activities/${id}/ack`;
+};
+
+export const acknowledgeActivity = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Activity> => {
+  return customFetch<Activity>(getAcknowledgeActivityUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAcknowledgeActivityMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeActivity>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acknowledgeActivity>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["acknowledgeActivity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acknowledgeActivity>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return acknowledgeActivity(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcknowledgeActivityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acknowledgeActivity>>
+>;
+
+export type AcknowledgeActivityMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Acknowledge (mark as read) a completed activity
+ */
+export const useAcknowledgeActivity = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgeActivity>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acknowledgeActivity>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getAcknowledgeActivityMutationOptions(options));
 };
