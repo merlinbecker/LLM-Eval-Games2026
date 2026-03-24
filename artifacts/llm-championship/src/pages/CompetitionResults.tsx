@@ -685,15 +685,11 @@ function DetailsTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedRe
 
       {/* Original question from dataset */}
       {currentQuestion && (
-        <div className="border-[3px] border-mac-black bg-mac-black/5 p-4 retro-shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <MessageSquareText className="w-5 h-5 flex-shrink-0" />
-            <h4 className="font-display text-sm uppercase">Ursprüngliche Frage (Datensatz)</h4>
-          </div>
-          <div className="bg-mac-white border-[2px] border-mac-black p-4 font-mono text-sm max-h-48 overflow-y-auto whitespace-pre-wrap">
-            {currentQuestion}
-          </div>
-        </div>
+           <RetroWindow title="Ursprüngliche Frage (Datensatz)">
+             <div className="bg-mac-white border-[2px] border-mac-black p-4 font-mono text-sm max-h-48 overflow-y-auto whitespace-pre-wrap">
+               {currentQuestion}
+             </div>
+           </RetroWindow>
       )}
 
       {/* Responses for this question */}

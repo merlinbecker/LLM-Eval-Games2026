@@ -330,10 +330,20 @@ function parseMarkdownItems(content: string): string[] {
   return paragraphs.length > 0 ? paragraphs : [content];
 }
 
-function estimateCost(promptTokens: number, completionTokens: number, inputCostPerMillionTokens?: number | null, outputCostPerMillionTokens?: number | null): number {
-  const inputCostPerToken = (inputCostPerMillionTokens ?? 1.0) / 1_000_000;
-  const outputCostPerToken = (outputCostPerMillionTokens ?? 2.0) / 1_000_000;
-  return promptTokens * inputCostPerToken + completionTokens * outputCostPerToken;
+function estimateCost(
+  promptTokens: number,
+  completionTokens: number,
+  inputCostPerMillionTokens?: number | null,
+  outputCostPerMillionTokens?: number | null
+): number {
+  // Fallback auf 0, falls ein Wert nicht gesetzt oder nicht numerisch ist
+  const safePromptTokens = Number(promptTokens) || 0;
+  const safeCompletionTokens = Number(completionTokens) || 0;
+  const safeInputCost = Number(inputCostPerMillionTokens);
+  const safeOutputCost = Number(outputCostPerMillionTokens);
+  const inputCostPerToken = (!isNaN(safeInputCost) ? safeInputCost : 1.0) / 1_000_000;
+  const outputCostPerToken = (!isNaN(safeOutputCost) ? safeOutputCost : 2.0) / 1_000_000;
+  return safePromptTokens * inputCostPerToken + safeCompletionTokens * outputCostPerToken;
 }
 
 export default router;
