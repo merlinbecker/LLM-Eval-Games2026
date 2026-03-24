@@ -102,8 +102,10 @@ function JudgeRevealRobot({
 
 export function JudgesScoreReveal({
   competition,
+  onActiveChange,
 }: {
   competition: CompetitionDetail;
+  onActiveChange?: (active: boolean) => void;
 }) {
   const [queue, setQueue] = useState<ScoringEvent[]>([]);
   const [currentEvent, setCurrentEvent] = useState<ScoringEvent | null>(null);
@@ -202,6 +204,12 @@ export function JudgesScoreReveal({
 
     return () => clearTimeout(timer);
   }, [phase, revealedCount, currentEvent]);
+
+  // Notify parent about active state
+  const isActive = currentEvent !== null;
+  useEffect(() => {
+    onActiveChange?.(isActive);
+  }, [isActive, onActiveChange]);
 
   // ─── Nothing to show ───
   if (!currentEvent) return null;

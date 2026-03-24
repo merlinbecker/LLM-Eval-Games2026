@@ -163,10 +163,10 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
           QUALITÄT
         </text>
         <text x={S.x - labelPadding + 10} y={S.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
-          SPEED
+          TEMPO
         </text>
         <text x={C.x + labelPadding - 10} y={C.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
-          KOSTEN
+          EFFIZIENZ
         </text>
 
         {/* Center crosshair */}
@@ -175,16 +175,15 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
           <line x1={(Q.x + S.x + C.x) / 3} y1={(Q.y + S.y + C.y) / 3 - 6} x2={(Q.x + S.x + C.x) / 3} y2={(Q.y + S.y + C.y) / 3 + 6} stroke="#000" strokeWidth={1.5} />
         </g>
 
-        {/* Data points */}
-        {points.map((p, i) => (
+        {/* Data points – render non-hovered first, hovered last for z-ordering */}
+        {points.map((p, i) => hoveredIdx === i ? null : (
           <g
             key={p.name}
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(null)}
             className="cursor-pointer"
           >
-            <MarkerShape shape={p.marker.shape} x={p.x} y={p.y} size={hoveredIdx === i ? 10 : 8} filled={hoveredIdx === i} />
-            {/* Point label */}
+            <MarkerShape shape={p.marker.shape} x={p.x} y={p.y} size={8} filled={false} />
             <text
               x={p.x}
               y={p.y - 14}
@@ -197,6 +196,29 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
             </text>
           </g>
         ))}
+        {hoveredIdx !== null && points[hoveredIdx] && (() => {
+          const p = points[hoveredIdx];
+          return (
+            <g
+              key={`hover-${p.name}`}
+              onMouseEnter={() => setHoveredIdx(hoveredIdx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              className="cursor-pointer"
+            >
+              <MarkerShape shape={p.marker.shape} x={p.x} y={p.y} size={10} filled={true} />
+              <text
+                x={p.x}
+                y={p.y - 14}
+                textAnchor="middle"
+                fontSize={10}
+                fontWeight="bold"
+                fill="#000"
+              >
+                {p.name}
+              </text>
+            </g>
+          );
+        })()}
 
         {/* Tooltip on hover */}
         {hoveredIdx !== null && points[hoveredIdx] && (() => {
@@ -215,10 +237,10 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
               <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
               <text x={tx + 8} y={ty + 16} fontSize={11} fontWeight="bold" fill="#000">{p.name}</text>
               <text x={tx + 8} y={ty + 32} fontSize={10} fill="#000">
-                Quality: {p.qualityScore.toFixed(1)} | Speed: {p.speedScore.toFixed(1)}
+                Qualität: {p.qualityScore.toFixed(1)} | Tempo: {p.speedScore.toFixed(1)}
               </text>
               <text x={tx + 8} y={ty + 48} fontSize={10} fill="#000">
-                Cost: {p.costScore.toFixed(1)}
+                Effizienz: {p.costScore.toFixed(1)}
               </text>
             </g>
           );

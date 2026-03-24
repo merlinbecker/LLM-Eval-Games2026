@@ -74,7 +74,8 @@ export default function Datasets() {
         updateVaultDataset(toVaultDataset({ ...ds, privacyStatus, privacyReport: result.report ?? null }));
       }
     } else {
-      await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
+      const result = await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
+      updateVaultDataset(toVaultDataset(result));
     }
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     setActionDialog(null);

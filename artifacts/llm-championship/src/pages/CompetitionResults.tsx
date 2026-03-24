@@ -353,15 +353,15 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
           <div className="flex gap-6 text-center">
             <div>
               <p className="font-display text-4xl">{winner.avgQuality.toFixed(1)}</p>
-              <p className="text-xs uppercase tracking-wider">Quality</p>
+              <p className="text-xs uppercase tracking-wider">Qualität</p>
             </div>
             <div>
               <p className="font-display text-4xl">{formatMs(winner.avgSpeed)}</p>
-              <p className="text-xs uppercase tracking-wider">Avg Speed</p>
+              <p className="text-xs uppercase tracking-wider">Ø Tempo</p>
             </div>
             <div>
               <p className="font-display text-4xl">{formatCost(winner.avgCost)}</p>
-              <p className="text-xs uppercase tracking-wider">Avg Cost</p>
+              <p className="text-xs uppercase tracking-wider">Ø Kosten</p>
             </div>
           </div>
         </div>
@@ -744,6 +744,7 @@ export default function CompetitionResults() {
   const [, params] = useRoute("/competitions/:id");
   const id = Number(params?.id);
   const [activeTab, setActiveTab] = useState<CeremonyTab>("overview");
+  const [judgesActive, setJudgesActive] = useState(false);
   
   const queryClient = useQueryClient();
   const { data: comp, isLoading } = useGetCompetition(id, {
@@ -815,8 +816,21 @@ export default function CompetitionResults() {
       {/* ─── RUNNING STATE: Live progress only, no final results ─── */}
       {isRunning && (
         <>
-          <Commentator competition={comp} />
-          <JudgesScoreReveal competition={comp} />
+          {/* Commentator and JudgesScoreReveal share the same slot — swap between them */}
+          <div className="relative">
+            <div
+              className="transition-all duration-500"
+              style={{
+                opacity: judgesActive ? 0 : 1,
+                maxHeight: judgesActive ? 0 : '2000px',
+                overflow: 'hidden',
+                pointerEvents: judgesActive ? 'none' : 'auto',
+              }}
+            >
+              <Commentator competition={comp} />
+            </div>
+            <JudgesScoreReveal competition={comp} onActiveChange={setJudgesActive} />
+          </div>
           <RunProgressView comp={comp} activeModelProgress={activityProgress} />
         </>
       )}

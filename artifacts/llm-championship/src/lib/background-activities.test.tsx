@@ -26,6 +26,14 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const mockAddDataset = vi.fn();
+vi.mock("@/lib/vault/vault-store", () => ({
+  useVault: vi.fn(() => ({
+    vault: { datasets: [] },
+    addDataset: mockAddDataset,
+  })),
+}));
+
 import { useListActivities } from "@workspace/api-client-react";
 import { toast } from "sonner";
 
