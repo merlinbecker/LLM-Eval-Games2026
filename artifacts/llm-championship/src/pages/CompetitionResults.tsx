@@ -112,7 +112,8 @@ function RunProgressView({
   const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
   const results = comp.results ?? [];
 
-  // Parse which model is currently active from activity progress string
+  // Parse which model is currently active from activity progress string.
+  // Expected format from backend: "ModelName: item X/Y" (see competitions.ts savePartialResults)
   const activeModelName = activeModelProgress
     ? activeModelProgress.split(":")[0]?.trim() ?? null
     : null;
@@ -729,14 +730,12 @@ export default function CompetitionResults() {
       refetchInterval: comp?.status === "running" ? 2000 : false,
     },
   });
-  const currentActivity = activities?.find(
+  const runningActivity = activities?.find(
     (a) => a.type === "competition_run" && a.status === "running" && a.resultId === id,
+  ) ?? activities?.find(
+    (a) => a.type === "competition_run" && a.status === "running",
   );
-  const activityProgress =
-    currentActivity?.progress ??
-    activities?.find(
-      (a) => a.type === "competition_run" && a.status === "running",
-    )?.progress;
+  const activityProgress = runningActivity?.progress;
 
   const handleRun = () => {
     runMutation.mutate({ id }, {
