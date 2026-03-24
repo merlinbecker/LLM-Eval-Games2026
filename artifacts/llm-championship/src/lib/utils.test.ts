@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cn, formatDate } from "./utils";
+import { cn, formatDate, formatCost } from "./utils";
 
 describe("cn", () => {
   it("merges class names", () => {
@@ -35,5 +35,30 @@ describe("formatDate", () => {
     const result = formatDate("2026-01-15T09:05:00.000Z");
     // Should contain hour/minute
     expect(result).toMatch(/\d{1,2}:\d{2}/);
+  });
+});
+
+describe("formatCost", () => {
+  it("formats zero cost", () => {
+    expect(formatCost(0)).toBe("$0.00");
+  });
+
+  it("rounds sub-cent costs up to $0.01", () => {
+    expect(formatCost(0.001)).toBe("$0.01");
+    expect(formatCost(0.005)).toBe("$0.01");
+  });
+
+  it("formats normal cent values", () => {
+    expect(formatCost(0.05)).toBe("$0.05");
+    expect(formatCost(0.99)).toBe("$0.99");
+  });
+
+  it("formats dollar values with two decimals", () => {
+    expect(formatCost(1.5)).toBe("$1.50");
+    expect(formatCost(12.345)).toBe("$12.35");
+  });
+
+  it("formats negative costs as $0.00", () => {
+    expect(formatCost(-0.5)).toBe("$0.00");
   });
 });

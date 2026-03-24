@@ -9,6 +9,7 @@ import {
 import { RetroWindow, RetroButton, RetroBadge, RetroSelect, RobotIcon } from "@/components/retro";
 import { Commentator } from "@/components/Commentator";
 import { TriangleChart } from "@/components/TriangleChart";
+import { formatCost } from "@/lib/utils";
 import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText } from "lucide-react";
 import type { CompetitionResult, CompetitionDetail, JudgeScore } from "@workspace/api-client-react";
 
@@ -23,11 +24,7 @@ function formatMs(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function formatCost(cost: number): string {
-  if (cost < 0.001) return `$${(cost * 1_000_000).toFixed(1)}µ`;
-  if (cost < 1) return `$${(cost * 1000).toFixed(2)}m`;
-  return `$${cost.toFixed(4)}`;
-}
+
 
 // ─── TAB TYPES ───
 
@@ -55,6 +52,7 @@ function PodiumEntry({ result, config }: { result: CompetitionResult; config: ty
         <p className={`font-display ${config.textSize}`}>{config.label}</p>
         <p className="text-sm truncate">{shortName(result.modelName)}</p>
         <p className={config.textSize}>{result.avgQuality.toFixed(1)}/10</p>
+        <p className="text-xs mt-1">{formatMs(result.avgSpeed)} · {formatCost(result.avgCost)}</p>
       </div>
       <div className={`${config.cardWidth} ${config.pedestalH} bg-mac-black border-2 border-mac-black mt-1`} />
     </div>
