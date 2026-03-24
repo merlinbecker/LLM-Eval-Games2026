@@ -102,15 +102,14 @@ function JudgeRevealRobot({
 
 export function JudgesScoreReveal({
   competition,
-  onActiveChange,
 }: {
   competition: CompetitionDetail;
-  onActiveChange?: (active: boolean) => void;
 }) {
   const [queue, setQueue] = useState<ScoringEvent[]>([]);
   const [currentEvent, setCurrentEvent] = useState<ScoringEvent | null>(null);
   const [phase, setPhase] = useState<RevealPhase>("idle");
   const [revealedCount, setRevealedCount] = useState(0);
+  const [visible, setVisible] = useState(false);
   const prevResultsRef = useRef<Map<string, number>>(new Map());
 
   // ─── Detect new scores and enqueue ───
@@ -157,6 +156,13 @@ export function JudgesScoreReveal({
     }
   }, [competition.results, competition.status]);
 
+  // ─── Show overlay as soon as queue has items ───
+  useEffect(() => {
+    if (queue.length > 0 || currentEvent) {
+      setVisible(true);
+    }
+  }, [queue, currentEvent]);
+
   // ─── Dequeue next event when idle ───
   useEffect(() => {
     if (phase === "idle" && queue.length > 0 && !currentEvent) {
@@ -165,8 +171,15 @@ export function JudgesScoreReveal({
       setCurrentEvent(next);
       setRevealedCount(0);
       setPhase("entering");
+      return undefined;
     }
-  }, [phase, queue, currentEvent]);
+    // Hide overlay only when idle AND queue empty AND no current event
+    if (phase === "idle" && queue.length === 0 && !currentEvent && visible) {
+      const hideTimer = setTimeout(() => setVisible(false), EXIT_DURATION);
+      return () => clearTimeout(hideTimer);
+    }
+    return undefined;
+  }, [phase, queue, currentEvent, visible]);
 
   // ─── Animation state machine ───
   useEffect(() => {
@@ -205,78 +218,86 @@ export function JudgesScoreReveal({
     return () => clearTimeout(timer);
   }, [phase, revealedCount, currentEvent]);
 
-  // Notify parent about active state
-  const isActive = currentEvent !== null;
-  useEffect(() => {
-    onActiveChange?.(isActive);
-  }, [isActive, onActiveChange]);
-
-  // ─── Nothing to show ───
-  if (!currentEvent) return null;
+  // Determine if there's active content to show
+  const hasContent = currentEvent !== null;
+  // Overall overlay visibility: fade in/out
+  const overlayVisible = visible && (hasContent || queue.length > 0);
 
   // Running average of revealed scores
-  const revealedScores = currentEvent.judgeScores.slice(0, revealedCount);
+  const revealedScores = currentEvent
+    ? currentEvent.judgeScores.slice(0, revealedCount)
+    : [];
   const runningAvg =
     revealedScores.length > 0
       ? revealedScores.reduce((s, j) => s + j.score, 0) / revealedScores.length
       : null;
 
-  // Container opacity and position for enter/exit
-  const containerStyle: React.CSSProperties = {
-    opacity: phase === "entering" || phase === "exiting" ? 0 : 1,
-    transform:
-      phase === "entering"
-        ? "translateY(1rem)"
-        : phase === "exiting"
-          ? "translateY(-1rem)"
-          : "translateY(0)",
-    transition: `opacity ${ENTER_DURATION}ms ease-out, transform ${ENTER_DURATION}ms ease-out`,
-  };
+  // Individual event enter/exit animation
+  const contentOpacity =
+    phase === "entering" || phase === "exiting" ? 0 : hasContent ? 1 : 0;
 
   return (
-    <div style={containerStyle}>
-      <RetroWindow
-        title={`WERTUNG — ${shortName(currentEvent.modelName)} — ITEM #${currentEvent.itemIndex + 1}/${currentEvent.totalItems}`}
+    <div
+      className="absolute left-0 right-0 z-40"
+      style={{
+        top: "100%",
+        marginTop: "2rem",
+        opacity: overlayVisible ? 1 : 0,
+        pointerEvents: overlayVisible ? "auto" : "none",
+        transition: `opacity ${ENTER_DURATION}ms ease-out`,
+      }}
+    >
+      <div
+        style={{
+          opacity: contentOpacity,
+          transition: `opacity ${ENTER_DURATION}ms ease-out`,
+        }}
       >
-        <div className="py-6 px-4">
-          {/* Running average score */}
-          <div className="text-center mb-6">
-            <p className="font-display text-sm uppercase tracking-widest mb-1">
-              Durchschnittswertung
-            </p>
-            <p className="font-display text-5xl transition-all duration-500">
-              {runningAvg !== null ? (
-                <>
-                  {runningAvg.toFixed(1)}
-                  <span className="text-2xl">/10</span>
-                </>
-              ) : (
-                <span className="animate-pulse">—</span>
+        {currentEvent && (
+          <RetroWindow
+            title={`WERTUNG — ${shortName(currentEvent.modelName)} — ITEM #${currentEvent.itemIndex + 1}/${currentEvent.totalItems}`}
+          >
+            <div className="py-6 px-4">
+              {/* Running average score */}
+              <div className="text-center mb-6">
+                <p className="font-display text-sm uppercase tracking-widest mb-1">
+                  Durchschnittswertung
+                </p>
+                <p className="font-display text-5xl transition-all duration-500">
+                  {runningAvg !== null ? (
+                    <>
+                      {runningAvg.toFixed(1)}
+                      <span className="text-2xl">/10</span>
+                    </>
+                  ) : (
+                    <span className="animate-pulse">—</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Judges row */}
+              <div className="flex flex-wrap justify-center gap-6 md:gap-10 py-4">
+                {currentEvent.judgeScores.map((score, idx) => (
+                  <JudgeRevealRobot
+                    key={`${currentEvent.id}-judge-${idx}`}
+                    judgeName={score.judgeModelName}
+                    score={score.score}
+                    isRevealed={idx < revealedCount}
+                  />
+                ))}
+              </div>
+
+              {/* Queue indicator */}
+              {queue.length > 0 && (
+                <p className="text-center text-xs font-display uppercase text-mac-black/50 mt-4">
+                  {queue.length} weitere Wertung{queue.length > 1 ? "en" : ""} in
+                  der Warteschlange
+                </p>
               )}
-            </p>
-          </div>
-
-          {/* Judges row */}
-          <div className="flex flex-wrap justify-center gap-6 md:gap-10 py-4">
-            {currentEvent.judgeScores.map((score, idx) => (
-              <JudgeRevealRobot
-                key={`${currentEvent.id}-judge-${idx}`}
-                judgeName={score.judgeModelName}
-                score={score.score}
-                isRevealed={idx < revealedCount}
-              />
-            ))}
-          </div>
-
-          {/* Queue indicator */}
-          {queue.length > 0 && (
-            <p className="text-center text-xs font-display uppercase text-mac-black/50 mt-4">
-              {queue.length} weitere Wertung{queue.length > 1 ? "en" : ""} in
-              der Warteschlange
-            </p>
-          )}
-        </div>
-      </RetroWindow>
+            </div>
+          </RetroWindow>
+        )}
+      </div>
     </div>
   );
 }

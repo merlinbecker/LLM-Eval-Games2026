@@ -744,7 +744,6 @@ export default function CompetitionResults() {
   const [, params] = useRoute("/competitions/:id");
   const id = Number(params?.id);
   const [activeTab, setActiveTab] = useState<CeremonyTab>("overview");
-  const [judgesActive, setJudgesActive] = useState(false);
   
   const queryClient = useQueryClient();
   const { data: comp, isLoading } = useGetCompetition(id, {
@@ -783,54 +782,45 @@ export default function CompetitionResults() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
-      {/* Header Bar */}
-      <div className={`border-[4px] border-mac-black p-6 flex flex-col md:flex-row justify-between items-center retro-shadow ${isRunning ? "bg-dither" : "bg-mac-white"}`}>
-        <div>
-          <h1 className="text-4xl font-display uppercase tracking-widest">{comp.name}</h1>
-          <div className="flex flex-wrap space-x-4 mt-2 font-bold text-lg">
-            <p>ID: {comp.id}</p>
-            <p>|</p>
-            <p>DATASET: #{comp.datasetId}</p>
-            <p>|</p>
-            <p className="flex items-center">
-              STATUS: 
-              <RetroBadge className="ml-2 px-3 py-1 text-sm">{comp.status}</RetroBadge>
-            </p>
-          </div>
-        </div>
-        
-        {comp.status === 'draft' && (
-          <RetroButton size="lg" onClick={handleRun} disabled={runMutation.isPending} className="mt-4 md:mt-0 animate-pulse">
-            <Play className="w-6 h-6 mr-2 inline" /> INITIATE RUN
-          </RetroButton>
-        )}
-        {isRunning && (
-          <div className="mt-4 md:mt-0 border-4 border-mac-black p-4 bg-mac-black text-mac-white text-center">
-            <div className="px-4 py-2 flex items-center font-display text-xl">
-              <Loader2 className="w-6 h-6 mr-3 animate-spin" /> WETTBEWERB LÄUFT
+      {/* Header Bar — used as anchor for the overlay */}
+      <div className="relative">
+        <div className={`border-[4px] border-mac-black p-6 flex flex-col md:flex-row justify-between items-center retro-shadow ${isRunning ? "bg-dither" : "bg-mac-white"}`}>
+          <div>
+            <h1 className="text-4xl font-display uppercase tracking-widest">{comp.name}</h1>
+            <div className="flex flex-wrap space-x-4 mt-2 font-bold text-lg">
+              <p>ID: {comp.id}</p>
+              <p>|</p>
+              <p>DATASET: #{comp.datasetId}</p>
+              <p>|</p>
+              <p className="flex items-center">
+                STATUS: 
+                <RetroBadge className="ml-2 px-3 py-1 text-sm">{comp.status}</RetroBadge>
+              </p>
             </div>
           </div>
-        )}
+          
+          {comp.status === 'draft' && (
+            <RetroButton size="lg" onClick={handleRun} disabled={runMutation.isPending} className="mt-4 md:mt-0 animate-pulse">
+              <Play className="w-6 h-6 mr-2 inline" /> INITIATE RUN
+            </RetroButton>
+          )}
+          {isRunning && (
+            <div className="mt-4 md:mt-0 border-4 border-mac-black p-4 bg-mac-black text-mac-white text-center">
+              <div className="px-4 py-2 flex items-center font-display text-xl">
+                <Loader2 className="w-6 h-6 mr-3 animate-spin" /> WETTBEWERB LÄUFT
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Judges Score Overlay — floats above the header, anchored to bottom */}
+        {isRunning && <JudgesScoreReveal competition={comp} />}
       </div>
 
       {/* ─── RUNNING STATE: Live progress only, no final results ─── */}
       {isRunning && (
         <>
-          {/* Commentator and JudgesScoreReveal share the same slot — swap between them */}
-          <div className="relative">
-            <div
-              className="transition-all duration-500"
-              style={{
-                opacity: judgesActive ? 0 : 1,
-                maxHeight: judgesActive ? 0 : '2000px',
-                overflow: 'hidden',
-                pointerEvents: judgesActive ? 'none' : 'auto',
-              }}
-            >
-              <Commentator competition={comp} />
-            </div>
-            <JudgesScoreReveal competition={comp} onActiveChange={setJudgesActive} />
-          </div>
+          <Commentator competition={comp} />
           <RunProgressView comp={comp} activeModelProgress={activityProgress} />
         </>
       )}
