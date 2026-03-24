@@ -19,7 +19,7 @@ arc42 © Dr. Peter Hruschka, Dr. Gernot Starke und Contributors. Siehe <https://
 
 Die **LLM Championship** ist eine gamifizierte Webanwendung zur systematischen Evaluation und zum Vergleich von Large Language Models (LLMs). Die Anwendung ermöglicht es Nutzern:
 
-- **LLM-Gateway-Verbindungen** zu konfigurieren (OpenRouter, GitHub Copilot, beliebige OpenAI-kompatible APIs)
+- **LLM-Gateway-Verbindungen** zu konfigurieren (OpenRouter, GitHub Copilot, Custom-Endpunkte mit OpenAI-, Anthropic- oder Gemini-kompatibler API)
 - **Test-Datensätze** zu verwalten (Markdown-Upload, KI-Generierung, automatische Datenschutz-Prüfung und Anonymisierung)
 - **Wettbewerbe** anzulegen, in denen ausgewählte Modelle als Teilnehmer und Richter gegeneinander antreten
 - **Evaluationsergebnisse** über Podium-Darstellungen, Dreiecksdiagramme (Ternary-Plots: Speed / Cost / Quality) und detaillierte Bewertungsprotokolle zu visualisieren
@@ -75,7 +75,7 @@ C4Context
 
     System_Ext(openrouter, "OpenRouter", "LLM-Aggregator-API mit Zugang zu hunderten Modellen")
     System_Ext(githubCopilot, "GitHub Copilot API", "GitHub's LLM-Endpunkt für Copilot-Modelle")
-    System_Ext(customLLM, "Custom OpenAI-kompatible API", "Beliebiger OpenAI-kompatibler LLM-Endpunkt (z.B. Azure, Ollama, vLLM)")
+    System_Ext(customLLM, "Custom LLM API", "Beliebiger LLM-Endpunkt: OpenAI-, Anthropic- oder Gemini-kompatible API mit Custom Headers und vollständiger URL-Konfiguration")
 
     Rel(user, llmChampionship, "Nutzt", "Browser / HTTPS")
     Rel(llmChampionship, openrouter, "Sendet Chat-Completion-Anfragen", "HTTPS / REST")
@@ -87,7 +87,7 @@ C4Context
 
 | Partner                         | Beschreibung                                                                                                    |
 |---------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| LLM-Gateways (extern)          | OpenAI-kompatible `/chat/completions`- und `/models`-Endpunkte; werden vom System für Evaluation und Bewertung genutzt |
+| LLM-Gateways (extern)          | LLM-Endpunkte in drei Formaten: OpenAI-kompatibel (`/chat/completions`), Anthropic Converse (`/converse`), Gemini (`/generateContent`); werden vom System für Evaluation und Bewertung genutzt |
 | Benutzer                        | Interagiert über die Web-UI; konfiguriert Gateways, lädt Datensätze, startet Wettbewerbe, analysiert Ergebnisse  |
 
 ## 3.2 Technischer Kontext
@@ -103,19 +103,19 @@ C4Context
         Container(api, "API Server", "Express 5, Node.js 24", "REST-API mit In-Memory-Store, Session-Management, Pino-Logging")
     }
 
-    System_Ext(llmGateways, "LLM Gateway APIs", "OpenRouter / GitHub Copilot / Custom OpenAI-kompatible Endpunkte")
+    System_Ext(llmGateways, "LLM Gateway APIs", "OpenRouter / GitHub Copilot / Custom (OpenAI-, Anthropic- oder Gemini-kompatibel)")
 
     Rel(user, spa, "HTTPS", "GET HTML/JS/CSS")
     Rel(spa, api, "REST/JSON + Session-Cookie", "/api/*")
-    Rel(api, llmGateways, "HTTPS", "/chat/completions, /models")
+    Rel(api, llmGateways, "HTTPS", "Chat Completions / Converse / generateContent")
 ```
 
 **Mapping fachlich → technisch:**
 
 | Fachliche Schnittstelle  | Technisches Protokoll                          | Format                                |
 |--------------------------|-------------------------------------------------|---------------------------------------|
-| LLM-Modell-Anfragen     | HTTPS POST `/chat/completions`                  | OpenAI Chat Completion JSON           |
-| Modell-Auflistung        | HTTPS GET `/models`                             | OpenAI Models Response JSON           |
+| LLM-Modell-Anfragen     | HTTPS POST (format-abhängig)                    | OpenAI Chat Completion / Anthropic Converse / Gemini generateContent JSON |
+| Modell-Auflistung        | HTTPS GET `/models` (nur OpenRouter/GitHub)     | OpenAI Models Response JSON (Custom-Gateways: manuelle Modellangabe) |
 | Frontend ↔ Backend       | HTTPS REST `/api/*` + HttpOnly-Session-Cookie   | JSON (spezifiziert via OpenAPI 3.1)   |
 | Client-Vault ↔ Backend   | HTTPS POST `/api/session/sync`                  | JSON (Gateways + Datasets)            |
 
@@ -162,7 +162,7 @@ C4Container
         Container(apiSpec, "API Specification", "OpenAPI 3.1 YAML", "Zentrale API-Kontraktdefinition; Quelle für Codegenerierung")
     }
 
-    System_Ext(llmAPIs, "LLM Gateway APIs", "OpenRouter, GitHub Copilot, Custom OpenAI-kompatibel")
+    System_Ext(llmAPIs, "LLM Gateway APIs", "OpenRouter, GitHub Copilot, Custom (OpenAI/Anthropic/Gemini)")
 
     Rel(user, frontend, "Nutzt", "HTTPS / Browser")
     Rel(frontend, apiClient, "Importiert", "npm-Paket")
@@ -191,7 +191,7 @@ C4Container
 | Schnittstelle          | Beschreibung                                                                                           |
 |------------------------|--------------------------------------------------------------------------------------------------------|
 | REST API `/api/*`      | JSON-basierte REST-API zwischen Frontend und Backend; definiert über OpenAPI-Spec; Session-Cookie für Authentifizierung |
-| LLM Gateway Interface  | OpenAI-kompatibles Chat-Completion-Interface (`/chat/completions`, `/models`) zu externen LLM-Anbietern |
+| LLM Gateway Interface  | Multi-Format LLM-Interface: OpenAI Chat Completions, Anthropic Converse, Gemini generateContent; automatische Request/Response-Transformation je Gateway-Typ; Custom HTTP Headers und `{model}`-URL-Platzhalter für Custom-Endpunkte |
 | Session-Sync           | `POST /api/session/sync` zum Restaurieren von Vault-Daten in den In-Memory-Store                       |
 
 ---
@@ -222,7 +222,7 @@ C4Component
 
         Component(activitiesRoute, "Activities Router", "express.Router", "GET /activities — Alle Background-Activities auflisten; GET /activities/:id — Einzelne Activity; POST /activities/:id/ack — Als gelesen markieren")
 
-        Component(llmGateway, "LLM Gateway Module", "TypeScript", "chatCompletion(), listModelsFromGateway(), validateGatewayUrl() — Sichere LLM-Kommunikation mit SSRF-Schutz und automatischem Call-Logging")
+        Component(llmGateway, "LLM Gateway Module", "TypeScript", "chatCompletion(), listModelsFromGateway(), validateGatewayUrl() — Multi-Format LLM-Kommunikation (OpenAI/Anthropic/Gemini) mit SSRF-Schutz, Custom Headers und automatischem Call-Logging")
 
         Component(logger, "Logger", "Pino", "Strukturiertes Logging; JSON (Prod) / Pretty-Print (Dev); redaktiert Auth-Header")
     }
@@ -271,7 +271,7 @@ C4Component
 | **Competitions Router** | `GET/POST /competitions`, `GET/DELETE /competitions/:id`, `POST /competitions/:id/run` (Evaluations-Engine); erstellt Activity bei Run-Start mit Progress-Tracking |
 | **Logs Router**         | `GET /logs` — LLM-Call-Logs der aktuellen Session abrufen (neueste zuerst); `DELETE /logs` — alle Logs löschen                    |
 | **Activities Router**   | `GET /activities` — alle Background-Activities auflisten; `GET /activities/:id` — einzelne Activity; `POST /activities/:id/ack` — als gelesen markieren |
-| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; automatisches Call-Logging (Request/Response) in den Session-Store |
+| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; Multi-Format-Support (OpenAI, Anthropic Converse, Gemini generateContent) via `buildRequestBody()` / `parseResponse()`; Custom HTTP Headers; `{model}`-URL-Platzhalter; automatisches Call-Logging (Request/Response) in den Session-Store |
 | **Logger**              | Pino-Logger; strukturiertes JSON-Logging in Produktion; Pretty-Print in Entwicklung; Redaktion sensibler Header                    |
 
 ---
@@ -294,7 +294,7 @@ C4Component
 
         Component(arenaDashboard, "Arena Dashboard", "React", "Hero-Bereich, Feature-Karten, aktuelle Wettbewerbe als Tabelle")
 
-        Component(gatewaysPage, "Gateways Page", "React", "2-Spalten-Layout: Gateway-Liste + Formular; Vault-Sync bei CRUD")
+        Component(gatewaysPage, "Gateways Page", "React", "2-Spalten-Layout: Gateway-Liste + Formular (5 Provider-Typen: OpenRouter, GitHub Copilot, Custom OpenAI/Anthropic/Gemini); Custom-Header-Editor; Vault-Sync bei CRUD")
 
         Component(datasetsPage, "Datasets Page", "React", "3 Tabs: Databanks-Liste, Upload (Datei/Text), KI-Generator; Vault-Sync bei CRUD")
 
@@ -875,7 +875,7 @@ mindmap
 
 | ID   | Qualitätsmerkmal | Szenario                                                                                                     | Erwartetes Ergebnis                                      |
 |------|------------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
-| QS-1 | Erweiterbarkeit  | Ein neuer LLM-Anbieter mit OpenAI-kompatibler API soll eingebunden werden                                     | Nur Gateway-Konfiguration über UI nötig, kein Code-Change |
+| QS-1 | Erweiterbarkeit  | Ein neuer LLM-Anbieter mit beliebiger API (OpenAI-, Anthropic- oder Gemini-kompatibel) soll eingebunden werden | Nur Gateway-Konfiguration über UI nötig (Typ, URL, Custom Headers), kein Code-Change |
 | QS-2 | Sicherheit       | Ein Benutzer versucht, eine Gateway-URL auf `http://169.254.169.254` zu setzen                                | System lehnt mit Fehlermeldung ab                         |
 | QS-3 | Benutzbarkeit    | Ein Benutzer startet einen Wettbewerb mit 3 Teilnehmern und 3 Richtern                                       | Live-Statusanzeige; Ergebnisse nach Abschluss auf Podium  |
 | QS-4 | Typsicherheit    | Ein Entwickler ändert die OpenAPI-Spec und generiert den Client neu                                           | TypeScript-Compilerfehler zeigen alle Anpassungsstellen    |
@@ -905,7 +905,7 @@ mindmap
 
 | Begriff                  | Definition                                                                                                        |
 |--------------------------|-------------------------------------------------------------------------------------------------------------------|
-| **Gateway**              | Konfigurierte Verbindung zu einem LLM-Anbieter (OpenRouter, GitHub Copilot oder custom OpenAI-kompatibler Endpunkt) |
+| **Gateway**              | Konfigurierte Verbindung zu einem LLM-Anbieter (OpenRouter, GitHub Copilot oder Custom-Endpunkt mit OpenAI-, Anthropic- oder Gemini-kompatibler API). Custom-Gateways unterstützen benutzerdefinierte HTTP-Headers und vollständige URL-Konfiguration mit `{model}`-Platzhalter |
 | **Dataset**              | Markdown-formatierter Testdatensatz, aufgeteilt in Items (getrennt durch `##`-Überschriften oder Absätze)           |
 | **Competition**          | Wettbewerb, in dem mehrere Teilnehmer-Modelle (Contestants) von Richter-Modellen (Judges) bewertet werden           |
 | **Configured Model**     | Vorkonfiguriertes Modell mit Gateway-Zuordnung, Anzeigename und optionalen Kosteninformationen (Input/Output $/M Tokens); wird bei der Wettbewerbs-Erstellung als Vorlage genutzt |

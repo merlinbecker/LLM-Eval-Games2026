@@ -12,4 +12,7 @@ export const GatewayType = {
   openrouter: "openrouter",
   github_copilot: "github_copilot",
   custom: "custom",
+  custom_openai: "custom_openai",
+  custom_anthropic: "custom_anthropic",
+  custom_gemini: "custom_gemini",
 } as const;

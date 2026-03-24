@@ -20,13 +20,23 @@ export const CreateGatewayType = {
   openrouter: "openrouter",
   github_copilot: "github_copilot",
   custom: "custom",
+  custom_openai: "custom_openai",
+  custom_anthropic: "custom_anthropic",
+  custom_gemini: "custom_gemini",
 } as const;
+
+/**
+ * Custom HTTP headers (key-value pairs)
+ */
+export type CreateGatewayCustomHeaders = { [key: string]: string };
 
 export interface CreateGateway {
   name: string;
   type: CreateGatewayType;
   baseUrl: string;
   apiKey: string;
+  /** Custom HTTP headers (key-value pairs) */
+  customHeaders?: CreateGatewayCustomHeaders;
 }
 
 export interface CreateDataset {
@@ -51,13 +61,23 @@ export const GatewayType = {
   openrouter: "openrouter",
   github_copilot: "github_copilot",
   custom: "custom",
+  custom_openai: "custom_openai",
+  custom_anthropic: "custom_anthropic",
+  custom_gemini: "custom_gemini",
 } as const;
+
+/**
+ * Custom HTTP headers (key-value pairs)
+ */
+export type GatewayCustomHeaders = { [key: string]: string };
 
 export interface Gateway {
   id: number;
   name: string;
   type: GatewayType;
   baseUrl: string;
+  /** Custom HTTP headers (key-value pairs) */
+  customHeaders?: GatewayCustomHeaders;
   createdAt: string;
 }
 

@@ -1,9 +1,10 @@
 export interface VaultGateway {
   id: number;
   name: string;
-  type: "openrouter" | "github_copilot" | "custom";
+  type: "openrouter" | "github_copilot" | "custom" | "custom_openai" | "custom_anthropic" | "custom_gemini";
   baseUrl: string;
   apiKey: string;
+  customHeaders?: Record<string, string>;
 }
 
 export interface VaultDataset {

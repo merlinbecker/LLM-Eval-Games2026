@@ -122,6 +122,7 @@ class InMemoryStore {
       type: data.type,
       baseUrl: data.baseUrl,
       apiKey: data.apiKey,
+      customHeaders: data.customHeaders,
       createdAt: new Date().toISOString(),
     };
     session.gateways.set(id, gateway);

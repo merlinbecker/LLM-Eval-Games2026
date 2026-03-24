@@ -5,6 +5,7 @@
  * LLM Eval Games 2026 API
  * OpenAPI spec version: 0.1.0
  */
+import type { GatewayCustomHeaders } from "./gatewayCustomHeaders";
 import type { GatewayType } from "./gatewayType";
 
 export interface Gateway {
@@ -12,5 +13,7 @@ export interface Gateway {
   name: string;
   type: GatewayType;
   baseUrl: string;
+  /** Custom HTTP headers (key-value pairs) */
+  customHeaders?: GatewayCustomHeaders;
   createdAt: Date;
 }

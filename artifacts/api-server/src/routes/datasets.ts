@@ -115,7 +115,7 @@ router.post("/datasets/:id/privacy-check", async (req, res) => {
   }
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
+    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
     modelId,
     [
       {
@@ -182,7 +182,7 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
   }
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
+    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
     modelId,
     [
       {
@@ -232,7 +232,7 @@ async function generateDatasetAsync(
   sessionId: string,
   activityId: number,
   data: { name: string; topic: string; numberOfItems: number; examples?: string; gatewayId: number; modelId: string },
-  gateway: { type: string; baseUrl: string; apiKey: string },
+  gateway: { type: string; baseUrl: string; apiKey: string; customHeaders?: Record<string, string> },
 ): Promise<void> {
   const examplesSection = data.examples
     ? `\n\nHere are example items to guide the style, format, and complexity:\n\n${data.examples}\n\nGenerate new items following the same pattern, style, and level of detail as the examples above.`
@@ -241,7 +241,7 @@ async function generateDatasetAsync(
   store.updateActivity(sessionId, activityId, { progress: "Generating content..." });
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
+    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
     data.modelId,
     [
       {

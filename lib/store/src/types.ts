@@ -4,6 +4,7 @@ export interface Gateway {
   type: string;
   baseUrl: string;
   apiKey: string;
+  customHeaders?: Record<string, string>;
   createdAt: string;
 }
 
@@ -12,6 +13,7 @@ export interface CreateGateway {
   type: string;
   baseUrl: string;
   apiKey: string;
+  customHeaders?: Record<string, string>;
 }
 
 export interface Dataset {

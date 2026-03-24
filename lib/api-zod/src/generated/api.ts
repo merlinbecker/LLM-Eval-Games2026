@@ -22,9 +22,20 @@ export const SyncSessionBody = zod.object({
     .array(
       zod.object({
         name: zod.string(),
-        type: zod.enum(["openrouter", "github_copilot", "custom"]),
+        type: zod.enum([
+          "openrouter",
+          "github_copilot",
+          "custom",
+          "custom_openai",
+          "custom_anthropic",
+          "custom_gemini",
+        ]),
         baseUrl: zod.string(),
         apiKey: zod.string(),
+        customHeaders: zod
+          .record(zod.string(), zod.string())
+          .optional()
+          .describe("Custom HTTP headers (key-value pairs)"),
       }),
     )
     .optional(),
@@ -57,8 +68,19 @@ export const DeleteSessionResponse = zod.object({
 export const ListGatewaysResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
-  type: zod.enum(["openrouter", "github_copilot", "custom"]),
+  type: zod.enum([
+    "openrouter",
+    "github_copilot",
+    "custom",
+    "custom_openai",
+    "custom_anthropic",
+    "custom_gemini",
+  ]),
   baseUrl: zod.string(),
+  customHeaders: zod
+    .record(zod.string(), zod.string())
+    .optional()
+    .describe("Custom HTTP headers (key-value pairs)"),
   createdAt: zod.date(),
 });
 export const ListGatewaysResponse = zod.array(ListGatewaysResponseItem);
@@ -68,9 +90,20 @@ export const ListGatewaysResponse = zod.array(ListGatewaysResponseItem);
  */
 export const CreateGatewayBody = zod.object({
   name: zod.string(),
-  type: zod.enum(["openrouter", "github_copilot", "custom"]),
+  type: zod.enum([
+    "openrouter",
+    "github_copilot",
+    "custom",
+    "custom_openai",
+    "custom_anthropic",
+    "custom_gemini",
+  ]),
   baseUrl: zod.string(),
   apiKey: zod.string(),
+  customHeaders: zod
+    .record(zod.string(), zod.string())
+    .optional()
+    .describe("Custom HTTP headers (key-value pairs)"),
 });
 
 /**

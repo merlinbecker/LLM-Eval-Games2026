@@ -185,7 +185,7 @@ async function runCompetitionAsync(
       });
       try {
         const result = await chatCompletion(
-          { type: gw.type, baseUrl: gw.baseUrl, apiKey: gw.apiKey },
+          { type: gw.type, baseUrl: gw.baseUrl, apiKey: gw.apiKey, customHeaders: gw.customHeaders },
           contestant.modelId,
           [
             { role: "system", content: competition.systemPrompt },
@@ -204,7 +204,7 @@ async function runCompetitionAsync(
 
           try {
             const judgeResult = await chatCompletion(
-              { type: judgeGw.type, baseUrl: judgeGw.baseUrl, apiKey: judgeGw.apiKey },
+              { type: judgeGw.type, baseUrl: judgeGw.baseUrl, apiKey: judgeGw.apiKey, customHeaders: judgeGw.customHeaders },
               judge.modelId,
               [
                 {

@@ -610,9 +610,14 @@ components:
           type: string
         type:
           type: string
-          enum: [openrouter, github_copilot, custom]
+          enum: [openrouter, github_copilot, custom, custom_openai, custom_anthropic, custom_gemini]
         baseUrl:
           type: string
+        customHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom HTTP headers (key-value pairs)
         createdAt:
           type: string
           format: date-time
@@ -630,11 +635,16 @@ components:
           type: string
         type:
           type: string
-          enum: [openrouter, github_copilot, custom]
+          enum: [openrouter, github_copilot, custom, custom_openai, custom_anthropic, custom_gemini]
         baseUrl:
           type: string
         apiKey:
           type: string
+        customHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom HTTP headers (key-value pairs)
       required:
         - name
         - type

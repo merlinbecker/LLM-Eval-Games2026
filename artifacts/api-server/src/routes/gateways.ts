@@ -22,6 +22,7 @@ router.get("/gateways", (req, res) => {
     name: g.name,
     type: g.type,
     baseUrl: g.baseUrl,
+    customHeaders: g.customHeaders,
     createdAt: g.createdAt,
   }));
   res.json(safe);
@@ -39,12 +40,14 @@ router.post("/gateways", (req, res) => {
     type: data.type,
     baseUrl,
     apiKey: data.apiKey,
+    customHeaders: data.customHeaders,
   });
   res.status(201).json({
     id: gateway.id,
     name: gateway.name,
     type: gateway.type,
     baseUrl: gateway.baseUrl,
+    customHeaders: gateway.customHeaders,
     createdAt: gateway.createdAt,
   });
 });
@@ -70,6 +73,7 @@ router.get("/gateways/:id/models", async (req, res) => {
       type: gateway.type,
       baseUrl: gateway.baseUrl,
       apiKey: gateway.apiKey,
+      customHeaders: gateway.customHeaders,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to list models";

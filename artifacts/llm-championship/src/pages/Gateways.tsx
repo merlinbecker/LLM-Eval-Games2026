@@ -13,14 +13,38 @@ import {
   getListConfiguredModelsQueryKey,
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect, RetroCombobox, RetroFormField } from "@/components/retro";
-import { Server, Trash2, Bot } from "lucide-react";
+import { Server, Trash2, Bot, Plus, X } from "lucide-react";
 import type { CreateGatewayType } from "@workspace/api-client-react";
 import { useVault } from "@/lib/vault/vault-store";
+
+function isCustomType(type: string): boolean {
+  return type === "custom" || type === "custom_openai" || type === "custom_anthropic" || type === "custom_gemini";
+}
 
 function getDefaultBaseUrl(type: CreateGatewayType): string {
   if (type === "openrouter") return "https://openrouter.ai/api/v1";
   if (type === "github_copilot") return "https://models.inference.ai.azure.com";
   return "";
+}
+
+function getBaseUrlPlaceholder(type: CreateGatewayType): string {
+  if (type === "custom_openai") return "https://api.example.com/openai/deployments/{model}/chat/completions?api-version=2024-10-21";
+  if (type === "custom_anthropic") return "https://api.example.com/anthropic/model/{model}/converse";
+  if (type === "custom_gemini") return "https://api.example.com/google/v1beta1/.../models/{model}:generateContent";
+  if (type === "custom") return "https://...";
+  return getDefaultBaseUrl(type) || "https://...";
+}
+
+function getTypeLabel(type: string): string {
+  switch (type) {
+    case "openrouter": return "OpenRouter";
+    case "github_copilot": return "GitHub Copilot";
+    case "custom_openai": return "Custom (OpenAI)";
+    case "custom_anthropic": return "Custom (Anthropic)";
+    case "custom_gemini": return "Custom (Gemini)";
+    case "custom": return "Custom";
+    default: return type;
+  }
 }
 
 export default function Gateways() {
@@ -41,12 +65,21 @@ export default function Gateways() {
   const [outputCost, setOutputCost] = useState("");
 
   const gwId = Number(selectedGatewayId) || 0;
-  const { data: gatewayModels } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!selectedGatewayId }});
+  const selectedGw = gateways?.find(g => g.id === gwId);
+  const isSelectedGwCustom = selectedGw ? isCustomType(selectedGw.type) : false;
+  const { data: gatewayModels } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!selectedGatewayId && !isSelectedGwCustom }});
 
   const [name, setName] = useState("");
   const [type, setType] = useState<CreateGatewayType>("openrouter");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [customHeaders, setCustomHeaders] = useState<Array<{ key: string; value: string }>>([]);
+
+  const addHeaderRow = () => setCustomHeaders(prev => [...prev, { key: "", value: "" }]);
+  const removeHeaderRow = (index: number) => setCustomHeaders(prev => prev.filter((_, i) => i !== index));
+  const updateHeaderRow = (index: number, field: "key" | "value", val: string) => {
+    setCustomHeaders(prev => prev.map((h, i) => i === index ? { ...h, [field]: val } : h));
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,10 +89,19 @@ export default function Gateways() {
       return;
     }
 
-    const result = await createMutation.mutateAsync({ data: { name, type, baseUrl: resolvedBaseUrl, apiKey } });
-    addGateway({ id: result.id, name, type, baseUrl: resolvedBaseUrl, apiKey });
+    // Build custom headers object from key-value pairs
+    const headersObj: Record<string, string> = {};
+    for (const h of customHeaders) {
+      const k = h.key.trim();
+      const v = h.value.trim();
+      if (k && v) headersObj[k] = v;
+    }
+    const customHeadersPayload = Object.keys(headersObj).length > 0 ? headersObj : undefined;
+
+    const result = await createMutation.mutateAsync({ data: { name, type, baseUrl: resolvedBaseUrl, apiKey, customHeaders: customHeadersPayload } });
+    addGateway({ id: result.id, name, type, baseUrl: resolvedBaseUrl, apiKey, customHeaders: customHeadersPayload });
     queryClient.invalidateQueries({ queryKey: getListGatewaysQueryKey() });
-    setName(""); setBaseUrl(""); setApiKey("");
+    setName(""); setBaseUrl(""); setApiKey(""); setCustomHeaders([]);
   };
 
   const handleDelete = async (id: number) => {
@@ -127,7 +169,7 @@ export default function Gateways() {
                       <div>
                         <h3 className="font-display text-xl font-bold uppercase">{g.name}</h3>
                         <div className="text-sm space-x-2">
-                          <RetroBadge>{g.type}</RetroBadge>
+                          <RetroBadge>{getTypeLabel(g.type)}</RetroBadge>
                           <span className="text-mac-black/60">{g.baseUrl}</span>
                         </div>
                       </div>
@@ -149,18 +191,58 @@ export default function Gateways() {
                 <RetroInput required value={name} onChange={e => setName(e.target.value)} placeholder="Main OpenRouter" />
               </RetroFormField>
               <RetroFormField label="Protocol Type">
-                <RetroSelect required value={type} onChange={e => setType(e.target.value as CreateGatewayType)}>
+                <RetroSelect required value={type} onChange={e => { setType(e.target.value as CreateGatewayType); setBaseUrl(""); setCustomHeaders([]); }}>
                   <option value="openrouter">OpenRouter</option>
                   <option value="github_copilot">GitHub Copilot</option>
-                  <option value="custom">Custom (OpenAI-compat)</option>
+                  <option value="custom_openai">Custom (OpenAI-kompatibel)</option>
+                  <option value="custom_anthropic">Custom (Anthropic/Converse)</option>
+                  <option value="custom_gemini">Custom (Gemini/generateContent)</option>
                 </RetroSelect>
               </RetroFormField>
-              <RetroFormField label="Base URL">
-                <RetroInput value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder={getDefaultBaseUrl(type) || "https://..."} />
+              <RetroFormField label={isCustomType(type) ? "Vollständige Endpunkt-URL" : "Base URL"}>
+                <RetroInput 
+                  required={isCustomType(type)} 
+                  value={baseUrl} 
+                  onChange={e => setBaseUrl(e.target.value)} 
+                  placeholder={getBaseUrlPlaceholder(type)} 
+                />
+                {isCustomType(type) && (
+                  <p className="text-xs text-mac-black/50 mt-1">
+                    Nutze <code className="bg-mac-black/10 px-1">&#123;model&#125;</code> als Platzhalter für die Model-ID in der URL
+                  </p>
+                )}
               </RetroFormField>
               <RetroFormField label="Access Token">
                 <RetroInput type="password" required value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." />
               </RetroFormField>
+              {isCustomType(type) && (
+                <RetroFormField label="Custom HTTP Headers">
+                  <div className="space-y-2">
+                    {customHeaders.map((h, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <RetroInput
+                          className="flex-1"
+                          value={h.key}
+                          onChange={e => updateHeaderRow(i, "key", e.target.value)}
+                          placeholder="Header-Name (z.B. api-key)"
+                        />
+                        <RetroInput
+                          className="flex-1"
+                          value={h.value}
+                          onChange={e => updateHeaderRow(i, "value", e.target.value)}
+                          placeholder="Wert"
+                        />
+                        <RetroButton type="button" size="sm" variant="danger" onClick={() => removeHeaderRow(i)}>
+                          <X className="w-3 h-3" />
+                        </RetroButton>
+                      </div>
+                    ))}
+                    <RetroButton type="button" size="sm" onClick={addHeaderRow} className="w-full">
+                      <Plus className="w-3 h-3 mr-1 inline" /> Header hinzufügen
+                    </RetroButton>
+                  </div>
+                </RetroFormField>
+              )}
               <div className="pt-4">
                 <RetroButton type="submit" disabled={createMutation.isPending} className="w-full">
                   {createMutation.isPending ? "INITIALIZING..." : "ESTABLISH LINK"}
@@ -218,22 +300,24 @@ export default function Gateways() {
               <RetroFormField label="Gateway">
                 <RetroSelect required value={selectedGatewayId} onChange={e => { setSelectedGatewayId(e.target.value); setSelectedModelId(""); setModelDisplayName(""); }}>
                   <option value="">-- SELECT GATEWAY --</option>
-                  {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  {gateways?.map(g => <option key={g.id} value={g.id}>{g.name} ({getTypeLabel(g.type)})</option>)}
                 </RetroSelect>
               </RetroFormField>
-              <RetroFormField label="Model (from List)">
-                <RetroCombobox
-                  options={gatewayModels?.map(m => ({ value: m.id, label: m.name })) ?? []}
-                  value={gatewayModels?.some(m => m.id === selectedModelId) ? selectedModelId : ""}
-                  onChange={(id) => {
-                    setSelectedModelId(id);
-                    const sel = gatewayModels?.find(m => m.id === id);
-                    if (sel) setModelDisplayName(sel.name);
-                  }}
-                  disabled={!selectedGatewayId || !gatewayModels?.length}
-                  placeholder="-- SELECT MODEL --"
-                />
-              </RetroFormField>
+              {!isSelectedGwCustom && (
+                <RetroFormField label="Model (from List)">
+                  <RetroCombobox
+                    options={gatewayModels?.map(m => ({ value: m.id, label: m.name })) ?? []}
+                    value={gatewayModels?.some(m => m.id === selectedModelId) ? selectedModelId : ""}
+                    onChange={(id) => {
+                      setSelectedModelId(id);
+                      const sel = gatewayModels?.find(m => m.id === id);
+                      if (sel) setModelDisplayName(sel.name);
+                    }}
+                    disabled={!selectedGatewayId || !gatewayModels?.length}
+                    placeholder="-- SELECT MODEL --"
+                  />
+                </RetroFormField>
+              )}
               <RetroFormField label="Model Identifier">
                 <RetroInput
                   value={selectedModelId}
