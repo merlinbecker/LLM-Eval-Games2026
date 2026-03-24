@@ -110,9 +110,21 @@
   .animate-blink {
     animation: blink 1s step-end infinite;
   }
+
+  /* Score card pop animation for judge reveal */
+  .animate-score-pop {
+    animation: score-pop 0.5s ease-out;
+  }
 }
 
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+@keyframes score-pop {
+  0%   { transform: scale(0.7) translateY(0.5rem); }
+  50%  { transform: scale(1.15); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
 }

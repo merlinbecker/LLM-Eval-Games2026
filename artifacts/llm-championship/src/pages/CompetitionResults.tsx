@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroBadge, RetroSelect, RobotIcon } from "@/components/retro";
 import { Commentator } from "@/components/Commentator";
+import { JudgesScoreReveal } from "@/components/JudgesScoreReveal";
 import { TriangleChart } from "@/components/TriangleChart";
 import { formatCost } from "@/lib/utils";
 import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText, ChevronDown, ChevronUp } from "lucide-react";
@@ -308,12 +309,35 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
     ? [...sortedResults].sort((a, b) => a.avgCost - b.avgCost)[0]
     : null;
 
-  const radarData = comp.results?.map(r => ({
-    name: shortName(r.modelName),
-    speedScore: Math.max(0, 10 - (r.avgSpeed / 1000)),
-    costScore: Math.max(0, 10 - (r.avgCost * 100)),
-    qualityScore: r.avgQuality,
-  })) || [];
+  // Normalize scores 1–10 relative to best/worst across all models.
+  // Quality: higher is better. Speed & Cost: lower is better (inverted).
+  const allResults = comp.results ?? [];
+  const radarData = (() => {
+    if (allResults.length === 0) return [];
+
+    const speeds = allResults.map(r => r.avgSpeed);
+    const costs = allResults.map(r => r.avgCost);
+    const qualities = allResults.map(r => r.avgQuality);
+
+    const minSpeed = Math.min(...speeds);
+    const maxSpeed = Math.max(...speeds);
+    const minCost = Math.min(...costs);
+    const maxCost = Math.max(...costs);
+    const minQuality = Math.min(...qualities);
+    const maxQuality = Math.max(...qualities);
+
+    // Map value into 1–10 range. If all values are identical, use 5.
+    const normalize = (value: number, min: number, max: number) =>
+      max > min ? 1 + ((value - min) / (max - min)) * 9 : 5;
+
+    return allResults.map(r => ({
+      name: shortName(r.modelName),
+      // Speed & Cost inverted: best (lowest) → 10, worst (highest) → 1
+      speedScore: normalize(maxSpeed - r.avgSpeed, 0, maxSpeed - minSpeed),
+      costScore: normalize(maxCost - r.avgCost, 0, maxCost - minCost),
+      qualityScore: normalize(r.avgQuality, minQuality, maxQuality),
+    }));
+  })();
 
   return (
     <div className="space-y-6">
@@ -792,6 +816,7 @@ export default function CompetitionResults() {
       {isRunning && (
         <>
           <Commentator competition={comp} />
+          <JudgesScoreReveal competition={comp} />
           <RunProgressView comp={comp} activeModelProgress={activityProgress} />
         </>
       )}
