@@ -266,7 +266,7 @@ C4Component
 | **Session Middleware**  | Prüft HttpOnly-Cookie `sessionId`; ruft `store.touchSession()` auf; liefert 401 für ungültige Sessions; `/healthz` und `/session/sync` passieren ohne Session |
 | **Session Router**      | `POST /session/sync` — erstellt Session, importiert Gateways+Datasets aus Vault; `DELETE /session` — löscht Session und Cookie    |
 | **Health Router**       | `GET /healthz` → `{ status: "ok" }`                                                                                               |
-| **Gateways Router**     | `GET/POST /gateways`, `DELETE /gateways/:id`, `GET /gateways/:id/models`; validiert und speichert Gateway-Konfigurationen          |
+| **Gateways Router**     | `GET/POST /gateways`, `DELETE /gateways/:id`, `GET /gateways/:id/models`; validiert und speichert Gateway-Konfigurationen; `GET/POST /configured-models`, `DELETE /configured-models/:id` — vorkonfigurierte Modelle mit optionalen Kosten ($/M Tokens) verwalten |
 | **Datasets Router**     | `GET/POST /datasets`, `POST /datasets/upload` (Multer, 5MB, .md), `DELETE /datasets/:id`, Privacy-Check/Anonymisierung/Generierung |
 | **Competitions Router** | `GET/POST /competitions`, `GET/DELETE /competitions/:id`, `POST /competitions/:id/run` (Evaluations-Engine); erstellt Activity bei Run-Start mit Progress-Tracking |
 | **Logs Router**         | `GET /logs` — LLM-Call-Logs der aktuellen Session abrufen (neueste zuerst); `DELETE /logs` — alle Logs löschen                    |
@@ -351,7 +351,7 @@ C4Component
 
         Component(storeIndex, "InMemoryStore", "TypeScript", "Singleton-Klasse mit session-scoped Maps; CRUD für Gateways, Datasets, Competitions, Activities; Bulk-Import; Cleanup-Timer (5min Intervall, 2h TTL)")
 
-        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces: Gateway, Dataset, Competition, Activity, LlmLog, CreateGateway, CreateDataset, CreateCompetition, CreateActivity, ModelSelection, CompetitionResultEntry")
+        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces: Gateway, Dataset, Competition, Activity, LlmLog, ConfiguredModel, CreateGateway, CreateDataset, CreateCompetition, CreateActivity, CreateConfiguredModel, ModelSelection, CompetitionResultEntry")
     }
 
     Container(apiServer, "API Server", "Express 5")
@@ -365,8 +365,10 @@ C4Component
 | Interface           | Felder                                                                                                    |
 |---------------------|-----------------------------------------------------------------------------------------------------------|
 | **Gateway**         | `id`, `name`, `type` (openrouter/github_copilot/custom), `baseUrl`, `apiKey`, `createdAt`                |
+| **ConfiguredModel** | `id`, `name`, `gatewayId`, `modelId`, `inputCostPerMillionTokens?`, `outputCostPerMillionTokens?`, `createdAt` |
 | **Dataset**         | `id`, `name`, `content` (Markdown), `systemPrompt`, `privacyStatus`, `privacyReport`, `createdAt`        |
 | **Competition**     | `id`, `name`, `datasetId`, `systemPrompt`, `status`, `contestantModels`, `judgeModels`, `results`, `createdAt` |
+| **ModelSelection**  | `gatewayId`, `modelId`, `modelName`, `inputCostPerMillionTokens?`, `outputCostPerMillionTokens?`          |
 | **LlmLog**          | `id`, `timestamp`, `gatewayType`, `modelId`, `requestUrl`, `requestBody`, `responseStatus`, `responseBody`, `durationMs`, `error` |
 | **Activity**        | `id`, `type` (competition_run/dataset_generate), `status` (running/completed/error), `title`, `progress?`, `resultId?`, `error?`, `acknowledged`, `createdAt`, `completedAt?` |
 
@@ -516,7 +518,7 @@ sequenceDiagram
 - Zwischenergebnisse werden nach jedem Item im In-Memory-Store aktualisiert (partielle Updates)
 - Activity-Progress zeigt aktuelles Modell und Item-Fortschritt (z.B. "ModelXY: item 3/10")
 - Bei Fehler: Activity-Status wird auf `error` gesetzt, Toast-Notification mit Fehlermeldung
-- Kostenschätzung: `input: $0.001/1k Tokens`, `output: $0.002/1k Tokens`
+- Kostenschätzung: Verwendet die am `ConfiguredModel` hinterlegten Kosten (`inputCostPerMillionTokens`, `outputCostPerMillionTokens` in $/M Tokens); Fallback auf `$1.00/M Input`, `$2.00/M Output` wenn keine modellspezifischen Kosten konfiguriert sind
 
 ---
 
@@ -884,7 +886,7 @@ mindmap
 
 | #  | Risiko / Technische Schuld                        | Beschreibung                                                                                                  | Mögliche Maßnahme                                          |
 |----|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| R1 | **Fixe Kostenberechnung**                         | Kosten werden mit fixen Raten berechnet ($0.001/1k Input, $0.002/1k Output) — reale Preise variieren je Modell | Modellspezifische Preise von Gateway-API abrufen             |
+| R1 | **Manuelle Kostenpflege**                         | Modellspezifische Kosten (`$/M Tokens`) müssen manuell bei der Modellkonfiguration eingegeben werden; sie werden nicht automatisch von der Gateway-API (z.B. OpenRouter `/models` Pricing) synchronisiert. Bei Preisänderungen seitens des Anbieters stimmen die hinterlegten Kosten nicht mehr. | Automatischer Abgleich der Preise mit der OpenRouter-Pricing-API; periodischer Hintergrund-Sync; Warnung bei veralteten Preisen |
 | R2 | **Kein Authentifizierungssystem**                 | Die Anwendung hat aktuell kein User-Login oder Autorisierung; Sessions sind anonym                             | Auth-Middleware einführen (z.B. OAuth2, JWT)                 |
 | R3 | **Polling statt Push**                            | 2-Sekunden-Polling erzeugt unnötige Last; bei vielen gleichzeitigen Nutzern skaliert dies schlecht             | SSE oder WebSockets für Echtzeit-Updates                     |
 | R4 | **Keine Rate-Limiting**                           | API-Endpunkte sind nicht gegen Missbrauch geschützt                                                            | Rate-Limiting-Middleware (z.B. express-rate-limit)           |
@@ -892,6 +894,8 @@ mindmap
 | R6 | **Keine automatisierten Tests**                  | Aktuell keine Unit-/Integrationstests im Projekt                                                               | Test-Framework einführen (Vitest für Frontend, Jest für API) |
 | R7 | **Abhängigkeit von externen LLM-Anbietern**      | Verfügbarkeit und Preisänderungen der LLM-APIs liegen außerhalb der Kontrolle                                  | Fallback-Gateway, Caching, Retry-Strategien                  |
 | R8 | **LocalStorage-Limit**                           | Client-Vault ist auf ~5-10 MB begrenzt; sehr große Datasets können das Limit erreichen                         | Gzip-Kompression (bereits implementiert); IndexedDB als Alternative |
+| R9 | **Konfigurierte Modelle nicht im Vault persistiert** | `ConfiguredModel`-Objekte (inkl. Kosten) werden nur im In-Memory-Store gehalten und gehen bei Session-Ablauf oder Server-Neustart verloren; sie sind nicht Teil des verschlüsselten Client-Vaults | ConfiguredModels in `VaultData` aufnehmen und beim Session-Sync mit übertragen |
+| R10 | **Fallback-Kosten bei fehlender Konfiguration** | Wenn keine modellspezifischen Kosten hinterlegt sind, greift ein fester Fallback ($1/M Input, $2/M Output). Dieser Wert ist für teure Modelle (z.B. GPT-4, Claude Opus) deutlich zu niedrig und für günstige Modelle zu hoch — die Kostenauswertung wird dadurch verzerrt. | Pflichtfeld für Kosten bei Modellkonfiguration; oder automatisches Abrufen von Pricing-Daten aus der Gateway-API |
 
 ---
 
@@ -902,6 +906,7 @@ mindmap
 | **Gateway**              | Konfigurierte Verbindung zu einem LLM-Anbieter (OpenRouter, GitHub Copilot oder custom OpenAI-kompatibler Endpunkt) |
 | **Dataset**              | Markdown-formatierter Testdatensatz, aufgeteilt in Items (getrennt durch `##`-Überschriften oder Absätze)           |
 | **Competition**          | Wettbewerb, in dem mehrere Teilnehmer-Modelle (Contestants) von Richter-Modellen (Judges) bewertet werden           |
+| **Configured Model**     | Vorkonfiguriertes Modell mit Gateway-Zuordnung, Anzeigename und optionalen Kosteninformationen (Input/Output $/M Tokens); wird bei der Wettbewerbs-Erstellung als Vorlage genutzt |
 | **Contestant Model**     | LLM-Modell, das als Teilnehmer in einem Wettbewerb antworten generiert                                             |
 | **Judge Model**          | LLM-Modell, das als Richter die Antworten der Teilnehmer mit einem Score (1-10) bewertet                           |
 | **Privacy Check**        | KI-gestützte Analyse eines Datensatzes auf personenbezogene Informationen (PII)                                     |
