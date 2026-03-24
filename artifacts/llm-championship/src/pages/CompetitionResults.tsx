@@ -4,13 +4,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { 
   useGetCompetition, 
   useRunCompetition,
-  getGetCompetitionQueryKey
+  useListActivities,
+  getGetCompetitionQueryKey,
+  getListActivitiesQueryKey
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroBadge, RetroSelect, RobotIcon } from "@/components/retro";
 import { Commentator } from "@/components/Commentator";
 import { TriangleChart } from "@/components/TriangleChart";
 import { formatCost } from "@/lib/utils";
-import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText } from "lucide-react";
+import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import type { CompetitionResult, CompetitionDetail, JudgeScore } from "@workspace/api-client-react";
 
 // ─── HELPERS ───
@@ -92,6 +94,197 @@ function StatCard({ icon, label, value, subValue }: { icon: React.ReactNode; lab
       <span className="font-display text-2xl">{value}</span>
       {subValue && <span className="text-xs text-mac-black/60 mt-1">{subValue}</span>}
       <span className="text-xs uppercase font-bold mt-1">{label}</span>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// LIVE RUN PROGRESS VIEW (shown while competition is running)
+// ═══════════════════════════════════════════════
+
+function RunProgressView({
+  comp,
+  activeModelProgress,
+}: {
+  comp: CompetitionDetail;
+  activeModelProgress: string | undefined;
+}) {
+  const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
+  const results = comp.results ?? [];
+
+  // Parse which model is currently active from activity progress string
+  const activeModelName = activeModelProgress
+    ? activeModelProgress.split(":")[0]?.trim() ?? null
+    : null;
+
+  const toggleModel = (modelId: string) => {
+    setExpandedModels((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  };
+
+  // Estimate total items from any model's progress text
+  const estimatedTotal = (() => {
+    if (activeModelProgress) {
+      const match = activeModelProgress.match(/(\d+)\/(\d+)/);
+      if (match) return parseInt(match[2], 10);
+    }
+    return results.reduce((max, r) => Math.max(max, r.responses?.length ?? 0), 0);
+  })();
+
+  // Sort by current average quality descending
+  const sorted = [...results].sort((a, b) => b.avgQuality - a.avgQuality);
+
+  return (
+    <RetroWindow title="LAUF-ÜBERSICHT">
+      <div className="space-y-4">
+        {sorted.length === 0 && (
+          <div className="text-center py-8 font-display text-lg animate-pulse">
+            Warte auf erste Ergebnisse...
+          </div>
+        )}
+        {sorted.map((result, rank) => {
+          const name = shortName(result.modelName);
+          const isActive = activeModelName === result.modelName || activeModelName === name;
+          const isExpanded = expandedModels.has(result.modelId);
+          const completedItems = result.responses?.filter(
+            (r) => r.response && r.response.trim().length > 0 && !r.response.startsWith("Error:"),
+          ).length ?? 0;
+          const totalItems = estimatedTotal || completedItems;
+          const pct = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+
+          return (
+            <div
+              key={result.modelId}
+              className={`border-[3px] ${isActive ? "border-mac-black bg-mac-black/5" : "border-mac-black/40 bg-mac-white"} transition-all`}
+            >
+              {/* Model Header */}
+              <button
+                onClick={() => toggleModel(result.modelId)}
+                className="w-full text-left p-3 flex items-center gap-3"
+              >
+                <RobotIcon className={`w-8 h-8 flex-shrink-0 ${isActive ? "animate-pulse" : ""}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-sm uppercase font-bold">#{rank + 1}</span>
+                    <span className="font-display text-lg uppercase truncate">{name}</span>
+                    {isActive && (
+                      <span className="border-[2px] border-mac-black bg-mac-black text-mac-white px-2 py-0.5 text-xs font-display uppercase animate-pulse">
+                        AKTIV
+                      </span>
+                    )}
+                    {completedItems === totalItems && totalItems > 0 && !isActive && (
+                      <span className="border-[2px] border-mac-black bg-mac-white px-2 py-0.5 text-xs font-display uppercase">
+                        FERTIG
+                      </span>
+                    )}
+                  </div>
+                  {/* Progress bar */}
+                  <div className="w-full h-3 border-[2px] border-mac-black bg-mac-white mt-1">
+                    <div
+                      className={`h-full transition-all duration-500 ${isActive ? "bg-mac-black" : "bg-mac-black/60"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="flex gap-4 text-xs font-bold uppercase mt-1">
+                    <span>{completedItems}/{totalItems} Items</span>
+                    {result.avgQuality > 0 && <span>⌀ {result.avgQuality.toFixed(1)}/10</span>}
+                    {result.avgSpeed > 0 && <span>⌀ {formatMs(result.avgSpeed)}</span>}
+                    {result.avgCost > 0 && <span>⌀ {formatCost(result.avgCost)}</span>}
+                  </div>
+                </div>
+                {isExpanded ? <ChevronUp className="w-5 h-5 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 flex-shrink-0" />}
+              </button>
+
+              {/* Expanded: Individual item scores */}
+              {isExpanded && result.responses && result.responses.length > 0 && (
+                <div className="border-t-[2px] border-mac-black px-3 pb-3">
+                  <table className="w-full text-left mt-2">
+                    <thead>
+                      <tr className="border-b-[2px] border-mac-black">
+                        <th className="p-1.5 font-display text-xs">ITEM</th>
+                        <th className="p-1.5 font-display text-xs text-center">JUDGE Ø</th>
+                        <th className="p-1.5 font-display text-xs text-center">ZEIT</th>
+                        <th className="p-1.5 font-display text-xs text-center">KOSTEN</th>
+                        <th className="p-1.5 font-display text-xs text-center">TOKENS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.responses.map((resp, i) => {
+                        const avgJudge = resp.judgeScores.length > 0
+                          ? resp.judgeScores.reduce((s, js) => s + js.score, 0) / resp.judgeScores.length
+                          : 0;
+                        const isNewItem = i === result.responses.length - 1 && isActive;
+                        return (
+                          <tr
+                            key={i}
+                            className={`border-b border-mac-black/20 ${isNewItem ? "bg-mac-black/10 font-bold" : ""}`}
+                          >
+                            <td className="p-1.5 font-display text-sm">#{i + 1}</td>
+                            <td className="p-1.5 text-center font-display text-sm">
+                              {avgJudge > 0 ? avgJudge.toFixed(1) : "—"}
+                            </td>
+                            <td className="p-1.5 text-center text-sm">{resp.durationMs > 0 ? formatMs(resp.durationMs) : "—"}</td>
+                            <td className="p-1.5 text-center text-sm">{resp.cost > 0 ? formatCost(resp.cost) : "—"}</td>
+                            <td className="p-1.5 text-center text-sm">
+                              {resp.promptTokens + resp.completionTokens > 0
+                                ? (resp.promptTokens + resp.completionTokens).toLocaleString()
+                                : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    {/* Running total */}
+                    <tfoot>
+                      <tr className="border-t-[2px] border-mac-black font-bold">
+                        <td className="p-1.5 font-display text-xs uppercase">Summe / ⌀</td>
+                        <td className="p-1.5 text-center font-display text-sm">{result.avgQuality > 0 ? result.avgQuality.toFixed(1) : "—"}</td>
+                        <td className="p-1.5 text-center text-sm">{result.avgSpeed > 0 ? formatMs(result.avgSpeed) : "—"}</td>
+                        <td className="p-1.5 text-center text-sm">{result.avgCost > 0 ? formatCost(result.avgCost) : "—"}</td>
+                        <td className="p-1.5 text-center text-sm">{result.totalTokens > 0 ? result.totalTokens.toLocaleString() : "—"}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </RetroWindow>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// CEREMONY HEADER (shown after competition completes)
+// ═══════════════════════════════════════════════
+
+function CeremonyHeader({ sortedResults }: { sortedResults: CompetitionResult[] }) {
+  const winner = sortedResults[0];
+  if (!winner) return null;
+
+  return (
+    <div className="border-[4px] border-mac-black bg-mac-black text-mac-white retro-shadow overflow-hidden">
+      <div className="text-center py-8 px-6 space-y-4">
+        <Trophy className="w-16 h-16 mx-auto" />
+        <p className="font-display text-sm tracking-[0.3em] uppercase">Siegerehrung</p>
+        <p className="font-display text-4xl uppercase">{shortName(winner.modelName)}</p>
+        <p className="font-display text-6xl">{winner.avgQuality.toFixed(1)}<span className="text-2xl">/10</span></p>
+        <div className="flex justify-center gap-8 text-sm">
+          <div>
+            <Zap className="w-5 h-5 mx-auto mb-1" />
+            <span>{formatMs(winner.avgSpeed)}</span>
+          </div>
+          <div>
+            <Coins className="w-5 h-5 mx-auto mb-1" />
+            <span>{formatCost(winner.avgCost)}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -529,6 +722,22 @@ export default function CompetitionResults() {
   });
   const runMutation = useRunCompetition();
 
+  // Fetch activities to get progress text for identifying active model
+  const { data: activities } = useListActivities({
+    query: {
+      queryKey: getListActivitiesQueryKey(),
+      refetchInterval: comp?.status === "running" ? 2000 : false,
+    },
+  });
+  const currentActivity = activities?.find(
+    (a) => a.type === "competition_run" && a.status === "running" && a.resultId === id,
+  );
+  const activityProgress =
+    currentActivity?.progress ??
+    activities?.find(
+      (a) => a.type === "competition_run" && a.status === "running",
+    )?.progress;
+
   const handleRun = () => {
     runMutation.mutate({ id }, {
       onSuccess: () => {
@@ -542,13 +751,12 @@ export default function CompetitionResults() {
 
   const isCompleted = comp.status === 'completed';
   const isRunning = comp.status === 'running';
-  const hasResults = (comp.results?.length ?? 0) > 0;
   const sortedResults = [...(comp.results || [])].sort((a, b) => b.avgQuality - a.avgQuality);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
       {/* Header Bar */}
-      <div className="border-[4px] border-mac-black bg-mac-white p-6 flex flex-col md:flex-row justify-between items-center retro-shadow">
+      <div className={`border-[4px] border-mac-black p-6 flex flex-col md:flex-row justify-between items-center retro-shadow ${isRunning ? "bg-dither" : "bg-mac-white"}`}>
         <div>
           <h1 className="text-4xl font-display uppercase tracking-widest">{comp.name}</h1>
           <div className="flex flex-wrap space-x-4 mt-2 font-bold text-lg">
@@ -569,21 +777,31 @@ export default function CompetitionResults() {
           </RetroButton>
         )}
         {isRunning && (
-          <div className="mt-4 md:mt-0 border-4 border-mac-black p-4 bg-dither text-center">
-            <div className="bg-mac-white px-4 py-2 border-2 border-mac-black flex items-center font-display text-xl">
-              <Loader2 className="w-6 h-6 mr-3 animate-spin" /> EVALUATING...
+          <div className="mt-4 md:mt-0 border-4 border-mac-black p-4 bg-mac-black text-mac-white text-center">
+            <div className="px-4 py-2 flex items-center font-display text-xl">
+              <Loader2 className="w-6 h-6 mr-3 animate-spin" /> WETTBEWERB LÄUFT
             </div>
           </div>
         )}
       </div>
 
-      {/* Live Commentator — visible while running or just completed */}
-      {(isRunning || isCompleted) && (
-        <Commentator competition={comp} />
+      {/* ─── RUNNING STATE: Live progress only, no final results ─── */}
+      {isRunning && (
+        <>
+          <Commentator competition={comp} />
+          <RunProgressView comp={comp} activeModelProgress={activityProgress} />
+        </>
       )}
 
-      {(isCompleted || (isRunning && hasResults)) && (
+      {/* ─── COMPLETED STATE: Ceremony + results tabs ─── */}
+      {isCompleted && (
         <>
+          {/* Siegerehrung */}
+          <CeremonyHeader sortedResults={sortedResults} />
+
+          {/* Live Commentator with final results */}
+          <Commentator competition={comp} />
+
           {/* Tab Navigation */}
           <div className="flex flex-wrap gap-2 border-[3px] border-mac-black bg-mac-white p-2 retro-shadow-sm">
             {TAB_CONFIG.map((tab) => (
