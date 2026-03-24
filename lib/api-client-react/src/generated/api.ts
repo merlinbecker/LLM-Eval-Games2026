@@ -33,11 +33,13 @@ import type {
   HealthStatus,
   LlmLog,
   ModelInfo,
+  ModelTestResult,
   PrivacyCheckRequest,
   PrivacyCheckResult,
   SessionSyncRequest,
   SessionSyncResponse,
   SuccessMessage,
+  UpdateConfiguredModel,
   UpdateDataset,
   UploadDatasetBody,
 } from "./api.schemas";
@@ -787,6 +789,93 @@ export const useCreateConfiguredModel = <
 };
 
 /**
+ * @summary Update a configured model (name, costs, modelId)
+ */
+export const getUpdateConfiguredModelUrl = (id: number) => {
+  return `/api/configured-models/${id}`;
+};
+
+export const updateConfiguredModel = async (
+  id: number,
+  updateConfiguredModel: UpdateConfiguredModel,
+  options?: RequestInit,
+): Promise<ConfiguredModel> => {
+  return customFetch<ConfiguredModel>(getUpdateConfiguredModelUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateConfiguredModel),
+  });
+};
+
+export const getUpdateConfiguredModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateConfiguredModel>>,
+    TError,
+    { id: number; data: BodyType<UpdateConfiguredModel> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateConfiguredModel>>,
+  TError,
+  { id: number; data: BodyType<UpdateConfiguredModel> },
+  TContext
+> => {
+  const mutationKey = ["updateConfiguredModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateConfiguredModel>>,
+    { id: number; data: BodyType<UpdateConfiguredModel> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateConfiguredModel(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateConfiguredModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateConfiguredModel>>
+>;
+export type UpdateConfiguredModelMutationBody = BodyType<UpdateConfiguredModel>;
+export type UpdateConfiguredModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a configured model (name, costs, modelId)
+ */
+export const useUpdateConfiguredModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateConfiguredModel>>,
+    TError,
+    { id: number; data: BodyType<UpdateConfiguredModel> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateConfiguredModel>>,
+  TError,
+  { id: number; data: BodyType<UpdateConfiguredModel> },
+  TContext
+> => {
+  return useMutation(getUpdateConfiguredModelMutationOptions(options));
+};
+
+/**
  * @summary Delete a configured model
  */
 export const getDeleteConfiguredModelUrl = (id: number) => {
@@ -868,6 +957,90 @@ export const useDeleteConfiguredModel = <
   TContext
 > => {
   return useMutation(getDeleteConfiguredModelMutationOptions(options));
+};
+
+/**
+ * @summary Send a hello-world test prompt to validate the model configuration
+ */
+export const getTestConfiguredModelUrl = (id: number) => {
+  return `/api/configured-models/${id}/test`;
+};
+
+export const testConfiguredModel = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ModelTestResult> => {
+  return customFetch<ModelTestResult>(getTestConfiguredModelUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTestConfiguredModelMutationOptions = <
+  TError = ErrorType<ModelTestResult>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testConfiguredModel>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testConfiguredModel>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["testConfiguredModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testConfiguredModel>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return testConfiguredModel(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestConfiguredModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testConfiguredModel>>
+>;
+
+export type TestConfiguredModelMutationError = ErrorType<ModelTestResult>;
+
+/**
+ * @summary Send a hello-world test prompt to validate the model configuration
+ */
+export const useTestConfiguredModel = <
+  TError = ErrorType<ModelTestResult>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testConfiguredModel>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testConfiguredModel>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getTestConfiguredModelMutationOptions(options));
 };
 
 /**

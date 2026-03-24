@@ -6,8 +6,9 @@ import {
   ListGatewayModelsParams,
   CreateConfiguredModelBody,
   DeleteConfiguredModelParams,
+  UpdateConfiguredModelBody,
 } from "@workspace/api-zod";
-import { listModelsFromGateway, getDefaultBase } from "../lib/llm-gateway";
+import { listModelsFromGateway, getDefaultBase, chatCompletion } from "../lib/llm-gateway";
 
 const router: IRouter = Router();
 
@@ -118,10 +119,59 @@ router.post("/configured-models", (req, res) => {
   res.status(201).json(model);
 });
 
+router.put("/configured-models/:id", (req, res) => {
+  const { id } = DeleteConfiguredModelParams.parse(req.params);
+  const data = UpdateConfiguredModelBody.parse(req.body);
+  const model = store.updateConfiguredModel(req.sessionId!, id, data);
+  if (!model) {
+    res.status(404).json({ error: "Configured model not found" });
+    return;
+  }
+  res.json(model);
+});
+
 router.delete("/configured-models/:id", (req, res) => {
   const { id } = DeleteConfiguredModelParams.parse(req.params);
   store.deleteConfiguredModel(req.sessionId!, id);
   res.json({ message: "Configured model deleted" });
+});
+
+router.post("/configured-models/:id/test", async (req, res) => {
+  const { id } = DeleteConfiguredModelParams.parse(req.params);
+  const model = store.getConfiguredModel(req.sessionId!, id);
+  if (!model) {
+    res.status(404).json({ error: "Configured model not found" });
+    return;
+  }
+  const gateway = store.getGateway(req.sessionId!, model.gatewayId);
+  if (!gateway) {
+    res.status(400).json({ success: false, response: "Gateway not found", durationMs: 0 });
+    return;
+  }
+
+  try {
+    const result = await chatCompletion(
+      {
+        type: gateway.type,
+        baseUrl: gateway.baseUrl,
+        apiKey: gateway.apiKey,
+        customHeaders: gateway.customHeaders,
+      },
+      model.modelId,
+      [{ role: "user", content: "Say hello in one sentence." }],
+      req.sessionId,
+    );
+    res.json({
+      success: true,
+      response: result.content,
+      durationMs: result.durationMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(400).json({ success: false, response: message, durationMs: 0 });
+  }
 });
 
 export default router;

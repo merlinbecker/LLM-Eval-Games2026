@@ -178,6 +178,29 @@ paths:
                 $ref: "#/components/schemas/ConfiguredModel"
 
   /configured-models/{id}:
+    put:
+      operationId: updateConfiguredModel
+      tags: [configured-models]
+      summary: Update a configured model (name, costs, modelId)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateConfiguredModel"
+      responses:
+        "200":
+          description: Updated configured model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfiguredModel"
     delete:
       operationId: deleteConfiguredModel
       tags: [configured-models]
@@ -195,6 +218,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessMessage"
+
+  /configured-models/{id}/test:
+    post:
+      operationId: testConfiguredModel
+      tags: [configured-models]
+      summary: Send a hello-world test prompt to validate the model configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Test completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelTestResult"
+        "400":
+          description: Test failed (LLM error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelTestResult"
 
   /datasets:
     get:
@@ -697,6 +745,40 @@ components:
         - name
         - gatewayId
         - modelId
+
+    UpdateConfiguredModel:
+      type: object
+      properties:
+        name:
+          type: string
+        modelId:
+          type: string
+        inputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million input tokens
+        outputCostPerMillionTokens:
+          type: ["number", "null"]
+          description: Cost in USD per million output tokens
+
+    ModelTestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        response:
+          type: string
+          description: The LLM response text (or error message on failure)
+        durationMs:
+          type: number
+          description: Round-trip time in milliseconds
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+      required:
+        - success
+        - response
+        - durationMs
 
     ModelInfo:
       type: object

@@ -34,6 +34,7 @@ interface VaultContextValue {
   updateDataset: (ds: VaultDataset) => void;
   removeDataset: (id: number) => void;
   addConfiguredModel: (cm: VaultConfiguredModel) => void;
+  updateConfiguredModel: (cm: VaultConfiguredModel) => void;
   removeConfiguredModel: (id: number) => void;
 }
 
@@ -239,6 +240,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [mutate],
   );
 
+  const updateConfiguredModel = useCallback(
+    (cm: VaultConfiguredModel) => mutate((v) => ({ ...v, configuredModels: (v.configuredModels ?? []).map((m) => m.id === cm.id ? cm : m) })),
+    [mutate],
+  );
+
   // ---------- cleanup ----------
 
   useEffect(() => {
@@ -265,6 +271,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         updateDataset,
         removeDataset,
         addConfiguredModel,
+        updateConfiguredModel,
         removeConfiguredModel,
       }}
     >

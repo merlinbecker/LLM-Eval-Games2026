@@ -174,6 +174,42 @@ export const CreateConfiguredModelBody = zod.object({
 });
 
 /**
+ * @summary Update a configured model (name, costs, modelId)
+ */
+export const UpdateConfiguredModelParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateConfiguredModelBody = zod.object({
+  name: zod.string().optional(),
+  modelId: zod.string().optional(),
+  inputCostPerMillionTokens: zod
+    .number()
+    .nullish()
+    .describe("Cost in USD per million input tokens"),
+  outputCostPerMillionTokens: zod
+    .number()
+    .nullish()
+    .describe("Cost in USD per million output tokens"),
+});
+
+export const UpdateConfiguredModelResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  gatewayId: zod.number(),
+  modelId: zod.string(),
+  inputCostPerMillionTokens: zod
+    .number()
+    .nullish()
+    .describe("Cost in USD per million input tokens (optional override)"),
+  outputCostPerMillionTokens: zod
+    .number()
+    .nullish()
+    .describe("Cost in USD per million output tokens (optional override)"),
+  createdAt: zod.date(),
+});
+
+/**
  * @summary Delete a configured model
  */
 export const DeleteConfiguredModelParams = zod.object({
@@ -182,6 +218,23 @@ export const DeleteConfiguredModelParams = zod.object({
 
 export const DeleteConfiguredModelResponse = zod.object({
   message: zod.string(),
+});
+
+/**
+ * @summary Send a hello-world test prompt to validate the model configuration
+ */
+export const TestConfiguredModelParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const TestConfiguredModelResponse = zod.object({
+  success: zod.boolean(),
+  response: zod
+    .string()
+    .describe("The LLM response text (or error message on failure)"),
+  durationMs: zod.number().describe("Round-trip time in milliseconds"),
+  promptTokens: zod.number().optional(),
+  completionTokens: zod.number().optional(),
 });
 
 /**

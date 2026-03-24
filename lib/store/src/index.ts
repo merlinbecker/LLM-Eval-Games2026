@@ -240,6 +240,16 @@ class InMemoryStore {
     return this.getSession(sessionId)?.configuredModels.delete(id) ?? false;
   }
 
+  updateConfiguredModel(sessionId: string, id: number, data: Partial<Pick<ConfiguredModel, "name" | "modelId" | "inputCostPerMillionTokens" | "outputCostPerMillionTokens">>): ConfiguredModel | undefined {
+    const model = this.getSession(sessionId)?.configuredModels.get(id);
+    if (!model) return undefined;
+    if (data.name !== undefined) model.name = data.name;
+    if (data.modelId !== undefined) model.modelId = data.modelId;
+    if (data.inputCostPerMillionTokens !== undefined) model.inputCostPerMillionTokens = data.inputCostPerMillionTokens;
+    if (data.outputCostPerMillionTokens !== undefined) model.outputCostPerMillionTokens = data.outputCostPerMillionTokens;
+    return model;
+  }
+
   // --- LLM Logs ---
 
   addLlmLog(sessionId: string, data: Omit<LlmLog, "id">): LlmLog {

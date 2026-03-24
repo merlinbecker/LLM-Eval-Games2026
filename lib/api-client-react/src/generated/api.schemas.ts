@@ -115,6 +115,31 @@ export interface CreateConfiguredModel {
   outputCostPerMillionTokens?: number | null;
 }
 
+export interface UpdateConfiguredModel {
+  name?: string;
+  modelId?: string;
+  /**
+   * Cost in USD per million input tokens
+   * @nullable
+   */
+  inputCostPerMillionTokens?: number | null;
+  /**
+   * Cost in USD per million output tokens
+   * @nullable
+   */
+  outputCostPerMillionTokens?: number | null;
+}
+
+export interface ModelTestResult {
+  success: boolean;
+  /** The LLM response text (or error message on failure) */
+  response: string;
+  /** Round-trip time in milliseconds */
+  durationMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
+}
+
 export interface ModelInfo {
   id: string;
   name: string;

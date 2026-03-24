@@ -10,10 +10,12 @@ import {
   useListConfiguredModels,
   useCreateConfiguredModel,
   useDeleteConfiguredModel,
+  useUpdateConfiguredModel,
   getListConfiguredModelsQueryKey,
+  useTestConfiguredModel,
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect, RetroCombobox, RetroFormField } from "@/components/retro";
-import { Server, Trash2, Bot, Plus, X } from "lucide-react";
+import { Server, Trash2, Bot, Plus, X, Zap, Pencil, Check } from "lucide-react";
 import type { CreateGatewayType } from "@workspace/api-client-react";
 import { useVault } from "@/lib/vault/vault-store";
 
@@ -49,7 +51,7 @@ function getTypeLabel(type: string): string {
 
 export default function Gateways() {
   const queryClient = useQueryClient();
-  const { addGateway, removeGateway, addConfiguredModel, removeConfiguredModel } = useVault();
+  const { addGateway, removeGateway, addConfiguredModel, updateConfiguredModel: updateVaultModel, removeConfiguredModel } = useVault();
   const { data: gateways, isLoading } = useListGateways();
   const deleteMutation = useDeleteGateway();
   const createMutation = useCreateGateway();
@@ -58,6 +60,11 @@ export default function Gateways() {
   const { data: configuredModels, isLoading: modelsLoading } = useListConfiguredModels();
   const createModelMutation = useCreateConfiguredModel();
   const deleteModelMutation = useDeleteConfiguredModel();
+  const updateModelMutation = useUpdateConfiguredModel();
+  const testModelMutation = useTestConfiguredModel();
+  const [testResults, setTestResults] = useState<Record<number, { success: boolean; response: string; durationMs: number } | "loading">>({});
+  const [editingModelId, setEditingModelId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{ name: string; modelId: string; inputCost: string; outputCost: string }>({ name: "", modelId: "", inputCost: "", outputCost: "" });
   const [selectedGatewayId, setSelectedGatewayId] = useState("");
   const [selectedModelId, setSelectedModelId] = useState("");
   const [modelDisplayName, setModelDisplayName] = useState("");
@@ -148,6 +155,48 @@ export default function Gateways() {
       removeConfiguredModel(id);
       queryClient.invalidateQueries({ queryKey: getListConfiguredModelsQueryKey() });
     }
+  };
+
+  const handleTestModel = async (id: number) => {
+    setTestResults(prev => ({ ...prev, [id]: "loading" }));
+    try {
+      const result = await testModelMutation.mutateAsync({ id });
+      setTestResults(prev => ({ ...prev, [id]: { success: result.success, response: result.response, durationMs: result.durationMs } }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Test failed";
+      setTestResults(prev => ({ ...prev, [id]: { success: false, response: message, durationMs: 0 } }));
+    }
+  };
+
+  const startEditing = (m: { id: number; name: string; modelId: string; inputCostPerMillionTokens?: number | null; outputCostPerMillionTokens?: number | null }) => {
+    setEditingModelId(m.id);
+    setEditForm({
+      name: m.name,
+      modelId: m.modelId,
+      inputCost: m.inputCostPerMillionTokens != null ? String(m.inputCostPerMillionTokens) : "",
+      outputCost: m.outputCostPerMillionTokens != null ? String(m.outputCostPerMillionTokens) : "",
+    });
+  };
+
+  const handleUpdateModel = async () => {
+    if (editingModelId == null) return;
+    const parsedInputCost = editForm.inputCost.trim() ? Number(editForm.inputCost) : null;
+    const parsedOutputCost = editForm.outputCost.trim() ? Number(editForm.outputCost) : null;
+    const result = await updateModelMutation.mutateAsync({
+      id: editingModelId,
+      data: { name: editForm.name, modelId: editForm.modelId, inputCostPerMillionTokens: parsedInputCost, outputCostPerMillionTokens: parsedOutputCost },
+    });
+    updateVaultModel({
+      id: result.id,
+      name: result.name,
+      gatewayId: result.gatewayId,
+      modelId: result.modelId,
+      inputCostPerMillionTokens: result.inputCostPerMillionTokens ?? null,
+      outputCostPerMillionTokens: result.outputCostPerMillionTokens ?? null,
+      createdAt: result.createdAt,
+    });
+    queryClient.invalidateQueries({ queryKey: getListConfiguredModelsQueryKey() });
+    setEditingModelId(null);
   };
 
   return (
@@ -265,27 +314,85 @@ export default function Gateways() {
               <div className="space-y-4">
                 {configuredModels.map(m => {
                   const gw = gateways?.find(g => g.id === m.gatewayId);
+                  const testResult = testResults[m.id];
+                  const isEditing = editingModelId === m.id;
                   return (
-                    <div key={m.id} className="border-[3px] border-mac-black p-4 flex items-center justify-between hover:bg-mac-black/5 transition-colors">
-                      <div className="flex items-center space-x-4">
-                        <Bot className="w-8 h-8" />
-                        <div>
-                          <h3 className="font-display text-xl font-bold uppercase">{m.name}</h3>
-                          <div className="text-sm space-x-2">
-                            <RetroBadge>{gw?.name ?? `GW #${m.gatewayId}`}</RetroBadge>
-                            <span className="text-mac-black/60">{m.modelId}</span>
+                    <div key={m.id} className="border-[3px] border-mac-black p-4 hover:bg-mac-black/5 transition-colors">
+                      {isEditing ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-display font-bold uppercase text-sm">EDIT MODEL</span>
+                            <div className="flex items-center gap-2">
+                              <RetroButton size="sm" onClick={handleUpdateModel} disabled={updateModelMutation.isPending}>
+                                <Check className="w-4 h-4" />
+                              </RetroButton>
+                              <RetroButton size="sm" variant="danger" onClick={() => setEditingModelId(null)}>
+                                <X className="w-4 h-4" />
+                              </RetroButton>
+                            </div>
                           </div>
-                          {(m.inputCostPerMillionTokens != null || m.outputCostPerMillionTokens != null) && (
-                            <div className="text-xs text-mac-black/50 mt-1">
-                              {m.inputCostPerMillionTokens != null && <span>Input: ${m.inputCostPerMillionTokens}/M </span>}
-                              {m.outputCostPerMillionTokens != null && <span>Output: ${m.outputCostPerMillionTokens}/M</span>}
+                          <RetroFormField label="Display Name">
+                            <RetroInput value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                          </RetroFormField>
+                          <RetroFormField label="Model Identifier">
+                            <RetroInput value={editForm.modelId} onChange={e => setEditForm(f => ({ ...f, modelId: e.target.value }))} />
+                          </RetroFormField>
+                          <div className="grid grid-cols-2 gap-4">
+                            <RetroFormField label="Input $/M Tokens">
+                              <RetroInput type="number" step="any" min="0" value={editForm.inputCost} onChange={e => setEditForm(f => ({ ...f, inputCost: e.target.value }))} placeholder="z. B. 3.00" />
+                            </RetroFormField>
+                            <RetroFormField label="Output $/M Tokens">
+                              <RetroInput type="number" step="any" min="0" value={editForm.outputCost} onChange={e => setEditForm(f => ({ ...f, outputCost: e.target.value }))} placeholder="z. B. 15.00" />
+                            </RetroFormField>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <Bot className="w-8 h-8" />
+                              <div>
+                                <h3 className="font-display text-xl font-bold uppercase">{m.name}</h3>
+                                <div className="text-sm space-x-2">
+                                  <RetroBadge>{gw?.name ?? `GW #${m.gatewayId}`}</RetroBadge>
+                                  <span className="text-mac-black/60">{m.modelId}</span>
+                                </div>
+                                {(m.inputCostPerMillionTokens != null || m.outputCostPerMillionTokens != null) && (
+                                  <div className="text-xs text-mac-black/50 mt-1">
+                                    {m.inputCostPerMillionTokens != null && <span>Input: ${m.inputCostPerMillionTokens}/M </span>}
+                                    {m.outputCostPerMillionTokens != null && <span>Output: ${m.outputCostPerMillionTokens}/M</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RetroButton size="sm" onClick={() => startEditing(m)}>
+                                <Pencil className="w-4 h-4" />
+                              </RetroButton>
+                              <RetroButton size="sm" onClick={() => handleTestModel(m.id)} disabled={testResult === "loading"}>
+                                <Zap className="w-4 h-4" />
+                              </RetroButton>
+                              <RetroButton size="sm" variant="danger" onClick={() => handleDeleteModel(m.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </RetroButton>
+                            </div>
+                          </div>
+                          {testResult === "loading" && (
+                            <div className="mt-3 p-3 border-[3px] border-mac-black/30 text-sm animate-blink font-display uppercase">TESTING MODEL...</div>
+                          )}
+                          {testResult && testResult !== "loading" && (
+                            <div className={`mt-3 p-3 text-sm ${
+                              testResult.success ? "border-[3px] border-mac-black bg-mac-white" : "border-[3px] border-dashed border-mac-black bg-dither"
+                            }`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-display font-bold uppercase">{testResult.success ? "✓ TEST OK" : "✗ TEST FAILED"}</span>
+                                {testResult.durationMs > 0 && <span className="text-mac-black/50 font-mono">{testResult.durationMs}ms</span>}
+                              </div>
+                              <p className="text-mac-black/70 break-words">{testResult.response}</p>
                             </div>
                           )}
-                        </div>
-                      </div>
-                      <RetroButton size="sm" variant="danger" onClick={() => handleDeleteModel(m.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </RetroButton>
+                        </>
+                      )}
                     </div>
                   );
                 })}

@@ -30,6 +30,7 @@ function buildVaultMock(
     updateDataset: vi.fn(),
     removeDataset: vi.fn(),
     addConfiguredModel: vi.fn(),
+    updateConfiguredModel: vi.fn(),
     removeConfiguredModel: vi.fn(),
     ...overrides,
   };
