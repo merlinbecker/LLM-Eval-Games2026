@@ -127,11 +127,15 @@ function RunProgressView({
     });
   };
 
-  // Estimate total items from any model's progress text
+  // Estimate total items from any model's progress text (format: "ModelName: item X/Y")
   const estimatedTotal = (() => {
     if (activeModelProgress) {
-      const match = activeModelProgress.match(/(\d+)\/(\d+)/);
-      if (match) return parseInt(match[2], 10);
+      const slashIdx = activeModelProgress.indexOf("/");
+      if (slashIdx !== -1) {
+        const after = activeModelProgress.substring(slashIdx + 1).trim();
+        const total = parseInt(after, 10);
+        if (!Number.isNaN(total) && total > 0) return total;
+      }
     }
     return results.reduce((max, r) => Math.max(max, r.responses?.length ?? 0), 0);
   })();
