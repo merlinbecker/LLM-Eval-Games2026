@@ -20,8 +20,8 @@ describe("TriangleChart", () => {
   it("renders vertex labels", () => {
     render(<TriangleChart data={sampleData} />);
     expect(screen.getByText("QUALITÄT")).toBeInTheDocument();
-    expect(screen.getByText("TEMPO")).toBeInTheDocument();
-    expect(screen.getByText("EFFIZIENZ")).toBeInTheDocument();
+    expect(screen.getByText("LATENZ")).toBeInTheDocument();
+    expect(screen.getByText("KOSTEN")).toBeInTheDocument();
   });
 
   it("renders legend entries for each model", () => {

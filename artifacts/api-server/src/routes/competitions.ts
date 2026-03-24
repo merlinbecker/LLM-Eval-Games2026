@@ -311,7 +311,7 @@ function buildResultEntry(contestant: ModelSel, responses: ModelResponseEntry[])
     modelId: contestant.modelId,
     modelName: contestant.modelName,
     avgSpeed: totalSpeed / count,
-    avgCost: totalCost / count,
+    totalCost,
     avgQuality: totalQuality / count,
     totalTokens,
     responses,

@@ -68,7 +68,7 @@ function PodiumEntry({ result, config }: { result: CompetitionResult; config: ty
         <p className={`font-display ${config.textSize}`}>{config.label}</p>
         <p className="text-sm truncate">{shortName(result.modelName)}</p>
         <p className={config.textSize}>{result.avgQuality.toFixed(1)}/10</p>
-        <p className="text-xs mt-1">{formatMs(result.avgSpeed)} · {formatCost(result.avgCost)}</p>
+        <p className="text-xs mt-1">{formatMs(result.avgSpeed)} · {formatCost(result.totalCost)}</p>
       </div>
       <div className={`${config.cardWidth} ${config.pedestalH} bg-mac-black border-2 border-mac-black mt-1`} />
     </div>
@@ -212,7 +212,7 @@ function RunProgressView({
                     <span>{completedItems}/{totalItems} Items</span>
                     {result.avgQuality > 0 && <span>⌀ {result.avgQuality.toFixed(1)}/10</span>}
                     {result.avgSpeed > 0 && <span>⌀ {formatMs(result.avgSpeed)}</span>}
-                    {result.avgCost > 0 && <span>⌀ {formatCost(result.avgCost)}</span>}
+                    {result.totalCost > 0 && <span>Σ {formatCost(result.totalCost)}</span>}
                   </div>
                 </div>
                 {isExpanded ? <ChevronUp className="w-5 h-5 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 flex-shrink-0" />}
@@ -263,7 +263,7 @@ function RunProgressView({
                         <td className="p-1.5 font-display text-xs uppercase">Summe / ⌀</td>
                         <td className="p-1.5 text-center font-display text-sm">{result.avgQuality > 0 ? result.avgQuality.toFixed(1) : "—"}</td>
                         <td className="p-1.5 text-center text-sm">{result.avgSpeed > 0 ? formatMs(result.avgSpeed) : "—"}</td>
-                        <td className="p-1.5 text-center text-sm">{result.avgCost > 0 ? formatCost(result.avgCost) : "—"}</td>
+                        <td className="p-1.5 text-center text-sm">{result.totalCost > 0 ? formatCost(result.totalCost) : "—"}</td>
                         <td className="p-1.5 text-center text-sm">{result.totalTokens > 0 ? result.totalTokens.toLocaleString() : "—"}</td>
                       </tr>
                     </tfoot>
@@ -300,7 +300,7 @@ function CeremonyHeader({ sortedResults }: { sortedResults: CompetitionResult[] 
           </div>
           <div>
             <Coins className="w-5 h-5 mx-auto mb-1" />
-            <span>{formatCost(winner.avgCost)}</span>
+            <span>{formatCost(winner.totalCost)}</span>
           </div>
         </div>
       </div>
@@ -319,17 +319,19 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
     ? [...sortedResults].sort((a, b) => a.avgSpeed - b.avgSpeed)[0]
     : null;
   const cheapest = sortedResults.length > 0
-    ? [...sortedResults].sort((a, b) => a.avgCost - b.avgCost)[0]
+    ? [...sortedResults].sort((a, b) => a.totalCost - b.totalCost)[0]
     : null;
 
   // Normalize scores 1–10 relative to best/worst across all models.
   // Quality: higher is better. Speed & Cost: lower is better (inverted).
   const allResults = comp.results ?? [];
+  const worstCost = allResults.length > 0 ? Math.max(...allResults.map(r => r.totalCost)) : undefined;
+  const worstLatency = allResults.length > 0 ? Math.max(...allResults.map(r => r.avgSpeed)) : undefined;
   const radarData = (() => {
     if (allResults.length === 0) return [];
 
     const speeds = allResults.map(r => r.avgSpeed);
-    const costs = allResults.map(r => r.avgCost);
+    const costs = allResults.map(r => r.totalCost);
     const qualities = allResults.map(r => r.avgQuality);
 
     const minSpeed = Math.min(...speeds);
@@ -347,7 +349,7 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
       name: shortName(r.modelName),
       // Speed & Cost inverted: best (lowest) → 10, worst (highest) → 1
       speedScore: normalize(maxSpeed - r.avgSpeed, 0, maxSpeed - minSpeed),
-      costScore: normalize(maxCost - r.avgCost, 0, maxCost - minCost),
+      costScore: normalize(maxCost - r.totalCost, 0, maxCost - minCost),
       qualityScore: normalize(r.avgQuality, minQuality, maxQuality),
     }));
   })();
@@ -373,8 +375,8 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
               <p className="text-xs uppercase tracking-wider">Ø Tempo</p>
             </div>
             <div>
-              <p className="font-display text-4xl">{formatCost(winner.avgCost)}</p>
-              <p className="text-xs uppercase tracking-wider">Ø Kosten</p>
+              <p className="font-display text-4xl">{formatCost(winner.totalCost)}</p>
+              <p className="text-xs uppercase tracking-wider">Σ Kosten</p>
             </div>
           </div>
         </div>
@@ -424,7 +426,7 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider">Günstigstes Modell</p>
                 <p className="font-display text-xl">{shortName(cheapest.modelName)}</p>
-                <p className="text-sm">{formatCost(cheapest.avgCost)} avg</p>
+                <p className="text-sm">{formatCost(cheapest.totalCost)} gesamt</p>
               </div>
             </div>
           )}
@@ -436,7 +438,7 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
         {/* Performance Triangle */}
         <RetroWindow title="PERFORMANCE DREIECK">
           <div className="w-full bg-mac-white flex items-center justify-center p-2">
-            <TriangleChart data={radarData} />
+            <TriangleChart data={radarData} worstCost={worstCost} worstLatency={worstLatency} formatCost={formatCost} formatLatency={formatMs} />
           </div>
           <div className="p-3 border-t-[3px] border-mac-black bg-mac-black/5">
             <p className="text-xs uppercase font-bold mb-1">Leserichtung:</p>
@@ -465,7 +467,7 @@ function OverviewTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedR
                     <td className="p-2 font-bold truncate max-w-[10rem]" title={r.modelId}>{shortName(r.modelName)}</td>
                     <td className="p-2 text-center font-display">{r.avgQuality.toFixed(1)}</td>
                     <td className="p-2 text-center">{formatMs(r.avgSpeed)}</td>
-                    <td className="p-2 text-center">{formatCost(r.avgCost)}</td>
+                    <td className="p-2 text-center">{formatCost(r.totalCost)}</td>
                     <td className="p-2 text-center">{r.totalTokens.toLocaleString()}</td>
                   </tr>
                 ))}
@@ -553,8 +555,8 @@ function WinnersTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedRe
               </div>
               <div className="border-[4px] border-mac-black bg-mac-white p-6 text-center retro-shadow">
                 <Coins className="w-10 h-10 mx-auto mb-2" />
-                <p className="font-display text-5xl">{formatCost(selectedResult.avgCost)}</p>
-                <p className="font-display text-sm mt-2 uppercase tracking-widest">Avg Cost / Response</p>
+                <p className="font-display text-5xl">{formatCost(selectedResult.totalCost)}</p>
+                <p className="font-display text-sm mt-2 uppercase tracking-widest">Gesamtkosten</p>
               </div>
             </div>
 

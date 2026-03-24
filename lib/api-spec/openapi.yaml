@@ -1034,7 +1034,7 @@ components:
           type: string
         avgSpeed:
           type: number
-        avgCost:
+        totalCost:
           type: number
         avgQuality:
           type: number
@@ -1049,7 +1049,7 @@ components:
         - modelId
         - modelName
         - avgSpeed
-        - avgCost
+        - totalCost
         - avgQuality
         - totalTokens
         - responses

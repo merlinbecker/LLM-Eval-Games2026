@@ -1,9 +1,20 @@
 <p align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-orange" alt="Version 0.1.0" />
   <img src="https://img.shields.io/badge/node-24%2B-brightgreen" alt="Node 24+" />
   <img src="https://img.shields.io/badge/pnpm-monorepo-blue" alt="pnpm" />
   <img src="https://img.shields.io/badge/React-19-61dafb" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.9-3178c6" alt="TypeScript" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
+</p>
+
+<p align="center">
+  <a href="https://sonarcloud.io/summary/new_code?id=merlinbecker_LLM-Eval-Games2026"><img src="https://sonarcloud.io/api/project_badges/measure?project=merlinbecker_LLM-Eval-Games2026&metric=alert_status" alt="Quality Gate Status" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=merlinbecker_LLM-Eval-Games2026"><img src="https://sonarcloud.io/api/project_badges/measure?project=merlinbecker_LLM-Eval-Games2026&metric=security_rating" alt="Security Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=merlinbecker_LLM-Eval-Games2026"><img src="https://sonarcloud.io/api/project_badges/measure?project=merlinbecker_LLM-Eval-Games2026&metric=reliability_rating" alt="Reliability Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=merlinbecker_LLM-Eval-Games2026"><img src="https://sonarcloud.io/api/project_badges/measure?project=merlinbecker_LLM-Eval-Games2026&metric=sqale_rating" alt="Maintainability Rating" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=merlinbecker_LLM-Eval-Games2026"><img src="https://sonarcloud.io/api/project_badges/measure?project=merlinbecker_LLM-Eval-Games2026&metric=coverage" alt="Coverage" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=merlinbecker_LLM-Eval-Games2026"><img src="https://sonarcloud.io/api/project_badges/measure?project=merlinbecker_LLM-Eval-Games2026&metric=bugs" alt="Bugs" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=merlinbecker_LLM-Eval-Games2026"><img src="https://sonarcloud.io/api/project_badges/measure?project=merlinbecker_LLM-Eval-Games2026&metric=code_smells" alt="Code Smells" /></a>
 </p>
 
 # 🏆 LLM Championship — *Winter Games '85*

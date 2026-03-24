@@ -13,6 +13,14 @@ interface TriangleChartProps {
   data: TriangleDataPoint[];
   width?: number;
   height?: number;
+  /** Worst (highest) raw cost across all runs – shown on Kosten vertex hover */
+  worstCost?: number;
+  /** Worst (highest) raw latency in ms across all runs – shown on Latenz vertex hover */
+  worstLatency?: number;
+  /** Formatter for cost values (default: raw number) */
+  formatCost?: (v: number) => string;
+  /** Formatter for latency values (default: raw number + "ms") */
+  formatLatency?: (v: number) => string;
 }
 
 // ─── MARKER SHAPES ───
@@ -66,8 +74,9 @@ function MarkerShape({ shape, x, y, size = 8, filled }: { shape: string; x: numb
 
 // ─── TRIANGLE CHART ───
 
-export function TriangleChart({ data, width = 440, height = 400 }: TriangleChartProps) {
+export function TriangleChart({ data, width = 440, height = 400, worstCost, worstLatency, formatCost: fmtCost, formatLatency: fmtLatency }: TriangleChartProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [hoveredVertex, setHoveredVertex] = useState<"quality" | "cost" | "speed" | null>(null);
 
   const padding = 60;
   const labelPadding = 28;
@@ -153,21 +162,55 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
           strokeWidth={3}
         />
 
-        {/* Vertex dots */}
-        <circle cx={Q.x} cy={Q.y} r={5} fill="#000" />
-        <circle cx={S.x} cy={S.y} r={5} fill="#000" />
-        <circle cx={C.x} cy={C.y} r={5} fill="#000" />
+        {/* Vertex dots with hover */}
+        <circle cx={Q.x} cy={Q.y} r={8} fill={hoveredVertex === "quality" ? "#333" : "#000"} className="cursor-pointer" onMouseEnter={() => setHoveredVertex("quality")} onMouseLeave={() => setHoveredVertex(null)} />
+        <circle cx={S.x} cy={S.y} r={8} fill={hoveredVertex === "speed" ? "#333" : "#000"} className="cursor-pointer" onMouseEnter={() => setHoveredVertex("speed")} onMouseLeave={() => setHoveredVertex(null)} />
+        <circle cx={C.x} cy={C.y} r={8} fill={hoveredVertex === "cost" ? "#333" : "#000"} className="cursor-pointer" onMouseEnter={() => setHoveredVertex("cost")} onMouseLeave={() => setHoveredVertex(null)} />
 
         {/* Vertex labels */}
         <text x={Q.x} y={Q.y - labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
           QUALITÄT
         </text>
         <text x={S.x - labelPadding + 10} y={S.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
-          TEMPO
+          LATENZ
         </text>
         <text x={C.x + labelPadding - 10} y={C.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
-          EFFIZIENZ
+          KOSTEN
         </text>
+
+        {/* Vertex hover tooltips */}
+        {hoveredVertex === "quality" && (() => {
+          const tw = 130; const th = 36;
+          const tx = Q.x - tw / 2; const ty = Q.y - labelPadding - th - 4;
+          return (
+            <g>
+              <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
+              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#000">Max: 10</text>
+            </g>
+          );
+        })()}
+        {hoveredVertex === "speed" && worstLatency != null && (() => {
+          const label = fmtLatency ? fmtLatency(worstLatency) : `${Math.round(worstLatency)}ms`;
+          const tw = Math.max(130, label.length * 8 + 40); const th = 36;
+          const tx = S.x - labelPadding + 10 - tw / 2; const ty = S.y + labelPadding + 8;
+          return (
+            <g>
+              <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
+              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#000">Schlechteste: {label}</text>
+            </g>
+          );
+        })()}
+        {hoveredVertex === "cost" && worstCost != null && (() => {
+          const label = fmtCost ? fmtCost(worstCost) : String(worstCost);
+          const tw = Math.max(130, label.length * 8 + 40); const th = 36;
+          const tx = C.x + labelPadding - 10 - tw / 2; const ty = C.y + labelPadding + 8;
+          return (
+            <g>
+              <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
+              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#000">Schlechteste: {label}</text>
+            </g>
+          );
+        })()}
 
         {/* Center crosshair */}
         <g opacity={0.2}>
@@ -223,10 +266,10 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
               <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
               <text x={tx + 8} y={ty + 16} fontSize={11} fontWeight="bold" fill="#000">{p.name}</text>
               <text x={tx + 8} y={ty + 32} fontSize={10} fill="#000">
-                Qualität: {p.qualityScore.toFixed(1)} | Tempo: {p.speedScore.toFixed(1)}
+                Qualität: {p.qualityScore.toFixed(1)} | Latenz: {p.speedScore.toFixed(1)}
               </text>
               <text x={tx + 8} y={ty + 48} fontSize={10} fill="#000">
-                Effizienz: {p.costScore.toFixed(1)}
+                Kosten: {p.costScore.toFixed(1)}
               </text>
             </g>
           );
