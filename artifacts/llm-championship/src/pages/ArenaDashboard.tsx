@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { useListCompetitions, getGetCompetitionQueryOptions } from "@workspace/api-client-react";
 import type { CompetitionDetail } from "@workspace/api-client-react";
 import { useQueries } from "@tanstack/react-query";
-import { RetroWindow, RetroButton, RetroBadge, PodiumIcon, TrophyIcon } from "@/components/retro";
+import { RetroWindow, RetroButton, RetroBadge, TrophyIcon, RobotIcon } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
 import { Activity, TerminalSquare } from "lucide-react";
 
@@ -48,40 +48,57 @@ export default function ArenaDashboard() {
             <h1 className="text-3xl font-display uppercase tracking-widest">LLM EVAL GAMES '26</h1>
             <p className="font-sans text-xl uppercase">1-Bit Large Language Model Evaluation</p>
           </div>
-          {/* Podium with overall champions */}
-          <div className="relative w-full max-w-md z-10">
-            {topModels.length > 0 && (
-              <div className="flex justify-between items-end mb-1 px-1">
-                {/* 2nd place label */}
-                <div className="w-[35%] text-center">
-                  {topModels[1] && (
-                    <div className="bg-mac-white border-2 border-mac-black px-1 py-0.5 retro-shadow-sm">
-                      <p className="font-display text-xs uppercase truncate" title={topModels[1].modelName}>{topModels[1].modelName}</p>
-                      <p className="text-[10px]">🥈{topModels[1].gold}G {topModels[1].silver}S {topModels[1].bronze}B</p>
+          <div className="relative w-full max-w-3xl z-10 mt-16">
+            {(topModels.length > 0 && topModels.some(Boolean)) ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-end">
+                {[topModels[1], topModels[0], topModels[2]].map((model, idx) => {
+                  const label = idx === 1 ? "Gold" : idx === 0 ? "Silber" : "Bronze";
+                  // 1-bit: no color
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex flex-col items-center text-center bg-mac-white border-2 border-mac-black px-3 py-3 retro-shadow-sm ${
+                        idx === 1 ? "sm:-translate-y-8" : idx === 0 ? "sm:translate-y-3" : "sm:translate-y-8"
+                      }`}
+                    >
+                      <span className="font-display text-xs uppercase mb-1">{label}</span>
+                      <RobotIcon className="w-16 h-16 text-mac-black" />
+                      {model ? (
+                        <>
+                          <p className="font-display text-xs uppercase mt-2 truncate w-full" title={model.modelName}>{model.modelName}</p>
+                          <p className="text-[10px] mt-1">G: {model.gold} S: {model.silver} B: {model.bronze}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-display text-xs uppercase mt-2">-</p>
+                          <p className="text-[10px] mt-1">G: 0 S: 0 B: 0</p>
+                        </>
+                      )}
                     </div>
-                  )}
-                </div>
-                {/* 1st place label */}
-                <div className="w-[30%] text-center">
-                  {topModels[0] && (
-                    <div className="bg-mac-white border-2 border-mac-black px-1 py-0.5 retro-shadow-sm">
-                      <p className="font-display text-xs uppercase truncate" title={topModels[0].modelName}>{topModels[0].modelName}</p>
-                      <p className="text-[10px]">🥇{topModels[0].gold}G {topModels[0].silver}S {topModels[0].bronze}B</p>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-end">
+                {[0, 1, 2].map((idx) => {
+                  const label = idx === 1 ? "Gold" : idx === 0 ? "Silber" : "Bronze";
+                  // 1-bit: no color
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex flex-col items-center text-center bg-mac-white border-2 border-mac-black px-3 py-3 retro-shadow-sm ${
+                        idx === 1 ? "sm:-translate-y-8" : idx === 0 ? "sm:translate-y-3" : "sm:translate-y-8"
+                      }`}
+                    >
+                      <span className="font-display text-xs uppercase mb-1">{label}</span>
+                      <span className="w-16 h-16 flex items-center justify-center text-4xl text-mac-black select-none">?</span>
+                      <p className="font-display text-xs uppercase mt-2 text-mac-black/40">---</p>
+                      <p className="text-[10px] mt-1 text-mac-black/40">G: - S: - B: -</p>
                     </div>
-                  )}
-                </div>
-                {/* 3rd place label */}
-                <div className="w-[35%] text-center">
-                  {topModels[2] && (
-                    <div className="bg-mac-white border-2 border-mac-black px-1 py-0.5 retro-shadow-sm">
-                      <p className="font-display text-xs uppercase truncate" title={topModels[2].modelName}>{topModels[2].modelName}</p>
-                      <p className="text-[10px]">🥉{topModels[2].gold}G {topModels[2].silver}S {topModels[2].bronze}B</p>
-                    </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
             )}
-            <PodiumIcon className="w-full h-auto text-mac-black" />
           </div>
         </div>
         <div className="p-6 bg-mac-white grid grid-cols-1 md:grid-cols-3 gap-6">
