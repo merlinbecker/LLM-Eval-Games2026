@@ -25,7 +25,7 @@ function getDefaultBaseUrl(type: CreateGatewayType): string {
 
 export default function Gateways() {
   const queryClient = useQueryClient();
-  const { addGateway, removeGateway } = useVault();
+  const { addGateway, removeGateway, addConfiguredModel, removeConfiguredModel } = useVault();
   const { data: gateways, isLoading } = useListGateways();
   const deleteMutation = useDeleteGateway();
   const createMutation = useCreateGateway();
@@ -77,13 +77,22 @@ export default function Gateways() {
     const displayName = modelDisplayName.trim() || selected?.name || selectedModelId;
     const parsedInputCost = inputCost.trim() ? Number(inputCost) : null;
     const parsedOutputCost = outputCost.trim() ? Number(outputCost) : null;
-    await createModelMutation.mutateAsync({ data: { 
+    const result = await createModelMutation.mutateAsync({ data: { 
       name: displayName, 
       gatewayId: Number(selectedGatewayId), 
       modelId: selectedModelId,
       inputCostPerMillionTokens: parsedInputCost,
       outputCostPerMillionTokens: parsedOutputCost,
     } });
+    addConfiguredModel({
+      id: result.id,
+      name: displayName,
+      gatewayId: Number(selectedGatewayId),
+      modelId: selectedModelId,
+      inputCostPerMillionTokens: parsedInputCost,
+      outputCostPerMillionTokens: parsedOutputCost,
+      createdAt: result.createdAt,
+    });
     queryClient.invalidateQueries({ queryKey: getListConfiguredModelsQueryKey() });
     setSelectedModelId("");
     setModelDisplayName("");
@@ -94,6 +103,7 @@ export default function Gateways() {
   const handleDeleteModel = async (id: number) => {
     if (confirm("REMOVE MODEL?")) {
       await deleteModelMutation.mutateAsync({ id });
+      removeConfiguredModel(id);
       queryClient.invalidateQueries({ queryKey: getListConfiguredModelsQueryKey() });
     }
   };

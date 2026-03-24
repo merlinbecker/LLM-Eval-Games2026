@@ -41,6 +41,8 @@ function buildVaultMock(overrides: Partial<ReturnType<typeof useVault>> = {}): R
     addDataset: vi.fn(),
     updateDataset: vi.fn(),
     removeDataset: vi.fn(),
+    addConfiguredModel: vi.fn(),
+    removeConfiguredModel: vi.fn(),
     ...overrides,
   };
 }

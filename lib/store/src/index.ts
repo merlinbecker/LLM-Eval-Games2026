@@ -323,6 +323,10 @@ class InMemoryStore {
   importDatasets(sessionId: string, datasets: Dataset[]): void {
     this.bulkImport(sessionId, datasets, (s) => s.datasets, "datasets");
   }
+
+  importConfiguredModels(sessionId: string, models: ConfiguredModel[]): void {
+    this.bulkImport(sessionId, models, (s) => s.configuredModels, "configuredModels");
+  }
 }
 
 export const store = new InMemoryStore();

@@ -66,7 +66,13 @@ export default function Datasets() {
     if (!cm) return;
     const { type, datasetId } = actionDialog;
     if (type === "privacy") {
-      await privacyMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
+      const result = await privacyMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
+      // Update vault with new privacy status
+      const ds = datasets?.find(d => d.id === datasetId);
+      if (ds) {
+        const privacyStatus = result.status === "clean" ? "clean" : "issues_found";
+        updateVaultDataset(toVaultDataset({ ...ds, privacyStatus, privacyReport: result.report ?? null }));
+      }
     } else {
       await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
     }

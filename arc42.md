@@ -22,7 +22,7 @@ Die **LLM Championship** ist eine gamifizierte Webanwendung zur systematischen E
 - **LLM-Gateway-Verbindungen** zu konfigurieren (OpenRouter, GitHub Copilot, beliebige OpenAI-kompatible APIs)
 - **Test-Datensätze** zu verwalten (Markdown-Upload, KI-Generierung, automatische Datenschutz-Prüfung und Anonymisierung)
 - **Wettbewerbe** anzulegen, in denen ausgewählte Modelle als Teilnehmer und Richter gegeneinander antreten
-- **Evaluationsergebnisse** über Podium-Darstellungen, Radar-Charts und detaillierte Bewertungsprotokolle zu visualisieren
+- **Evaluationsergebnisse** über Podium-Darstellungen, Dreiecksdiagramme (Ternary-Plots: Speed / Cost / Quality) und detaillierte Bewertungsprotokolle zu visualisieren
 
 Das Design folgt einer **Retro-Ästhetik** im Stil eines Macintosh System 5 (1-bit Monochrom, Pixel-Fonts, Dithering) — inspiriert von den *Winterolympischen Spielen 1985*.
 
@@ -300,7 +300,7 @@ C4Component
 
         Component(newCompetition, "New Competition", "React", "Formular: Name, Dataset, System-Prompt, Teilnehmer-/Richterauswahl")
 
-        Component(competitionResults, "Competition Results", "React, Recharts", "Podium, Radar-Chart, Telemetrie-Karten, Bewertungsprotokolle, Live-Polling")
+        Component(competitionResults, "Competition Results", "React, SVG", "Podium, Dreiecksdiagramm (Ternary-Plot), Telemetrie-Karten, Bewertungsprotokolle, Live-Polling")
 
         Component(logsPage, "Logs Page", "React", "LLM-Call-Log-Viewer: expandierbare Einträge mit Status, Modell, Dauer, Timestamp; einklappbare JSON-Ansicht für Request/Response; Auto-Refresh (5s); Clear-Funktion")
 
@@ -507,7 +507,7 @@ sequenceDiagram
     Note over FE: BackgroundActivityProvider erkennt<br/>Status-Änderung → Toast-Notification
     FE->>FE: Query-Invalidierung (Competitions-Liste)
     FE-->>User: Toast: "Wettbewerb abgeschlossen"
-    FE-->>User: Podium, Radar-Chart, Bewertungsprotokolle
+    FE-->>User: Podium, Dreiecksdiagramm, Bewertungsprotokolle
 ```
 
 **Besonderheiten:**
@@ -737,6 +737,7 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 | **Buttons**          | `RetroButton`: Press-Effekt (translate), Varianten: primary/secondary/danger |
 | **Formulare**        | `RetroInput`, `RetroTextarea`, `RetroSelect` mit 3px-Border und Focus-Ring |
 | **Badges**           | `RetroBadge`: Inline mit Border, Uppercase, Letter-Spacing               |
+| **Dreiecksdiagramm** | `TriangleChart`: SVG-basierter Ternary-Plot mit baryzentrischen Koordinaten; 3 Ecken (Qualität, Speed, Kosten); Modelle als unterschiedliche Marker (Kreis, Quadrat, Raute, Dreieck, Kreuz); Gitterlinien bei 25%/50%/75%; Hover-Tooltip |
 
 ## 8.5 Fehlerbehandlung
 
@@ -790,6 +791,7 @@ Langläufige Operationen (Wettbewerb-Evaluation, Datensatz-Generierung) werden a
 | 6 | **esbuild** für Backend-Build          | Alternativen: tsc, swc, tsx                                                                              | Extrem schnelle Builds; CJS-Bundles für Node.js-Kompatibilität                       |
 | 7 | **Web Crypto API** für Vault           | Alternativen: Stanford JS Crypto Library, TweetNaCl                                                      | Native Browser-API; kein zusätzliches Bundle; AES-256-GCM + PBKDF2 nativ unterstützt  |
 | 8 | **HttpOnly-Session-Cookie**            | Alternativen: JWT in Authorization-Header, Bearer-Token in LocalStorage                                   | Automatisch bei jedem Request; kein JavaScript-Zugriff; SameSite-Schutz gegen CSRF   |
+| 10 | **Dreiecksdiagramm statt Radar-Chart** | Alternative: Recharts RadarChart                                                                          | Ternary-Plot bildet das Spannungsfeld Speed/Cost/Quality direkt ab; reines SVG ohne externe Lib; klarere Positionierung der Modelle via baryzentrische Koordinaten |
 
 <a id="adr-9"></a>
 
@@ -855,7 +857,7 @@ mindmap
     Benutzbarkeit
       Einheitliches Retro-Design
       Live-Updates
-      Radar-Charts und Podium
+      Dreiecksdiagramme und Podium
       Vault-Import/Export
     Wartbarkeit
       Monorepo-Struktur

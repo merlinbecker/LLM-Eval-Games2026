@@ -9,17 +9,23 @@ import {
   useCreateCompetition,
   getListCompetitionsQueryKey,
   useListConfiguredModels,
+  useCreateConfiguredModel,
+  getListConfiguredModelsQueryKey,
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroCombobox, RetroBadge, RetroFormField } from "@/components/retro";
 import { Bot, Swords, Gavel } from "lucide-react";
 import type { ModelSelection } from "@workspace/api-client-react";
+import { useVault } from "@/lib/vault/vault-store";
 
 export default function NewCompetition() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const createMutation = useCreateCompetition();
+  const createModelMutation = useCreateConfiguredModel();
+  const { addConfiguredModel } = useVault();
 
   const { data: datasets } = useListDatasets();
+  const { data: configuredModels } = useListConfiguredModels();
   
   const [name, setName] = useState("");
   const [datasetId, setDatasetId] = useState("");
@@ -34,6 +40,39 @@ export default function NewCompetition() {
       alert("Requires dataset, at least 1 contestant, and 3–5 judges.");
       return;
     }
+
+    // Save manually added models that are not yet configured
+    const allModels = [...contestants, ...judges];
+    const seen = new Set<string>();
+    for (const m of allModels) {
+      const key = `${m.gatewayId}:${m.modelId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const alreadyConfigured = configuredModels?.some(
+        (cm) => cm.gatewayId === m.gatewayId && cm.modelId === m.modelId
+      );
+      if (!alreadyConfigured) {
+        const saved = await createModelMutation.mutateAsync({
+          data: {
+            name: m.modelName,
+            gatewayId: m.gatewayId,
+            modelId: m.modelId,
+            inputCostPerMillionTokens: m.inputCostPerMillionTokens,
+            outputCostPerMillionTokens: m.outputCostPerMillionTokens,
+          },
+        });
+        addConfiguredModel({
+          id: saved.id,
+          name: m.modelName,
+          gatewayId: m.gatewayId,
+          modelId: m.modelId,
+          inputCostPerMillionTokens: m.inputCostPerMillionTokens ?? null,
+          outputCostPerMillionTokens: m.outputCostPerMillionTokens ?? null,
+          createdAt: saved.createdAt,
+        });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: getListConfiguredModelsQueryKey() });
     
     const result = await createMutation.mutateAsync({
       data: {

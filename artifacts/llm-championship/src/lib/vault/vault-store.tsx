@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { VaultData, VaultGateway, VaultDataset, StoredVault } from "./types";
+import type { VaultData, VaultGateway, VaultDataset, VaultConfiguredModel, StoredVault } from "./types";
 import { encrypt, decrypt } from "./crypto";
 import { syncToServer, deleteSession } from "./vault-sync";
 
@@ -33,6 +33,8 @@ interface VaultContextValue {
   addDataset: (ds: VaultDataset) => void;
   updateDataset: (ds: VaultDataset) => void;
   removeDataset: (id: number) => void;
+  addConfiguredModel: (cm: VaultConfiguredModel) => void;
+  removeConfiguredModel: (id: number) => void;
 }
 
 const VaultContext = createContext<VaultContextValue | null>(null);
@@ -51,6 +53,7 @@ function emptyVault(): VaultData {
     updatedAt: now,
     gateways: [],
     datasets: [],
+    configuredModels: [],
     settings: {},
   };
 }
@@ -92,7 +95,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const syncVault = useCallback(async (data: VaultData) => {
     try {
-      await syncToServer(data.gateways, data.datasets);
+      await syncToServer(data.gateways, data.datasets, data.configuredModels ?? []);
       setSynced(true);
     } catch (err) {
       setSynced(false);
@@ -190,7 +193,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         const next = fn({ ...prev, updatedAt: new Date().toISOString() });
         scheduleSave(next);
         // fire-and-forget server sync
-        syncToServer(next.gateways, next.datasets).then(() => setSynced(true)).catch(() => setSynced(false));
+        syncToServer(next.gateways, next.datasets, next.configuredModels ?? []).then(() => setSynced(true)).catch(() => setSynced(false));
         return next;
       });
     },
@@ -226,6 +229,16 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [mutate],
   );
 
+  const addConfiguredModel = useCallback(
+    (cm: VaultConfiguredModel) => mutate((v) => ({ ...v, configuredModels: [...(v.configuredModels ?? []), cm] })),
+    [mutate],
+  );
+
+  const removeConfiguredModel = useCallback(
+    (id: number) => mutate((v) => ({ ...v, configuredModels: (v.configuredModels ?? []).filter((m) => m.id !== id) })),
+    [mutate],
+  );
+
   // ---------- cleanup ----------
 
   useEffect(() => {
@@ -251,6 +264,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         addDataset,
         updateDataset,
         removeDataset,
+        addConfiguredModel,
+        removeConfiguredModel,
       }}
     >
       {children}

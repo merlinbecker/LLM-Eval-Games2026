@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
 import { store } from "@workspace/store";
-import type { Gateway, Dataset } from "@workspace/store";
+import type { Gateway, Dataset, ConfiguredModel } from "@workspace/store";
 
 const router: IRouter = Router();
 
@@ -13,9 +13,10 @@ const COOKIE_OPTIONS = {
 };
 
 router.post("/session/sync", (req, res) => {
-  const { gateways, datasets } = req.body as {
+  const { gateways, datasets, configuredModels } = req.body as {
     gateways?: Gateway[];
     datasets?: Dataset[];
+    configuredModels?: ConfiguredModel[];
   };
 
   let sessionId = req.cookies?.sessionId as string | undefined;
@@ -30,6 +31,9 @@ router.post("/session/sync", (req, res) => {
   }
   if (Array.isArray(datasets)) {
     store.importDatasets(sessionId, datasets);
+  }
+  if (Array.isArray(configuredModels)) {
+    store.importConfiguredModels(sessionId, configuredModels);
   }
 
   res.cookie("sessionId", sessionId, COOKIE_OPTIONS);

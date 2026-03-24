@@ -15,6 +15,16 @@ export interface VaultDataset {
   createdAt: string;
 }
 
+export interface VaultConfiguredModel {
+  id: number;
+  name: string;
+  gatewayId: number;
+  modelId: string;
+  inputCostPerMillionTokens: number | null;
+  outputCostPerMillionTokens: number | null;
+  createdAt: string;
+}
+
 export interface VaultSettings {
   lastSelectedGateway?: number;
 }
@@ -25,6 +35,7 @@ export interface VaultData {
   updatedAt: string;
   gateways: VaultGateway[];
   datasets: VaultDataset[];
+  configuredModels: VaultConfiguredModel[];
   settings: VaultSettings;
 }
 
