@@ -109,7 +109,7 @@ export function JudgesScoreReveal({
   const [currentEvent, setCurrentEvent] = useState<ScoringEvent | null>(null);
   const [phase, setPhase] = useState<RevealPhase>("idle");
   const [revealedCount, setRevealedCount] = useState(0);
-  const [visible, setVisible] = useState(false);
+  const [hiding, setHiding] = useState(false);
   const prevResultsRef = useRef<Map<string, number>>(new Map());
 
   // ─── Detect new scores and enqueue ───
@@ -156,13 +156,6 @@ export function JudgesScoreReveal({
     }
   }, [competition.results, competition.status]);
 
-  // ─── Show overlay as soon as queue has items ───
-  useEffect(() => {
-    if (queue.length > 0 || currentEvent) {
-      setVisible(true);
-    }
-  }, [queue, currentEvent]);
-
   // ─── Dequeue next event when idle ───
   useEffect(() => {
     if (phase === "idle" && queue.length > 0 && !currentEvent) {
@@ -171,15 +164,16 @@ export function JudgesScoreReveal({
       setCurrentEvent(next);
       setRevealedCount(0);
       setPhase("entering");
+      setHiding(false);
       return undefined;
     }
-    // Hide overlay only when idle AND queue empty AND no current event
-    if (phase === "idle" && queue.length === 0 && !currentEvent && visible) {
-      const hideTimer = setTimeout(() => setVisible(false), EXIT_DURATION);
+    // Start hide-delay when idle AND queue empty AND no current event
+    if (phase === "idle" && queue.length === 0 && !currentEvent && !hiding) {
+      const hideTimer = setTimeout(() => setHiding(true), EXIT_DURATION);
       return () => clearTimeout(hideTimer);
     }
     return undefined;
-  }, [phase, queue, currentEvent, visible]);
+  }, [phase, queue, currentEvent, hiding]);
 
   // ─── Animation state machine ───
   useEffect(() => {
@@ -220,8 +214,8 @@ export function JudgesScoreReveal({
 
   // Determine if there's active content to show
   const hasContent = currentEvent !== null;
-  // Overall overlay visibility: fade in/out
-  const overlayVisible = visible && (hasContent || queue.length > 0);
+  // Overlay visible whenever there's work — hidden only after exit delay
+  const overlayVisible = (hasContent || queue.length > 0) && !hiding;
 
   // Running average of revealed scores
   const revealedScores = currentEvent

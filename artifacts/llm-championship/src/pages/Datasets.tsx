@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListDatasets, 
@@ -16,7 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroSelect, RetroDialog, RetroFormField } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
-import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit, Edit3 } from "lucide-react";
+import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit, Edit3, Plus } from "lucide-react";
 import { useVault } from "@/lib/vault/vault-store";
 import type { VaultDataset } from "@/lib/vault/types";
 import type { Dataset } from "@workspace/api-client-react";
@@ -199,25 +199,60 @@ export default function Datasets() {
   );
 }
 
+// ─── Helpers ───
+
+/** Strip wrapping markdown code fences like ```markdown ... ``` */
+function stripMarkdownFences(text: string): string {
+  return text.replace(/^```(?:markdown|md)?\s*\n?/gim, "").replace(/\n?```\s*$/gim, "").trim();
+}
+
+/** Split markdown content into individual items by ## headings */
+function parseDatasetItems(content: string): string[] {
+  const cleaned = stripMarkdownFences(content);
+  const sections = cleaned.split(/^(?=## )/m).filter((s) => s.trim().length > 0);
+  if (sections.length > 1) return sections.map((s) => s.trim());
+  // Fallback: split by double newlines
+  const paragraphs = cleaned.split(/\n\n+/).map((p) => p.trim()).filter((p) => p.length > 0);
+  return paragraphs.length > 0 ? paragraphs : cleaned.length > 0 ? [cleaned] : [];
+}
+
+/** Join items back into a single markdown document */
+function joinDatasetItems(items: string[]): string {
+  return items.join("\n\n");
+}
+
 function DatasetEditDialog({ datasetId, onClose }: { datasetId: number; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { updateDataset: updateVaultDataset } = useVault();
   const { data: dataset, isLoading } = useGetDataset(datasetId);
   const updateMutation = useUpdateDataset();
   const [editName, setEditName] = useState("");
-  const [editContent, setEditContent] = useState("");
+  const [items, setItems] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   if (dataset && !initialized) {
     setEditName(dataset.name);
-    setEditContent(dataset.content);
+    setItems(parseDatasetItems(dataset.content));
     setInitialized(true);
   }
 
+  const handleItemChange = (index: number, value: string) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? value : item)));
+  };
+
+  const handleDeleteItem = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddItem = () => {
+    setItems((prev) => [...prev, `## Item ${prev.length + 1}\n`]);
+  };
+
   const handleSave = async () => {
+    const content = joinDatasetItems(items.filter((item) => item.trim().length > 0));
     const result = await updateMutation.mutateAsync({
       id: datasetId,
-      data: { name: editName, content: editContent },
+      data: { name: editName, content },
     });
     updateVaultDataset(toVaultDataset(result));
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
@@ -225,33 +260,81 @@ function DatasetEditDialog({ datasetId, onClose }: { datasetId: number; onClose:
   };
 
   return (
-    <RetroDialog title={`DATASET: ${dataset?.name ?? "..."}`} onClose={onClose}>
-      {isLoading ? (
-        <div className="p-8 text-center font-display text-xl animate-pulse">LOADING...</div>
-      ) : dataset ? (
-        <div className="space-y-4">
-          <RetroFormField label="Name">
-            <RetroInput value={editName} onChange={(e) => setEditName(e.target.value)} />
-          </RetroFormField>
-          <RetroFormField label="Content (Markdown)">
-            <RetroTextarea
-              rows={15}
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="font-mono text-sm"
-            />
-          </RetroFormField>
-          <div className="flex space-x-3 pt-2">
-            <RetroButton className="flex-1" onClick={handleSave} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "SAVING..." : "SAVE CHANGES"}
-            </RetroButton>
-            <RetroButton variant="secondary" onClick={onClose}>CANCEL</RetroButton>
-          </div>
+    <div className="fixed inset-0 bg-mac-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className="bg-mac-white border-[3px] border-mac-black w-full max-w-4xl max-h-[90vh] flex flex-col retro-shadow"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-mac-black text-mac-white px-4 py-2 font-display uppercase flex items-center justify-between">
+          <span>DATASET: {dataset?.name ?? "..."}</span>
+          <button onClick={onClose} className="text-mac-white hover:opacity-70 font-display text-lg">✕</button>
         </div>
-      ) : (
-        <div className="p-4 text-center">DATASET NOT FOUND.</div>
-      )}
-    </RetroDialog>
+        {isLoading ? (
+          <div className="p-8 text-center font-display text-xl animate-pulse">LOADING...</div>
+        ) : dataset ? (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="p-4 border-b-[3px] border-mac-black">
+              <RetroFormField label="Name">
+                <RetroInput value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </RetroFormField>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-display text-sm uppercase tracking-widest">
+                  {items.length} Item{items.length !== 1 ? "s" : ""}
+                </span>
+                <RetroButton size="sm" variant="secondary" onClick={handleAddItem}>
+                  <Plus className="w-3 h-3 mr-1 inline" /> ITEM HINZUFÜGEN
+                </RetroButton>
+              </div>
+
+              {items.map((item, index) => (
+                <div
+                  key={index}
+                  className="border-[3px] border-mac-black bg-mac-white"
+                >
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-mac-black/5 border-b-[2px] border-mac-black">
+                    <span className="font-display text-xs uppercase tracking-wider">
+                      Item {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteItem(index)}
+                      className="text-mac-black hover:bg-mac-black hover:text-mac-white px-2 py-0.5 border-[2px] border-mac-black text-xs font-display uppercase transition-colors"
+                      title="Item löschen"
+                    >
+                      <Trash2 className="w-3 h-3 inline mr-1" />LÖSCHEN
+                    </button>
+                  </div>
+                  <textarea
+                    rows={Math.max(3, item.split("\n").length + 1)}
+                    value={item}
+                    onChange={(e) => handleItemChange(index, e.target.value)}
+                    className="w-full px-3 py-2 bg-mac-white text-mac-black font-mono text-sm focus:outline-none focus:ring-4 focus:ring-mac-black/20 resize-y border-0"
+                  />
+                </div>
+              ))}
+
+              {items.length === 0 && (
+                <div className="text-center py-8 text-mac-black/40 font-display uppercase">
+                  Keine Items vorhanden
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t-[3px] border-mac-black flex space-x-3">
+              <RetroButton className="flex-1" onClick={handleSave} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "SAVING..." : "SAVE CHANGES"}
+              </RetroButton>
+              <RetroButton variant="secondary" onClick={onClose}>CANCEL</RetroButton>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 text-center">DATASET NOT FOUND.</div>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -5,6 +5,7 @@ import {
   useGetCompetition, 
   useRunCompetition,
   useListActivities,
+  useGetDataset,
   getGetCompetitionQueryKey,
   getListActivitiesQueryKey
 } from "@workspace/api-client-react";
@@ -13,7 +14,7 @@ import { Commentator } from "@/components/Commentator";
 import { JudgesScoreReveal } from "@/components/JudgesScoreReveal";
 import { TriangleChart } from "@/components/TriangleChart";
 import { formatCost } from "@/lib/utils";
-import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Loader2, Award, Zap, Coins, Trophy, Users, Hash, Clock, BarChart3, FileText, ChevronDown, ChevronUp, MessageSquareText } from "lucide-react";
 import type { CompetitionResult, CompetitionDetail, JudgeScore } from "@workspace/api-client-react";
 
 // ─── HELPERS ───
@@ -25,6 +26,18 @@ function shortName(name: string): string {
 function formatMs(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function parseDatasetItems(content: string): string[] {
+  const sections = content.split(/^## /m).filter(Boolean);
+  if (sections.length > 1) {
+    return sections.map((s) => s.trim());
+  }
+  const paragraphs = content
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  return paragraphs.length > 0 ? paragraphs : [content];
 }
 
 
@@ -623,6 +636,11 @@ function DetailsTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedRe
   const totalQuestions = comp.results?.[0]?.responses?.length ?? 0;
   const [selectedQuestion, setSelectedQuestion] = useState(0);
 
+  // Fetch dataset to show original questions
+  const { data: dataset } = useGetDataset(comp.datasetId);
+  const dataItems = dataset?.content ? parseDatasetItems(dataset.content) : [];
+  const currentQuestion = dataItems[selectedQuestion] ?? null;
+
   if (totalQuestions === 0) {
     return <p className="font-display text-xl text-center py-12">Keine Antworten vorhanden.</p>;
   }
@@ -662,6 +680,19 @@ function DetailsTab({ comp, sortedResults }: { comp: CompetitionDetail; sortedRe
           </RetroButton>
         </div>
       </div>
+
+      {/* Original question from dataset */}
+      {currentQuestion && (
+        <div className="border-[3px] border-mac-black bg-mac-black/5 p-4 retro-shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquareText className="w-5 h-5 flex-shrink-0" />
+            <h4 className="font-display text-sm uppercase">Ursprüngliche Frage (Datensatz)</h4>
+          </div>
+          <div className="bg-mac-white border-[2px] border-mac-black p-4 font-mono text-sm max-h-48 overflow-y-auto whitespace-pre-wrap">
+            {currentQuestion}
+          </div>
+        </div>
+      )}
 
       {/* Responses for this question */}
       <div className="space-y-6">

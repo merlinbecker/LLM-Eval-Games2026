@@ -184,14 +184,7 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
             className="cursor-pointer"
           >
             <MarkerShape shape={p.marker.shape} x={p.x} y={p.y} size={8} filled={false} />
-            <text
-              x={p.x}
-              y={p.y - 14}
-              textAnchor="middle"
-              fontSize={10}
-              fontWeight="bold"
-              fill="#000"
-            >
+            <text x={p.x} y={p.y - 14} textAnchor="middle" fontSize={10} fontWeight="bold" fill="#000">
               {p.name}
             </text>
           </g>
@@ -206,14 +199,7 @@ export function TriangleChart({ data, width = 440, height = 400 }: TriangleChart
               className="cursor-pointer"
             >
               <MarkerShape shape={p.marker.shape} x={p.x} y={p.y} size={10} filled={true} />
-              <text
-                x={p.x}
-                y={p.y - 14}
-                textAnchor="middle"
-                fontSize={10}
-                fontWeight="bold"
-                fill="#000"
-              >
+              <text x={p.x} y={p.y - 14} textAnchor="middle" fontSize={10} fontWeight="bold" fill="#000">
                 {p.name}
               </text>
             </g>

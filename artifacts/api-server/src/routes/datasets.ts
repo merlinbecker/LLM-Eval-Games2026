@@ -246,7 +246,7 @@ async function generateDatasetAsync(
     [
       {
         role: "system",
-        content: `You are a test data generator. Generate ${data.numberOfItems} test items as a well-structured Markdown document.\n\nDescription of data to generate: "${data.topic}"${examplesSection}\n\nEach item should be a separate section with a heading (## Item N). The items should be realistic and diverse.\n\nOutput only the Markdown document, nothing else.`,
+        content: `You are a test data generator. Generate ${data.numberOfItems} test items as a well-structured Markdown document.\n\nDescription of data to generate: "${data.topic}"${examplesSection}\n\nEach item should be a separate section with a heading (## Item N). The items should be realistic and diverse.\n\nOutput only the raw Markdown content, nothing else. Do NOT wrap the output in code fences (no \`\`\`markdown or \`\`\`).`,
       },
       {
         role: "user",
@@ -256,9 +256,15 @@ async function generateDatasetAsync(
     sessionId,
   );
 
+  // Strip markdown code fences that LLMs sometimes wrap around their output
+  const cleanedContent = result.content
+    .replace(/^```(?:markdown|md)?\s*\n?/gim, "")
+    .replace(/\n?```\s*$/gim, "")
+    .trim();
+
   const dataset = store.createDataset(sessionId, {
     name: data.name,
-    content: result.content,
+    content: cleanedContent,
   });
 
   store.updateActivity(sessionId, activityId, {

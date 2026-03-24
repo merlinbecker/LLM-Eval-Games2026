@@ -300,11 +300,13 @@ C4Component
 
         Component(newCompetition, "New Competition", "React", "Formular: Name, Dataset, System-Prompt, Teilnehmer-/Richterauswahl")
 
-        Component(competitionResults, "Competition Results", "React, SVG", "Podium, Dreiecksdiagramm (Ternary-Plot), Telemetrie-Karten, Bewertungsprotokolle, Live-Polling")
+        Component(judgesScoreReveal, "JudgesScoreReveal", "React", "Animiertes Richter-Scoring-Overlay: Queue-basierte State-Machine (entering→revealing→holding→exiting→idle); Roboter halten Wertungskarten hoch")
+
+        Component(competitionResults, "Competition Results", "React, SVG", "Podium, Dreiecksdiagramm (relatives Scoring), Telemetrie-Karten, Bewertungsprotokolle, Live-Polling, Datensatz-Fragen-Anzeige, JudgesScoreReveal-Overlay")
 
         Component(logsPage, "Logs Page", "React", "LLM-Call-Log-Viewer: expandierbare Einträge mit Status, Modell, Dauer, Timestamp; einklappbare JSON-Ansicht für Request/Response; Auto-Refresh (5s); Clear-Funktion")
 
-        Component(retroComponents, "Retro-Komponentenbibliothek", "React, Tailwind CSS", "RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge")
+        Component(retroComponents, "Retro-Komponentenbibliothek", "React, Tailwind CSS", "RetroWindow (einklappbar), RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge, RobotIcon, JudgeRevealRobot")
     }
 
     Container(apiClient, "API Client React", "React Query Hooks")
@@ -326,7 +328,8 @@ C4Component
     Rel(gatewaysPage, apiClient, "useListGateways(), useCreateGateway(), useDeleteGateway()")
     Rel(datasetsPage, apiClient, "useListDatasets(), useCreateDataset(), useUploadDataset(), useGenerateDataset(), usePrivacyCheckDataset()")
     Rel(newCompetition, apiClient, "useCreateCompetition(), useListGateways(), useListGatewayModels()")
-    Rel(competitionResults, apiClient, "useGetCompetition(), useRunCompetition()")
+    Rel(competitionResults, apiClient, "useGetCompetition(), useRunCompetition(), useGetDataset()")
+    Rel(competitionResults, judgesScoreReveal, "Rendert im Running-State als Overlay")
     Rel(logsPage, apiClient, "useListLlmLogs(), useClearLlmLogs()")
 
     Rel(arenaDashboard, retroComponents, "Nutzt")
@@ -504,15 +507,18 @@ sequenceDiagram
     API->>Store: updateCompetition(status='completed', results)
     API->>Store: updateActivity(status='completed', resultId)
 
+    Note over FE: Während Evaluation: JudgesScoreReveal-Overlay<br/>zeigt animierte Richter-Wertungen in Echtzeit<br/>(Queue-basiert, State-Machine-Animation)
+
     Note over FE: BackgroundActivityProvider erkennt<br/>Status-Änderung → Toast-Notification
     FE->>FE: Query-Invalidierung (Competitions-Liste)
     FE-->>User: Toast: "Wettbewerb abgeschlossen"
-    FE-->>User: Podium, Dreiecksdiagramm, Bewertungsprotokolle
+    FE-->>User: Podium, Dreiecksdiagramm (relativ normalisiert), Bewertungsprotokolle mit Datensatz-Fragen
 ```
 
 **Besonderheiten:**
 - Die Evaluation läuft asynchron im API-Server; `BackgroundActivityProvider` pollt Activity-Status alle 3 Sekunden
 - Zusätzlich pollt `CompetitionResults` die Competition-Daten alle 2 Sekunden für partielle Ergebnis-Updates
+- `JudgesScoreReveal` erkennt neue Richter-Wertungen per `useEffect`-Diff (vorherige vs. aktuelle Response-Counts) und zeigt sie als animiertes Overlay mit Roboter-Wertungskarten
 - Teilnehmer-Modelle werden mit `max concurrency = 5` parallel evaluiert
 - Richter-Bewertungen laufen ebenfalls parallel (max 5)
 - Zwischenergebnisse werden nach jedem Item im In-Memory-Store aktualisiert (partielle Updates)
@@ -733,11 +739,13 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 |----------------------|--------------------------------------------------------------------------|
 | **Farbpalette**      | 1-bit Monochrom (Schwarz/Weiß) mit Dithering-Mustern                    |
 | **Schriftarten**     | Silkscreen (Pixel-Font) für Überschriften; System-Monospace für Text     |
-| **Fenster**          | `RetroWindow`: 3px Border, Titelleiste mit gestreiftem Hintergrund       |
+| **Fenster**          | `RetroWindow`: 3px Border, Titelleiste mit gestreiftem Hintergrund; optional einklappbar (`collapsible`) mit ▶/▼-Indikator |
 | **Buttons**          | `RetroButton`: Press-Effekt (translate), Varianten: primary/secondary/danger |
 | **Formulare**        | `RetroInput`, `RetroTextarea`, `RetroSelect` mit 3px-Border und Focus-Ring |
 | **Badges**           | `RetroBadge`: Inline mit Border, Uppercase, Letter-Spacing               |
-| **Dreiecksdiagramm** | `TriangleChart`: SVG-basierter Ternary-Plot mit baryzentrischen Koordinaten; 3 Ecken (Qualität, Speed, Kosten); Modelle als unterschiedliche Marker (Kreis, Quadrat, Raute, Dreieck, Kreuz); Gitterlinien bei 25%/50%/75%; Hover-Tooltip |
+| **Dreiecksdiagramm** | `TriangleChart`: SVG-basierter Ternary-Plot mit baryzentrischen Koordinaten; 3 Ecken (Qualität, Tempo, Effizienz); relative Normalisierung (1–10) anhand Min/Max aller Modelle (Speed/Cost invertiert: bester Wert → 10); Modelle als unterschiedliche Marker (Kreis, Quadrat, Raute, Dreieck, Kreuz); Gitterlinien bei 25%/50%/75%; Hover-Tooltip mit Z-Ordering |
+| **Einklappbare Fenster** | `RetroWindow` mit `collapsible`/`defaultCollapsed`-Props; Klick auf Titelleiste klappt Inhalt ein/aus; ▶/▼-Indikator |
+| **Richter-Scoring-Overlay** | `JudgesScoreReveal`: Animiertes Overlay während laufender Wettbewerbe; `JudgeRevealRobot`-Komponenten mit CSS-Transition-Reveal und `animate-score-pop` (Bounce-Keyframe `scale 0.7→1.15→0.95→1`); absolut positioniert unter der Header-Bar (z-40); Queue-System (max. 4 Events) |
 
 ## 8.5 Fehlerbehandlung
 
@@ -922,5 +930,7 @@ mindmap
 | **React Query**          | Bibliothek für serverseitigen Zustandsmanagement in React; Caching, Refetching, Mutations                           |
 | **Wouter**               | Minimalistischer React-Router (~1.5kB); Alternative zu React Router                                                 |
 | **Retro-UI**             | UI-Designsystem im Stil des Macintosh System 5 (ca. 1985): 1-bit Monochrom, Pixel-Fonts, Dithering                 |
+| **JudgesScoreReveal**    | Animiertes Overlay-Fenster, das während laufender Wettbewerbe Richter-Wertungen visualisiert: Roboter halten Wertungskarten hoch; Queue-basierte State-Machine-Animation (entering→revealing→holding→exiting→idle) |
+| **Relative Normalisierung** | Bewertungsmethode im Dreiecksdiagramm: Scores werden relativ zum besten/schlechtesten Modell auf 1–10 skaliert (statt absoluter Werte); Speed und Cost invertiert |
 | **Activity**             | Background-Job-Tracking-Objekt mit Status (`running`/`completed`/`error`), Fortschritt und Ergebnis-Referenz         |
 | **Background Job**       | Langläufige Operation (Wettbewerb-Evaluation, Datensatz-Generierung), die asynchron im Backend läuft und über eine Activity getrackt wird |
