@@ -7,6 +7,8 @@ import type {
   CreateCompetition,
   CompetitionResultEntry,
   LlmLog,
+  ConfiguredModel,
+  CreateConfiguredModel,
 } from "./types";
 
 declare function setInterval(callback: () => void, ms: number): unknown;
@@ -16,8 +18,9 @@ interface SessionStore {
   gateways: Map<number, Gateway>;
   datasets: Map<number, Dataset>;
   competitions: Map<number, Competition>;
+  configuredModels: Map<number, ConfiguredModel>;
   llmLogs: LlmLog[];
-  counters: { gateways: number; datasets: number; competitions: number; llmLogs: number };
+  counters: { gateways: number; datasets: number; competitions: number; llmLogs: number; configuredModels: number };
   lastAccess: number;
 }
 
@@ -78,8 +81,9 @@ class InMemoryStore {
       gateways: new Map(),
       datasets: new Map(),
       competitions: new Map(),
+      configuredModels: new Map(),
       llmLogs: [],
-      counters: { gateways: 1, datasets: 1, competitions: 1, llmLogs: 1 },
+      counters: { gateways: 1, datasets: 1, competitions: 1, llmLogs: 1, configuredModels: 1 },
       lastAccess: Date.now(),
     };
     this.sessions.set(sessionId, session);
@@ -201,6 +205,34 @@ class InMemoryStore {
     return this.getSession(sessionId)?.competitions.delete(id) ?? false;
   }
 
+  // --- Configured Models ---
+
+  listConfiguredModels(sessionId: string): ConfiguredModel[] {
+    return Array.from(this.getSession(sessionId)?.configuredModels.values() ?? []);
+  }
+
+  getConfiguredModel(sessionId: string, id: number): ConfiguredModel | undefined {
+    return this.getSession(sessionId)?.configuredModels.get(id);
+  }
+
+  createConfiguredModel(sessionId: string, data: CreateConfiguredModel): ConfiguredModel {
+    const session = this.requireSession(sessionId);
+    const id = session.counters.configuredModels++;
+    const model: ConfiguredModel = {
+      id,
+      name: data.name,
+      gatewayId: data.gatewayId,
+      modelId: data.modelId,
+      createdAt: new Date().toISOString(),
+    };
+    session.configuredModels.set(id, model);
+    return model;
+  }
+
+  deleteConfiguredModel(sessionId: string, id: number): boolean {
+    return this.getSession(sessionId)?.configuredModels.delete(id) ?? false;
+  }
+
   // --- LLM Logs ---
 
   addLlmLog(sessionId: string, data: Omit<LlmLog, "id">): LlmLog {
@@ -252,5 +284,5 @@ class InMemoryStore {
 
 export const store = new InMemoryStore();
 
-export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition, LlmLog };
+export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition, LlmLog, ConfiguredModel, CreateConfiguredModel };
 export type { JudgeScoreEntry, ModelResponseEntry, CompetitionResultEntry, ModelSelection } from "./types";

@@ -61,6 +61,20 @@ export interface Gateway {
   createdAt: string;
 }
 
+export interface ConfiguredModel {
+  id: number;
+  name: string;
+  gatewayId: number;
+  modelId: string;
+  createdAt: string;
+}
+
+export interface CreateConfiguredModel {
+  name: string;
+  gatewayId: number;
+  modelId: string;
+}
+
 export interface ModelInfo {
   id: string;
   name: string;

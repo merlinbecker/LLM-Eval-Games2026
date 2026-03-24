@@ -4,6 +4,8 @@ import {
   CreateGatewayBody,
   DeleteGatewayParams,
   ListGatewayModelsParams,
+  CreateConfiguredModelBody,
+  DeleteConfiguredModelParams,
 } from "@workspace/api-zod";
 import { listModelsFromGateway, getDefaultBase } from "../lib/llm-gateway";
 
@@ -83,6 +85,37 @@ router.get("/gateways/:id/models", async (req, res) => {
       gatewayName: gateway.name,
     })),
   );
+});
+
+// --- Configured Models ---
+
+router.get("/configured-models", (req, res) => {
+  const models = store.listConfiguredModels(req.sessionId!);
+  res.json(models);
+});
+
+router.post("/configured-models", (req, res) => {
+  const data = CreateConfiguredModelBody.parse(req.body);
+
+  // Validate that the gateway exists
+  const gateway = store.getGateway(req.sessionId!, data.gatewayId);
+  if (!gateway) {
+    res.status(400).json({ error: "Gateway not found" });
+    return;
+  }
+
+  const model = store.createConfiguredModel(req.sessionId!, {
+    name: data.name,
+    gatewayId: data.gatewayId,
+    modelId: data.modelId,
+  });
+  res.status(201).json(model);
+});
+
+router.delete("/configured-models/:id", (req, res) => {
+  const { id } = DeleteConfiguredModelParams.parse(req.params);
+  store.deleteConfiguredModel(req.sessionId!, id);
+  res.json({ message: "Configured model deleted" });
 });
 
 export default router;

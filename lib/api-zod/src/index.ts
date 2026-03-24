@@ -6,6 +6,8 @@ export type {
   CompetitionDetailStatus,
   CompetitionResult,
   CompetitionStatus,
+  ConfiguredModel,
+  CreateConfiguredModel,
   CreateCompetition,
   CreateDataset,
   CreateGateway,

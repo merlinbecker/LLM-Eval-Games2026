@@ -102,6 +102,40 @@ export const ListGatewayModelsResponse = zod.array(
 );
 
 /**
+ * @summary List all pre-configured models
+ */
+export const ListConfiguredModelsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  gatewayId: zod.number(),
+  modelId: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListConfiguredModelsResponse = zod.array(
+  ListConfiguredModelsResponseItem,
+);
+
+/**
+ * @summary Save a pre-configured model
+ */
+export const CreateConfiguredModelBody = zod.object({
+  name: zod.string(),
+  gatewayId: zod.number(),
+  modelId: zod.string(),
+});
+
+/**
+ * @summary Delete a configured model
+ */
+export const DeleteConfiguredModelParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteConfiguredModelResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
  * @summary List all datasets
  */
 export const ListDatasetsResponseItem = zod.object({

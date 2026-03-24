@@ -7,7 +7,8 @@ import {
   useListGatewayModels,
   getListGatewayModelsQueryKey,
   useCreateCompetition,
-  getListCompetitionsQueryKey
+  getListCompetitionsQueryKey,
+  useListConfiguredModels,
 } from "@workspace/api-client-react";
 import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge, RetroFormField } from "@/components/retro";
 import { Bot, Swords, Gavel } from "lucide-react";
@@ -148,6 +149,9 @@ export default function NewCompetition() {
 
 function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: ModelSelection) => void, buttonLabel: string, icon: React.ReactNode, disabled?: boolean }) {
   const { data: gateways } = useListGateways();
+  const { data: configuredModels } = useListConfiguredModels();
+  const [mode, setMode] = useState<"configured" | "manual">("configured");
+  const [configuredModelId, setConfiguredModelId] = useState("");
   const [gatewayId, setGatewayId] = useState("");
   const [modelId, setModelId] = useState("");
   const [modelName, setModelName] = useState("");
@@ -156,61 +160,109 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
   const { data: models } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!gatewayId }});
 
   const handleAdd = () => {
-    if (!gatewayId || !modelId) return;
-    const selected = models?.find(m => m.id === modelId);
-    onAdd({
-      gatewayId: Number(gatewayId),
-      modelId,
-      modelName: modelName.trim() || selected?.name || modelId,
-    });
-    setModelId("");
-    setModelName("");
+    if (mode === "configured") {
+      if (!configuredModelId) return;
+      const cm = configuredModels?.find(m => m.id === Number(configuredModelId));
+      if (!cm) return;
+      onAdd({
+        gatewayId: cm.gatewayId,
+        modelId: cm.modelId,
+        modelName: cm.name,
+      });
+      setConfiguredModelId("");
+    } else {
+      if (!gatewayId || !modelId) return;
+      const selected = models?.find(m => m.id === modelId);
+      onAdd({
+        gatewayId: Number(gatewayId),
+        modelId,
+        modelName: modelName.trim() || selected?.name || modelId,
+      });
+      setModelId("");
+      setModelName("");
+    }
   };
 
+  const hasConfiguredModels = (configuredModels?.length ?? 0) > 0;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 items-end">
-      <RetroFormField label="Gateway" className="sm:col-span-2">
-        <RetroSelect value={gatewayId} onChange={e => setGatewayId(e.target.value)}>
-          <option value="">- SELECT -</option>
-          {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </RetroSelect>
-      </RetroFormField>
-      <RetroFormField label="Model (List)" className="sm:col-span-2">
-        <RetroSelect
-          value={models?.some((m) => m.id === modelId) ? modelId : ""}
-          onChange={e => {
-            const id = e.target.value;
-            setModelId(id);
-            const selected = models?.find((m) => m.id === id);
-            if (selected) setModelName(selected.name);
-          }}
-          disabled={!gatewayId || !models?.length}
-        >
-          <option value="">- OPTIONAL -</option>
-          {models?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </RetroSelect>
-      </RetroFormField>
-      <RetroFormField label="Model Identifier" className="sm:col-span-2">
-        <RetroInput
-          value={modelId}
-          onChange={e => setModelId(e.target.value)}
-          placeholder="z. B. openai/gpt-4o-mini"
-          disabled={!gatewayId}
-        />
-      </RetroFormField>
-      <div className="sm:col-span-1">
-        <RetroButton type="button" onClick={handleAdd} className="w-full flex items-center justify-center p-2" disabled={!modelId || disabled}>
-          {icon} ADD
-        </RetroButton>
-      </div>
-      <RetroFormField label="Display Name (optional)" className="sm:col-span-7">
-        <RetroInput
-          value={modelName}
-          onChange={e => setModelName(e.target.value)}
-          placeholder="Falls leer, wird Name aus Liste oder Identifier genutzt"
-          disabled={!gatewayId}
-        />
-      </RetroFormField>
+    <div className="space-y-4">
+      {hasConfiguredModels && (
+        <div className="flex space-x-2">
+          <RetroButton type="button" size="sm" variant={mode === "configured" ? "primary" : "secondary"} onClick={() => setMode("configured")}>
+            SAVED MODELS
+          </RetroButton>
+          <RetroButton type="button" size="sm" variant={mode === "manual" ? "primary" : "secondary"} onClick={() => setMode("manual")}>
+            MANUAL
+          </RetroButton>
+        </div>
+      )}
+
+      {mode === "configured" && hasConfiguredModels ? (
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-end">
+          <RetroFormField label="Configured Model" className="sm:col-span-4">
+            <RetroSelect value={configuredModelId} onChange={e => setConfiguredModelId(e.target.value)}>
+              <option value="">-- SELECT MODEL --</option>
+              {configuredModels?.map(m => {
+                const gw = gateways?.find(g => g.id === m.gatewayId);
+                return <option key={m.id} value={m.id}>{m.name} ({gw?.name ?? `GW #${m.gatewayId}`})</option>;
+              })}
+            </RetroSelect>
+          </RetroFormField>
+          <div className="sm:col-span-1">
+            <RetroButton type="button" onClick={handleAdd} className="w-full flex items-center justify-center p-2" disabled={!configuredModelId || disabled}>
+              {icon} ADD
+            </RetroButton>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 items-end">
+            <RetroFormField label="Gateway" className="sm:col-span-2">
+              <RetroSelect value={gatewayId} onChange={e => setGatewayId(e.target.value)}>
+                <option value="">- SELECT -</option>
+                {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </RetroSelect>
+            </RetroFormField>
+            <RetroFormField label="Model (List)" className="sm:col-span-2">
+              <RetroSelect
+                value={models?.some((m) => m.id === modelId) ? modelId : ""}
+                onChange={e => {
+                  const id = e.target.value;
+                  setModelId(id);
+                  const selected = models?.find((m) => m.id === id);
+                  if (selected) setModelName(selected.name);
+                }}
+                disabled={!gatewayId || !models?.length}
+              >
+                <option value="">- OPTIONAL -</option>
+                {models?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </RetroSelect>
+            </RetroFormField>
+            <RetroFormField label="Model Identifier" className="sm:col-span-2">
+              <RetroInput
+                value={modelId}
+                onChange={e => setModelId(e.target.value)}
+                placeholder="z. B. openai/gpt-4o-mini"
+                disabled={!gatewayId}
+              />
+            </RetroFormField>
+            <div className="sm:col-span-1">
+              <RetroButton type="button" onClick={handleAdd} className="w-full flex items-center justify-center p-2" disabled={!modelId || disabled}>
+                {icon} ADD
+              </RetroButton>
+            </div>
+            <RetroFormField label="Display Name (optional)" className="sm:col-span-7">
+              <RetroInput
+                value={modelName}
+                onChange={e => setModelName(e.target.value)}
+                placeholder="Falls leer, wird Name aus Liste oder Identifier genutzt"
+                disabled={!gatewayId}
+              />
+            </RetroFormField>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

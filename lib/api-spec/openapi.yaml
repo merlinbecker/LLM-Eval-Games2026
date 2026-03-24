@@ -22,6 +22,8 @@ tags:
     description: LLM call logs
   - name: models
     description: Model listing from gateways
+  - name: configured-models
+    description: Pre-configured model selections
 
 paths:
   /healthz:
@@ -140,6 +142,57 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ModelInfo"
+
+  /configured-models:
+    get:
+      operationId: listConfiguredModels
+      tags: [configured-models]
+      summary: List all pre-configured models
+      responses:
+        "200":
+          description: List of configured models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfiguredModel"
+    post:
+      operationId: createConfiguredModel
+      tags: [configured-models]
+      summary: Save a pre-configured model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConfiguredModel"
+      responses:
+        "201":
+          description: Configured model saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfiguredModel"
+
+  /configured-models/{id}:
+    delete:
+      operationId: deleteConfiguredModel
+      tags: [configured-models]
+      summary: Delete a configured model
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
 
   /datasets:
     get:
@@ -532,6 +585,41 @@ components:
         - type
         - baseUrl
         - apiKey
+
+    ConfiguredModel:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        gatewayId:
+          type: integer
+        modelId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - gatewayId
+        - modelId
+        - createdAt
+
+    CreateConfiguredModel:
+      type: object
+      properties:
+        name:
+          type: string
+        gatewayId:
+          type: integer
+        modelId:
+          type: string
+      required:
+        - name
+        - gatewayId
+        - modelId
 
     ModelInfo:
       type: object

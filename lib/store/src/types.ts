@@ -56,6 +56,20 @@ export interface CompetitionResultEntry {
   responses: ModelResponseEntry[];
 }
 
+export interface ConfiguredModel {
+  id: number;
+  name: string;
+  gatewayId: number;
+  modelId: string;
+  createdAt: string;
+}
+
+export interface CreateConfiguredModel {
+  name: string;
+  gatewayId: number;
+  modelId: string;
+}
+
 export interface ModelSelection {
   gatewayId: number;
   modelId: string;

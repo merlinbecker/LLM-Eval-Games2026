@@ -9,7 +9,7 @@ export function TopMenu() {
   const links = [
     { href: "/", label: "Arena" },
     { href: "/datasets", label: "Datasets" },
-    { href: "/gateways", label: "Gateways" },
+    { href: "/gateways", label: "Gateways & Models" },
     { href: "/competitions/new", label: "New Competition" },
     { href: "/logs", label: "Logs" },
   ];

@@ -20,7 +20,9 @@ import type {
   AnonymizeRequest,
   Competition,
   CompetitionDetail,
+  ConfiguredModel,
   CreateCompetition,
+  CreateConfiguredModel,
   CreateDataset,
   CreateGateway,
   Dataset,
@@ -620,6 +622,251 @@ export function useListGatewayModels<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all pre-configured models
+ */
+export const getListConfiguredModelsUrl = () => {
+  return `/api/configured-models`;
+};
+
+export const listConfiguredModels = async (
+  options?: RequestInit,
+): Promise<ConfiguredModel[]> => {
+  return customFetch<ConfiguredModel[]>(getListConfiguredModelsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListConfiguredModelsQueryKey = () => {
+  return [`/api/configured-models`] as const;
+};
+
+export const getListConfiguredModelsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listConfiguredModels>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listConfiguredModels>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListConfiguredModelsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listConfiguredModels>>
+  > = ({ signal }) => listConfiguredModels({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listConfiguredModels>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListConfiguredModelsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listConfiguredModels>>
+>;
+export type ListConfiguredModelsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all pre-configured models
+ */
+
+export function useListConfiguredModels<
+  TData = Awaited<ReturnType<typeof listConfiguredModels>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listConfiguredModels>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListConfiguredModelsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save a pre-configured model
+ */
+export const getCreateConfiguredModelUrl = () => {
+  return `/api/configured-models`;
+};
+
+export const createConfiguredModel = async (
+  createConfiguredModel: CreateConfiguredModel,
+  options?: RequestInit,
+): Promise<ConfiguredModel> => {
+  return customFetch<ConfiguredModel>(getCreateConfiguredModelUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createConfiguredModel),
+  });
+};
+
+export const getCreateConfiguredModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createConfiguredModel>>,
+    TError,
+    { data: BodyType<CreateConfiguredModel> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createConfiguredModel>>,
+  TError,
+  { data: BodyType<CreateConfiguredModel> },
+  TContext
+> => {
+  const mutationKey = ["createConfiguredModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createConfiguredModel>>,
+    { data: BodyType<CreateConfiguredModel> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createConfiguredModel(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateConfiguredModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createConfiguredModel>>
+>;
+export type CreateConfiguredModelMutationBody = BodyType<CreateConfiguredModel>;
+export type CreateConfiguredModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a pre-configured model
+ */
+export const useCreateConfiguredModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createConfiguredModel>>,
+    TError,
+    { data: BodyType<CreateConfiguredModel> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createConfiguredModel>>,
+  TError,
+  { data: BodyType<CreateConfiguredModel> },
+  TContext
+> => {
+  return useMutation(getCreateConfiguredModelMutationOptions(options));
+};
+
+/**
+ * @summary Delete a configured model
+ */
+export const getDeleteConfiguredModelUrl = (id: number) => {
+  return `/api/configured-models/${id}`;
+};
+
+export const deleteConfiguredModel = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessMessage> => {
+  return customFetch<SuccessMessage>(getDeleteConfiguredModelUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteConfiguredModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteConfiguredModel>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteConfiguredModel>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteConfiguredModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteConfiguredModel>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteConfiguredModel(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteConfiguredModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteConfiguredModel>>
+>;
+
+export type DeleteConfiguredModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a configured model
+ */
+export const useDeleteConfiguredModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteConfiguredModel>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteConfiguredModel>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteConfiguredModelMutationOptions(options));
+};
 
 /**
  * @summary List all datasets
