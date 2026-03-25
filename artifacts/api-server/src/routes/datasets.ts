@@ -18,7 +18,9 @@ import { chatCompletion } from "../lib/llm-gateway";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_SIZE } });
 
 function datasetToJson(d: Dataset) {
   return {
@@ -48,19 +50,19 @@ router.post("/datasets", (req, res) => {
 router.post("/datasets/upload", upload.single("file"), (req, res) => {
   const file = req.file;
   if (!file) {
-    res.status(400).json({ message: "No file uploaded" });
+    res.status(400).json({ error: "No file uploaded" });
     return;
   }
 
   const originalName = file.originalname ?? "upload.md";
   if (!originalName.endsWith(".md")) {
-    res.status(400).json({ message: "Only .md (Markdown) files are accepted" });
+    res.status(400).json({ error: "Only .md (Markdown) files are accepted" });
     return;
   }
 
   const content = file.buffer.toString("utf-8");
   if (!content.trim()) {
-    res.status(400).json({ message: "File is empty" });
+    res.status(400).json({ error: "File is empty" });
     return;
   }
 

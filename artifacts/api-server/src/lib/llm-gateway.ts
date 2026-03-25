@@ -2,6 +2,9 @@ import { logger } from "./logger";
 import { resolve4, resolve6 } from "node:dns/promises";
 import { store } from "@workspace/store";
 
+const DEFAULT_MAX_TOKENS = 4096;
+const DEFAULT_TEMPERATURE = 0.7;
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -209,8 +212,8 @@ function buildRequestBody(gateway: GatewayConfig, modelId: string, messages: Cha
           content: [{ text: m.content }],
         })),
         inferenceConfig: {
-          maxTokens: 4096,
-          temperature: 0.7,
+          maxTokens: DEFAULT_MAX_TOKENS,
+          temperature: DEFAULT_TEMPERATURE,
         },
       };
       if (system.length > 0) {
@@ -226,7 +229,7 @@ function buildRequestBody(gateway: GatewayConfig, modelId: string, messages: Cha
           parts: [{ text: m.content }],
         })),
         generationConfig: {
-          temperature: 0.7,
+          temperature: DEFAULT_TEMPERATURE,
           topP: 1.0,
           topK: 4,
         },
@@ -243,7 +246,7 @@ function buildRequestBody(gateway: GatewayConfig, modelId: string, messages: Cha
       return {
         model: modelId,
         messages,
-        temperature: 0.7,
+        temperature: DEFAULT_TEMPERATURE,
       };
     }
   }
