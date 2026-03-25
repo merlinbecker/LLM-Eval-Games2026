@@ -1,12 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { RetroWindow, RobotIcon } from "@/components/retro";
 import type { CompetitionDetail, JudgeScore } from "@workspace/api-client-react";
-
-// ─── HELPERS ───
-
-function shortName(name: string): string {
-  return name.split("/").pop() || name;
-}
+import { shortName } from "@/lib/utils";
 
 // ─── TYPES ───
 

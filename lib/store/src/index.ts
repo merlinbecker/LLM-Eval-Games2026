@@ -342,5 +342,18 @@ class InMemoryStore {
 
 export const store = new InMemoryStore();
 
+/** Parse a Markdown document into individual items, split by `## ` headings or double-newline paragraphs. */
+export function parseMarkdownItems(content: string): string[] {
+  const sections = content.split(/^## /m).filter(Boolean);
+  if (sections.length > 1) {
+    return sections.map((s) => s.trim());
+  }
+  const paragraphs = content
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  return paragraphs.length > 0 ? paragraphs : [content];
+}
+
 export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition, LlmLog, ConfiguredModel, CreateConfiguredModel, Activity, CreateActivity };
 export type { JudgeScoreEntry, ModelResponseEntry, CompetitionResultEntry, ModelSelection } from "./types";

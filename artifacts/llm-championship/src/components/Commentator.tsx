@@ -3,6 +3,7 @@ import { RetroWindow, RobotIcon } from "@/components/retro";
 import { Mic, Timer, Zap, TrendingUp, Crown } from "lucide-react";
 import type { CompetitionDetail, CompetitionResult } from "@workspace/api-client-react";
 import { useListActivities, getListActivitiesQueryKey } from "@workspace/api-client-react";
+import { shortName, formatMs } from "@/lib/utils";
 
 // ─── TYPES ───
 
@@ -16,15 +17,6 @@ interface CommentaryEvent {
 }
 
 // ─── COMMENTARY GENERATOR ───
-
-function shortName(name: string): string {
-  return name.split("/").pop() || name;
-}
-
-function formatMs(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-}
 
 function generateResponseCommentary(
   model: CompetitionResult,

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { store } from "@workspace/store";
+import { store, parseMarkdownItems } from "@workspace/store";
 import type { Competition, Gateway, CompetitionResultEntry, JudgeScoreEntry, ModelResponseEntry } from "@workspace/store";
 import {
   CreateCompetitionBody,
@@ -74,7 +74,7 @@ router.get("/competitions", (req, res) => {
 router.post("/competitions", (req, res) => {
   const data = CreateCompetitionBody.parse(req.body);
   if (data.judgeModels.length < 3 || data.judgeModels.length > 5) {
-    res.status(400).json({ message: "Judge panel must have 3–5 models" });
+    res.status(400).json({ error: "Judge panel must have 3–5 models" });
     return;
   }
   const competition = store.createCompetition(req.sessionId!, {
@@ -146,6 +146,145 @@ function savePartialResults(sessionId: string, id: number, results: CompetitionR
   store.updateCompetition(sessionId, id, { results });
 }
 
+/** Build a gateway lookup map from all models used in a competition. */
+function loadGatewayMap(sessionId: string, contestants: ModelSel[], judges: ModelSel[]): Map<number, Gateway> {
+  const allGatewayIds = [
+    ...new Set([
+      ...contestants.map((c) => c.gatewayId),
+      ...judges.map((j) => j.gatewayId),
+    ]),
+  ];
+  const gatewayMap = new Map<number, Gateway>();
+  for (const gwId of allGatewayIds) {
+    const gw = store.getGateway(sessionId, gwId);
+    if (gw) gatewayMap.set(gwId, gw);
+  }
+  return gatewayMap;
+}
+
+const JUDGE_SYSTEM_PROMPT =
+  `You are a judge evaluating LLM responses. Score the following response on a scale of 1-10 based on quality, accuracy, helpfulness, and relevance.\n\nRespond in JSON format: { "score": <number 1-10>, "reasoning": "<brief explanation>" }\nOnly output the JSON.`;
+
+/** Score a single response using one judge model. */
+async function scoreWithJudge(
+  judge: ModelSel,
+  judgeGw: Gateway,
+  systemPrompt: string,
+  item: string,
+  responseContent: string,
+  sessionId: string,
+): Promise<JudgeScoreEntry> {
+  try {
+    const judgeResult = await chatCompletion(
+      { type: judgeGw.type, baseUrl: judgeGw.baseUrl, apiKey: judgeGw.apiKey, customHeaders: judgeGw.customHeaders },
+      judge.modelId,
+      [
+        { role: "system", content: JUDGE_SYSTEM_PROMPT },
+        { role: "user", content: `System prompt: ${systemPrompt}\n\nUser prompt: ${item}\n\nLLM Response: ${responseContent}` },
+      ],
+      sessionId,
+    );
+
+    let parsed: { score: number; reasoning: string };
+    try {
+      parsed = JSON.parse(judgeResult.content);
+    } catch {
+      parsed = { score: 5, reasoning: judgeResult.content };
+    }
+
+    return {
+      judgeModelId: judge.modelId,
+      judgeModelName: judge.modelName,
+      score: Math.min(10, Math.max(1, Number(parsed.score) || 5)),
+      reasoning: parsed.reasoning ?? "",
+    };
+  } catch (err) {
+    return {
+      judgeModelId: judge.modelId,
+      judgeModelName: judge.modelName,
+      score: 0,
+      reasoning: `Judge error: ${(err as Error).message}`,
+    };
+  }
+}
+
+/** Evaluate a single contestant model across all data items. */
+async function evaluateContestant(
+  contestant: ModelSel,
+  gw: Gateway,
+  dataItems: string[],
+  judges: ModelSel[],
+  gatewayMap: Map<number, Gateway>,
+  competition: Competition,
+  sessionId: string,
+  activityId: number,
+  results: CompetitionResultEntry[],
+  competitionId: number,
+): Promise<CompetitionResultEntry> {
+  const responses: ModelResponseEntry[] = [];
+
+  for (let i = 0; i < dataItems.length; i++) {
+    const item = dataItems[i];
+    store.updateActivity(sessionId, activityId, {
+      progress: `${contestant.modelName}: item ${i + 1}/${dataItems.length}`,
+    });
+    try {
+      const result = await chatCompletion(
+        { type: gw.type, baseUrl: gw.baseUrl, apiKey: gw.apiKey, customHeaders: gw.customHeaders },
+        contestant.modelId,
+        [
+          { role: "system", content: competition.systemPrompt },
+          { role: "user", content: item },
+        ],
+        sessionId,
+      );
+
+      const cost = estimateCost(result.promptTokens, result.completionTokens, contestant.inputCostPerMillionTokens, contestant.outputCostPerMillionTokens);
+
+      const judgeTasks = judges.map((judge) => async (): Promise<JudgeScoreEntry> => {
+        const judgeGw = gatewayMap.get(judge.gatewayId);
+        if (!judgeGw) {
+          return { judgeModelId: judge.modelId, judgeModelName: judge.modelName, score: 0, reasoning: "Gateway not found" };
+        }
+        return scoreWithJudge(judge, judgeGw, competition.systemPrompt, item, result.content, sessionId);
+      });
+
+      const judgeScores = await runWithConcurrency(judgeTasks, MAX_CONCURRENCY);
+
+      responses.push({
+        dataItemIndex: i,
+        response: result.content,
+        durationMs: result.durationMs,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+        cost,
+        judgeScores,
+      });
+    } catch (err) {
+      responses.push({
+        dataItemIndex: i,
+        response: `Error: ${(err as Error).message}`,
+        durationMs: 0,
+        promptTokens: 0,
+        completionTokens: 0,
+        cost: 0,
+        judgeScores: [],
+      });
+    }
+
+    const partialEntry = buildResultEntry(contestant, responses);
+    const idx = results.findIndex((r) => r.gatewayId === contestant.gatewayId && r.modelId === contestant.modelId);
+    if (idx >= 0) {
+      results[idx] = partialEntry;
+    } else {
+      results.push(partialEntry);
+    }
+    savePartialResults(sessionId, competitionId, [...results]);
+  }
+
+  return buildResultEntry(contestant, responses);
+}
+
 async function runCompetitionAsync(
   sessionId: string,
   id: number,
@@ -156,126 +295,14 @@ async function runCompetitionAsync(
   const dataItems = parseMarkdownItems(dataset.content);
   const contestants: ModelSel[] = competition.contestantModels;
   const judges: ModelSel[] = competition.judgeModels;
-
-  const allGatewayIds = [
-    ...new Set([
-      ...contestants.map((c) => c.gatewayId),
-      ...judges.map((j) => j.gatewayId),
-    ]),
-  ];
-
-  const gatewayMap = new Map<number, Gateway>();
-  for (const gwId of allGatewayIds) {
-    const gw = store.getGateway(sessionId, gwId);
-    if (gw) gatewayMap.set(gwId, gw);
-  }
+  const gatewayMap = loadGatewayMap(sessionId, contestants, judges);
 
   const results: CompetitionResultEntry[] = [];
 
   const contestantTasks = contestants.map((contestant) => async (): Promise<CompetitionResultEntry | null> => {
     const gw = gatewayMap.get(contestant.gatewayId);
     if (!gw) return null;
-
-    const responses: ModelResponseEntry[] = [];
-
-    for (let i = 0; i < dataItems.length; i++) {
-      const item = dataItems[i];
-      store.updateActivity(sessionId, activityId, {
-        progress: `${contestant.modelName}: item ${i + 1}/${dataItems.length}`,
-      });
-      try {
-        const result = await chatCompletion(
-          { type: gw.type, baseUrl: gw.baseUrl, apiKey: gw.apiKey, customHeaders: gw.customHeaders },
-          contestant.modelId,
-          [
-            { role: "system", content: competition.systemPrompt },
-            { role: "user", content: item },
-          ],
-          sessionId,
-        );
-
-        const cost = estimateCost(result.promptTokens, result.completionTokens, contestant.inputCostPerMillionTokens, contestant.outputCostPerMillionTokens);
-
-        const judgeTasks = judges.map((judge) => async (): Promise<JudgeScoreEntry> => {
-          const judgeGw = gatewayMap.get(judge.gatewayId);
-          if (!judgeGw) {
-            return { judgeModelId: judge.modelId, judgeModelName: judge.modelName, score: 0, reasoning: "Gateway not found" };
-          }
-
-          try {
-            const judgeResult = await chatCompletion(
-              { type: judgeGw.type, baseUrl: judgeGw.baseUrl, apiKey: judgeGw.apiKey, customHeaders: judgeGw.customHeaders },
-              judge.modelId,
-              [
-                {
-                  role: "system",
-                  content: `You are a judge evaluating LLM responses. Score the following response on a scale of 1-10 based on quality, accuracy, helpfulness, and relevance.\n\nRespond in JSON format: { "score": <number 1-10>, "reasoning": "<brief explanation>" }\nOnly output the JSON.`,
-                },
-                {
-                  role: "user",
-                  content: `System prompt: ${competition.systemPrompt}\n\nUser prompt: ${item}\n\nLLM Response: ${result.content}`,
-                },
-              ],
-              sessionId,
-            );
-
-            let parsed: { score: number; reasoning: string };
-            try {
-              parsed = JSON.parse(judgeResult.content);
-            } catch {
-              parsed = { score: 5, reasoning: judgeResult.content };
-            }
-
-            return {
-              judgeModelId: judge.modelId,
-              judgeModelName: judge.modelName,
-              score: Math.min(10, Math.max(1, Number(parsed.score) || 5)),
-              reasoning: parsed.reasoning ?? "",
-            };
-          } catch (err) {
-            return {
-              judgeModelId: judge.modelId,
-              judgeModelName: judge.modelName,
-              score: 0,
-              reasoning: `Judge error: ${(err as Error).message}`,
-            };
-          }
-        });
-
-        const judgeScores = await runWithConcurrency(judgeTasks, MAX_CONCURRENCY);
-
-        responses.push({
-          dataItemIndex: i,
-          response: result.content,
-          durationMs: result.durationMs,
-          promptTokens: result.promptTokens,
-          completionTokens: result.completionTokens,
-          cost,
-          judgeScores,
-        });
-      } catch (err) {
-        responses.push({
-          dataItemIndex: i,
-          response: `Error: ${(err as Error).message}`,
-          durationMs: 0,
-          promptTokens: 0,
-          completionTokens: 0,
-          cost: 0,
-          judgeScores: [],
-        });
-      }
-
-      const partialEntry = buildResultEntry(contestant, responses);
-      const idx = results.findIndex((r) => r.gatewayId === contestant.gatewayId && r.modelId === contestant.modelId);
-      if (idx >= 0) {
-        results[idx] = partialEntry;
-      } else {
-        results.push(partialEntry);
-      }
-      savePartialResults(sessionId, id, [...results]);
-    }
-
-    return buildResultEntry(contestant, responses);
+    return evaluateContestant(contestant, gw, dataItems, judges, gatewayMap, competition, sessionId, activityId, results, id);
   });
 
   const rawResults = await runWithConcurrency(contestantTasks, MAX_CONCURRENCY);
@@ -316,18 +343,6 @@ function buildResultEntry(contestant: ModelSel, responses: ModelResponseEntry[])
     totalTokens,
     responses,
   };
-}
-
-function parseMarkdownItems(content: string): string[] {
-  const sections = content.split(/^## /m).filter(Boolean);
-  if (sections.length > 1) {
-    return sections.map((s) => s.trim());
-  }
-  const paragraphs = content
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-  return paragraphs.length > 0 ? paragraphs : [content];
 }
 
 function estimateCost(
