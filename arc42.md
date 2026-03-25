@@ -302,7 +302,7 @@ C4Component
 
         Component(judgesScoreReveal, "JudgesScoreReveal", "React", "Animiertes Richter-Scoring-Overlay: Queue-basierte State-Machine (entering→revealing→holding→exiting→idle); Roboter halten Wertungskarten hoch")
 
-        Component(competitionResults, "Competition Results", "React, SVG", "Podium, Dreiecksdiagramm (relatives Scoring), Telemetrie-Karten, Bewertungsprotokolle, Live-Polling, Datensatz-Fragen-Anzeige, JudgesScoreReveal-Overlay")
+        Component(competitionResults, "Competition Results", "React, SVG", "Tab-basierte Ergebnisdarstellung: (1) Übersicht — Statistik-Kacheln, Gewinner-Highlight, Dreiecksdiagramm, Rangliste; (2) Gewinner & Judges — Podium, Modell-Auswahl, Judge-Roboter mit Wertungskarten, Zeit/Kosten; (3) Detail-Antworten — Vollständige Antworten und Einzelbewertungen pro Frage mit Fragen-Navigation. Live-Polling (2s), JudgesScoreReveal-Overlay im Running-State")
 
         Component(logsPage, "Logs Page", "React", "LLM-Call-Log-Viewer: expandierbare Einträge mit Status, Modell, Dauer, Timestamp; einklappbare JSON-Ansicht für Request/Response; Auto-Refresh (5s); Clear-Funktion")
 
@@ -367,7 +367,7 @@ C4Component
 
 | Interface           | Felder                                                                                                    |
 |---------------------|-----------------------------------------------------------------------------------------------------------|
-| **Gateway**         | `id`, `name`, `type` (openrouter/github_copilot/custom), `baseUrl`, `apiKey`, `createdAt`                |
+| **Gateway**         | `id`, `name`, `type` (openrouter/github_copilot/custom_openai/custom_anthropic/custom_gemini), `baseUrl`, `apiKey`, `customHeaders?`, `createdAt` |
 | **ConfiguredModel** | `id`, `name`, `gatewayId`, `modelId`, `inputCostPerMillionTokens?`, `outputCostPerMillionTokens?`, `createdAt` |
 | **Dataset**         | `id`, `name`, `content` (Markdown), `systemPrompt`, `privacyStatus`, `privacyReport`, `createdAt`        |
 | **Competition**     | `id`, `name`, `datasetId`, `systemPrompt`, `status`, `contestantModels`, `judgeModels`, `results`, `createdAt` |
@@ -718,7 +718,42 @@ Die Typsicherheit erstreckt sich über alle Schichten:
 | **Upload-Validierung**               | Multer: max 5MB, nur `.md`-Dateien; JSON-Body: max 10MB                                                        |
 | **CORS**                             | Aktiviert via `cors({ origin: true, credentials: true })` Middleware                                            |
 
-## 8.3 Datenhaltungskonzept
+## 8.3 LLM-Gateway-API-Formate
+
+Das System unterstützt drei API-Formate für Custom-Gateways. Die Transformation zwischen den Formaten erfolgt im `LLM Gateway Module` über `buildRequestBody()` und `parseResponse()`.
+
+### OpenAI-kompatibel (`custom_openai`)
+
+| Aspekt | Details |
+|--------|---------|
+| **Request** | `POST {baseUrl}` mit `{ messages: [{role, content}], model, temperature }` |
+| **Response-Extraktion** | Content: `choices[0].message.content`; Tokens: `usage.prompt_tokens`, `usage.completion_tokens` |
+| **Beispiel-URL** | `https://api.example.com/openai/deployments/{model}/chat/completions?api-version=2024-10-21` |
+
+### Anthropic-kompatibel (`custom_anthropic`)
+
+| Aspekt | Details |
+|--------|---------|
+| **Request** | `POST {baseUrl}` mit `{ messages: [{role, content: [{text}]}], system: [{text}], inferenceConfig: {maxTokens, temperature} }` |
+| **Response-Extraktion** | Content: `output.message.content[0].text`; Tokens: `usage.inputTokens`, `usage.outputTokens` |
+| **Beispiel-URL** | `https://api.example.com/anthropic/model/{model}/converse` |
+
+### Gemini-kompatibel (`custom_gemini`)
+
+| Aspekt | Details |
+|--------|---------|
+| **Request** | `POST {baseUrl}` mit `{ contents: [{role, parts: [{text}]}], systemInstruction: {role, parts: [{text}]}, generationConfig: {temperature, topP, topK} }` |
+| **Response-Extraktion** | Content: `candidates[0].content.parts[0].text`; Tokens: `usageMetadata.promptTokenCount`, `usageMetadata.candidatesTokenCount` |
+| **Beispiel-URL** | `https://api.example.com/google/v1beta1/.../models/{model}:generateContent` |
+
+### URL-Platzhalter und Custom Headers
+
+- **`{model}`-Platzhalter:** Wird in der Base-URL durch `encodeURIComponent(modelId)` ersetzt
+- **Custom Headers:** Beliebige Key-Value HTTP-Header pro Gateway konfigurierbar (z.B. `api-key`, `Authorization`)
+- **Rückwärtskompatibilität:** Legacy-Typ `custom` wird intern als `custom_openai` behandelt
+- **Kein Models-Endpunkt:** Custom-Gateways haben keinen `/models`-Endpunkt; Modelle werden manuell eingegeben
+
+## 8.4 Datenhaltungskonzept
 
 Das System verzichtet bewusst auf eine externe Datenbank (siehe [ADR-9](#adr-9)):
 
@@ -731,7 +766,7 @@ Das System verzichtet bewusst auf eine externe Datenbank (siehe [ADR-9](#adr-9))
 
 **Session-Lifecycle:** Sessions werden nach 2 Stunden Inaktivität automatisch bereinigt (Cleanup-Timer alle 5 Minuten). Der Client-Vault ist die primäre Datenquelle — ein Server-Neustart erfordert lediglich einen erneuten Session-Sync.
 
-## 8.4 Retro-UI-Designsystem
+## 8.5 Retro-UI-Designsystem
 
 Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 
@@ -747,7 +782,7 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 | **Einklappbare Fenster** | `RetroWindow` mit `collapsible`/`defaultCollapsed`-Props; Klick auf Titelleiste klappt Inhalt ein/aus; ▶/▼-Indikator |
 | **Richter-Scoring-Overlay** | `JudgesScoreReveal`: Animiertes Overlay während laufender Wettbewerbe; `JudgeRevealRobot`-Komponenten mit CSS-Transition-Reveal und `animate-score-pop` (Bounce-Keyframe `scale 0.7→1.15→0.95→1`); absolut positioniert unter der Header-Bar (z-40); Queue-System (max. 4 Events) |
 
-## 8.5 Fehlerbehandlung
+## 8.6 Fehlerbehandlung
 
 | Schicht     | Strategie                                                                                                |
 |-------------|----------------------------------------------------------------------------------------------------------|
@@ -756,7 +791,7 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 | **LLM**     | Timeout-Behandlung; Fehler bei LLM-Aufrufen werden als Wettbewerbs-Status `error` gespeichert            |
 | **Session**  | 401-Response bei fehlender/ungültiger Session; Client initiiert automatisch Session-Sync                 |
 
-## 8.6 Logging und Monitoring
+## 8.7 Logging und Monitoring
 
 - **Pino** als strukturierter Logger (JSON in Produktion, Pretty-Print in Entwicklung)
 - **pino-http** Middleware für automatisches Request/Response-Logging
@@ -765,7 +800,7 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 - Sensible Daten (`authorization`, `cookie`) werden automatisch redaktiert
 - **LLM-Call-Logging:** Jeder `chatCompletion()`-Aufruf wird automatisch im session-scoped In-Memory-Store geloggt (Request-Body, Response-Body, Status, Dauer, Fehler). Logs sind über `GET /api/logs` abrufbar und über die Logs-Seite im Frontend einsehbar. Pro Session werden maximal 500 Logs gespeichert (älteste werden verworfen). Die Logs-Seite bietet expandierbare Einträge mit einklappbarer, pretty-printed JSON-Ansicht und Auto-Refresh (5 Sekunden).
 
-## 8.7 Background-Activity-Management
+## 8.8 Background-Activity-Management
 
 Langläufige Operationen (Wettbewerb-Evaluation, Datensatz-Generierung) werden als **Background Activities** verwaltet, damit der Benutzer die Anwendung frei weiternutzen kann.
 
@@ -800,6 +835,8 @@ Langläufige Operationen (Wettbewerb-Evaluation, Datensatz-Generierung) werden a
 | 7 | **Web Crypto API** für Vault           | Alternativen: Stanford JS Crypto Library, TweetNaCl                                                      | Native Browser-API; kein zusätzliches Bundle; AES-256-GCM + PBKDF2 nativ unterstützt  |
 | 8 | **HttpOnly-Session-Cookie**            | Alternativen: JWT in Authorization-Header, Bearer-Token in LocalStorage                                   | Automatisch bei jedem Request; kein JavaScript-Zugriff; SameSite-Schutz gegen CSRF   |
 | 10 | **Dreiecksdiagramm statt Radar-Chart** | Alternative: Recharts RadarChart                                                                          | Ternary-Plot bildet das Spannungsfeld Speed/Cost/Quality direkt ab; reines SVG ohne externe Lib; klarere Positionierung der Modelle via baryzentrische Koordinaten |
+| 11 | **Tab-basierte Competition-Results** | Alternative: Einzelseite mit Scroll-Sektionen, Multi-Page-Routing                                          | 3 Tabs (Übersicht/Gewinner & Judges/Detail-Antworten) reduzieren kognitive Last; alle Daten aus einem API-Call (`useGetCompetition`); Tab-State als lokaler React-State statt URL-Routing |
+| 12 | **Drei Custom-Gateway-Typen** statt eines generischen | Alternative: Einzelner `custom`-Typ mit manueller Format-Konfiguration                          | Explizite Typen (`custom_openai`, `custom_anthropic`, `custom_gemini`) ermöglichen automatische Request/Response-Transformation; weniger Fehlkonfiguration; klare UI-Führung mit typ-spezifischen URL-Platzhaltern |
 
 <a id="adr-9"></a>
 
