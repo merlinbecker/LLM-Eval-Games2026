@@ -6,6 +6,8 @@ export type {
   CompetitionDetailStatus,
   CompetitionResult,
   CompetitionStatus,
+  ConfiguredModel,
+  CreateConfiguredModel,
   CreateCompetition,
   CreateDataset,
   CreateGateway,
@@ -25,5 +27,6 @@ export type {
   PrivacyCheckResultStatus,
   PrivacyFinding,
   SuccessMessage,
+  UpdateDataset,
   UploadDatasetBody,
 } from "./generated/types";

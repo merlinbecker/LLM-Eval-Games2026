@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListDatasets, 
@@ -8,51 +8,74 @@ import {
   usePrivacyCheckDataset, 
   useAnonymizeDataset,
   useGenerateDataset,
+  useUpdateDataset,
+  useGetDataset,
   getListDatasetsQueryKey,
   useListGateways,
-  useListGatewayModels,
-  getListGatewayModelsQueryKey
+  useListConfiguredModels,
 } from "@workspace/api-client-react";
-import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroSelect } from "@/components/retro";
+import { RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroBadge, RetroSelect, RetroDialog, RetroFormField } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
-import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit } from "lucide-react";
+import { ShieldAlert, ShieldCheck, FileText, Trash2, BrainCircuit, Edit3, Plus } from "lucide-react";
+import { useVault } from "@/lib/vault/vault-store";
+import type { VaultDataset } from "@/lib/vault/types";
+import type { Dataset } from "@workspace/api-client-react";
+
+function toVaultDataset(d: Dataset): VaultDataset {
+  return {
+    id: d.id,
+    name: d.name,
+    content: d.content,
+    privacyStatus: d.privacyStatus ?? "unchecked",
+    privacyReport: d.privacyReport ?? null,
+    createdAt: d.createdAt,
+  };
+}
 
 export default function Datasets() {
   const queryClient = useQueryClient();
+  const { addDataset, removeDataset, updateDataset: updateVaultDataset } = useVault();
   const { data: datasets, isLoading } = useListDatasets();
   const deleteMutation = useDeleteDataset();
   const privacyMutation = usePrivacyCheckDataset();
   const anonymizeMutation = useAnonymizeDataset();
 
   const { data: gateways } = useListGateways();
+  const { data: configuredModels } = useListConfiguredModels();
   const [activeTab, setActiveTab] = useState<"list" | "upload" | "generate">("list");
   const [actionDialog, setActionDialog] = useState<{ type: "privacy" | "anonymize"; datasetId: number } | null>(null);
-  const [dialogGatewayId, setDialogGatewayId] = useState("");
-  const [dialogModelId, setDialogModelId] = useState("");
-
-  const dialogGwId = Number(dialogGatewayId) || 0;
-  const { data: dialogModels } = useListGatewayModels(dialogGwId, { query: { queryKey: getListGatewayModelsQueryKey(dialogGwId), enabled: !!dialogGatewayId }});
+  const [editDatasetId, setEditDatasetId] = useState<number | null>(null);
+  const [dialogConfiguredModelId, setDialogConfiguredModelId] = useState("");
 
   const handleDelete = async (id: number) => {
     if (confirm("DELETE DATASET? THIS CANNOT BE UNDONE.")) {
       await deleteMutation.mutateAsync({ id });
+      removeDataset(id);
       queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     }
   };
 
   const openActionDialog = (type: "privacy" | "anonymize", datasetId: number) => {
-    setDialogGatewayId("");
-    setDialogModelId("");
+    setDialogConfiguredModelId("");
     setActionDialog({ type, datasetId });
   };
 
   const handleDialogSubmit = async () => {
-    if (!actionDialog || !dialogGatewayId || !dialogModelId) return;
+    if (!actionDialog || !dialogConfiguredModelId) return;
+    const cm = configuredModels?.find(m => m.id === Number(dialogConfiguredModelId));
+    if (!cm) return;
     const { type, datasetId } = actionDialog;
     if (type === "privacy") {
-      await privacyMutation.mutateAsync({ id: datasetId, data: { gatewayId: Number(dialogGatewayId), modelId: dialogModelId } });
+      const result = await privacyMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
+      // Update vault with new privacy status
+      const ds = datasets?.find(d => d.id === datasetId);
+      if (ds) {
+        const privacyStatus = result.status === "clean" ? "clean" : "issues_found";
+        updateVaultDataset(toVaultDataset({ ...ds, privacyStatus, privacyReport: result.report ?? null }));
+      }
     } else {
-      await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: Number(dialogGatewayId), modelId: dialogModelId } });
+      const result = await anonymizeMutation.mutateAsync({ id: datasetId, data: { gatewayId: cm.gatewayId, modelId: cm.modelId } });
+      updateVaultDataset(toVaultDataset(result));
     }
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     setActionDialog(null);
@@ -90,33 +113,33 @@ export default function Datasets() {
           ) : (
             <div className="grid gap-6">
               {datasets.map((ds) => (
-                <div key={ds.id} className="border-[3px] border-black p-4 flex flex-col md:flex-row gap-4">
+                <div key={ds.id} className="border-[3px] border-mac-black p-4 flex flex-col md:flex-row gap-4 cursor-pointer hover:bg-mac-black/5 transition-colors" onClick={() => setEditDatasetId(ds.id)}>
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <FileText className="w-6 h-6" />
                       <h3 className="font-display text-xl font-bold uppercase">{ds.name}</h3>
                       <RetroBadge>ID: {ds.id}</RetroBadge>
                     </div>
-                    <p className="text-lg line-clamp-2 mb-4 bg-black/5 p-2 border-l-4 border-black">
-                      System Prompt: {ds.systemPrompt}
-                    </p>
                     <div className="flex items-center space-x-2 text-sm">
                       <span className="font-bold">STATUS:</span>
-                      {ds.privacyStatus === 'clean' ? <ShieldCheck className="w-5 h-5 text-black" /> : null}
-                      {ds.privacyStatus === 'issues_found' ? <ShieldAlert className="w-5 h-5 text-black animate-pulse" /> : null}
+                      {ds.privacyStatus === 'clean' ? <ShieldCheck className="w-5 h-5" /> : null}
+                      {ds.privacyStatus === 'issues_found' ? <ShieldAlert className="w-5 h-5 animate-pulse" /> : null}
                       <span className="uppercase">{ds.privacyStatus}</span>
                       <span className="mx-2">|</span>
                       <span>CREATED: {formatDate(ds.createdAt)}</span>
                     </div>
                     {ds.privacyReport && (
-                      <div className="mt-4 p-3 border-2 border-dashed border-black text-sm max-h-32 overflow-y-auto bg-white">
+                      <div className="mt-4 p-3 border-2 border-dashed border-mac-black text-sm max-h-32 overflow-y-auto bg-mac-white">
                         <strong>PRIVACY REPORT:</strong><br />
                         {ds.privacyReport}
                       </div>
                     )}
                   </div>
                   
-                  <div className="flex flex-col space-y-2 justify-center md:w-48 border-l-[3px] border-black pl-4">
+                  <div className="flex flex-col space-y-2 justify-center md:w-48 border-l-[3px] border-mac-black pl-4" onClick={(e) => e.stopPropagation()}>
+                    <RetroButton size="sm" onClick={() => setEditDatasetId(ds.id)}>
+                      <Edit3 className="w-4 h-4 mr-1 inline" /> VIEW / EDIT
+                    </RetroButton>
                     <RetroButton size="sm" onClick={() => openActionDialog("privacy", ds.id)}>
                       SCAN PRIVACY
                     </RetroButton>
@@ -140,51 +163,188 @@ export default function Datasets() {
       {activeTab === "generate" && <GenerateDatasetForm onSuccess={() => setActiveTab("list")} />}
 
       {actionDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setActionDialog(null)}>
-          <div className="bg-white border-[3px] border-black p-0 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-black text-white px-4 py-2 font-display uppercase">
-              {actionDialog.type === "privacy" ? "PRIVACY SCAN CONFIG" : "ANONYMIZE CONFIG"}
+        <RetroDialog
+          title={actionDialog.type === "privacy" ? "PRIVACY SCAN CONFIG" : "ANONYMIZE CONFIG"}
+          onClose={() => setActionDialog(null)}
+        >
+          <RetroFormField label="Configured Model">
+            <RetroSelect value={dialogConfiguredModelId} onChange={(e) => setDialogConfiguredModelId(e.target.value)}>
+              <option value="">-- SELECT MODEL --</option>
+              {configuredModels?.map(m => {
+                const gw = gateways?.find(g => g.id === m.gatewayId);
+                return <option key={m.id} value={m.id}>{m.name} ({gw?.name ?? `GW #${m.gatewayId}`})</option>;
+              })}
+            </RetroSelect>
+          </RetroFormField>
+          <div className="flex space-x-3 pt-2">
+            <RetroButton 
+              className="flex-1" 
+              onClick={handleDialogSubmit} 
+              disabled={!dialogConfiguredModelId || privacyMutation.isPending || anonymizeMutation.isPending}
+            >
+              {(privacyMutation.isPending || anonymizeMutation.isPending) ? "PROCESSING..." : actionDialog.type === "privacy" ? "START SCAN" : "ANONYMIZE"}
+            </RetroButton>
+            <RetroButton variant="secondary" onClick={() => setActionDialog(null)}>CANCEL</RetroButton>
+          </div>
+        </RetroDialog>
+      )}
+
+      {editDatasetId !== null && (
+        <DatasetEditDialog
+          datasetId={editDatasetId}
+          onClose={() => setEditDatasetId(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Helpers ───
+
+/** Strip wrapping markdown code fences like ```markdown ... ``` */
+function stripMarkdownFences(text: string): string {
+  return text.replace(/^```(?:markdown|md)?\s*\n?/gim, "").replace(/\n?```\s*$/gim, "").trim();
+}
+
+/** Split markdown content into individual items by ## headings */
+function parseDatasetItems(content: string): string[] {
+  const cleaned = stripMarkdownFences(content);
+  const sections = cleaned.split(/^(?=## )/m).filter((s) => s.trim().length > 0);
+  if (sections.length > 1) return sections.map((s) => s.trim());
+  // Fallback: split by double newlines
+  const paragraphs = cleaned.split(/\n\n+/).map((p) => p.trim()).filter((p) => p.length > 0);
+  return paragraphs.length > 0 ? paragraphs : cleaned.length > 0 ? [cleaned] : [];
+}
+
+/** Join items back into a single markdown document */
+function joinDatasetItems(items: string[]): string {
+  return items.join("\n\n");
+}
+
+function DatasetEditDialog({ datasetId, onClose }: { datasetId: number; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { updateDataset: updateVaultDataset } = useVault();
+  const { data: dataset, isLoading } = useGetDataset(datasetId);
+  const updateMutation = useUpdateDataset();
+  const [editName, setEditName] = useState("");
+  const [items, setItems] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  if (dataset && !initialized) {
+    setEditName(dataset.name);
+    setItems(parseDatasetItems(dataset.content));
+    setInitialized(true);
+  }
+
+  const handleItemChange = (index: number, value: string) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? value : item)));
+  };
+
+  const handleDeleteItem = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddItem = () => {
+    setItems((prev) => [...prev, `## Item ${prev.length + 1}\n`]);
+  };
+
+  const handleSave = async () => {
+    const content = joinDatasetItems(items.filter((item) => item.trim().length > 0));
+    const result = await updateMutation.mutateAsync({
+      id: datasetId,
+      data: { name: editName, content },
+    });
+    updateVaultDataset(toVaultDataset(result));
+    queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-mac-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className="bg-mac-white border-[3px] border-mac-black w-full max-w-4xl max-h-[90vh] flex flex-col retro-shadow"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-mac-black text-mac-white px-4 py-2 font-display uppercase flex items-center justify-between">
+          <span>DATASET: {dataset?.name ?? "..."}</span>
+          <button onClick={onClose} className="text-mac-white hover:opacity-70 font-display text-lg">✕</button>
+        </div>
+        {isLoading ? (
+          <div className="p-8 text-center font-display text-xl animate-pulse">LOADING...</div>
+        ) : dataset ? (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="p-4 border-b-[3px] border-mac-black">
+              <RetroFormField label="Name">
+                <RetroInput value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </RetroFormField>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block font-display mb-2 uppercase text-sm">Gateway</label>
-                <RetroSelect value={dialogGatewayId} onChange={(e) => { setDialogGatewayId(e.target.value); setDialogModelId(""); }}>
-                  <option value="">-- SELECT GATEWAY --</option>
-                  {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </RetroSelect>
-              </div>
-              <div>
-                <label className="block font-display mb-2 uppercase text-sm">Model</label>
-                <RetroSelect value={dialogModelId} onChange={(e) => setDialogModelId(e.target.value)} disabled={!dialogModels?.length}>
-                  <option value="">-- SELECT MODEL --</option>
-                  {dialogModels?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </RetroSelect>
-              </div>
-              <div className="flex space-x-3 pt-2">
-                <RetroButton 
-                  className="flex-1" 
-                  onClick={handleDialogSubmit} 
-                  disabled={!dialogGatewayId || !dialogModelId || privacyMutation.isPending || anonymizeMutation.isPending}
-                >
-                  {(privacyMutation.isPending || anonymizeMutation.isPending) ? "PROCESSING..." : actionDialog.type === "privacy" ? "START SCAN" : "ANONYMIZE"}
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-display text-sm uppercase tracking-widest">
+                  {items.length} Item{items.length !== 1 ? "s" : ""}
+                </span>
+                <RetroButton size="sm" variant="secondary" onClick={handleAddItem}>
+                  <Plus className="w-3 h-3 mr-1 inline" /> ITEM HINZUFÜGEN
                 </RetroButton>
-                <RetroButton variant="secondary" onClick={() => setActionDialog(null)}>CANCEL</RetroButton>
               </div>
+
+              {items.map((item, index) => (
+                <div
+                  key={index}
+                  className="border-[3px] border-mac-black bg-mac-white"
+                >
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-mac-black/5 border-b-[2px] border-mac-black">
+                    <span className="font-display text-xs uppercase tracking-wider">
+                      Item {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteItem(index)}
+                      className="text-mac-black hover:bg-mac-black hover:text-mac-white px-2 py-0.5 border-[2px] border-mac-black text-xs font-display uppercase transition-colors"
+                      title="Item löschen"
+                    >
+                      <Trash2 className="w-3 h-3 inline mr-1" />LÖSCHEN
+                    </button>
+                  </div>
+                  <textarea
+                    rows={Math.max(3, item.split("\n").length + 1)}
+                    value={item}
+                    onChange={(e) => handleItemChange(index, e.target.value)}
+                    className="w-full px-3 py-2 bg-mac-white text-mac-black font-mono text-sm focus:outline-none focus:ring-4 focus:ring-mac-black/20 resize-y border-0"
+                  />
+                </div>
+              ))}
+
+              {items.length === 0 && (
+                <div className="text-center py-8 text-mac-black/40 font-display uppercase">
+                  Keine Items vorhanden
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t-[3px] border-mac-black flex space-x-3">
+              <RetroButton className="flex-1" onClick={handleSave} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "SAVING..." : "SAVE CHANGES"}
+              </RetroButton>
+              <RetroButton variant="secondary" onClick={onClose}>CANCEL</RetroButton>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="p-4 text-center">DATASET NOT FOUND.</div>
+        )}
+      </div>
     </div>
   );
 }
 
 function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
   const queryClient = useQueryClient();
+  const { addDataset } = useVault();
   const createMutation = useCreateDataset();
   const uploadMutation = useUploadDataset();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
-  const [prompt, setPrompt] = useState("");
   const [content, setContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [inputMode, setInputMode] = useState<"file" | "text">("file");
@@ -203,11 +363,13 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let result;
     if (inputMode === "file" && selectedFile) {
-      await uploadMutation.mutateAsync({ data: { file: selectedFile as Blob, name, systemPrompt: prompt } });
+      result = await uploadMutation.mutateAsync({ data: { file: selectedFile as Blob, name } });
     } else {
-      await createMutation.mutateAsync({ data: { name, systemPrompt: prompt, content } });
+      result = await createMutation.mutateAsync({ data: { name, content } });
     }
+    addDataset(toVaultDataset(result));
     queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
     onSuccess();
   };
@@ -225,19 +387,13 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
             PASTE TEXT
           </RetroButton>
         </div>
-        <div>
-          <label className="block font-display mb-2 uppercase">Dataset Name</label>
+        <RetroFormField label="Dataset Name">
           <RetroInput required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Math Riddles" />
-        </div>
-        <div>
-          <label className="block font-display mb-2 uppercase">System Prompt</label>
-          <RetroTextarea required rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="You are a helpful assistant..." />
-        </div>
+        </RetroFormField>
         {inputMode === "file" ? (
-          <div>
-            <label className="block font-display mb-2 uppercase">Markdown File (.md)</label>
+          <RetroFormField label="Markdown File (.md)">
             <div 
-              className="border-[3px] border-dashed border-black p-8 text-center cursor-pointer hover:bg-black/5"
+              className="border-[3px] border-dashed border-mac-black p-8 text-center cursor-pointer hover:bg-mac-black/5"
               onClick={() => fileInputRef.current?.click()}
             >
               <input
@@ -261,12 +417,11 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
                 </div>
               )}
             </div>
-          </div>
+          </RetroFormField>
         ) : (
-          <div>
-            <label className="block font-display mb-2 uppercase">Markdown Content</label>
+          <RetroFormField label="Markdown Content">
             <RetroTextarea required rows={10} value={content} onChange={(e) => setContent(e.target.value)} placeholder="## Question 1\n...\n\n## Question 2..." className="font-mono text-base" />
-          </div>
+          </RetroFormField>
         )}
         <RetroButton 
           type="submit" 
@@ -282,33 +437,32 @@ function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
-  const queryClient = useQueryClient();
   const mutation = useGenerateDataset();
   const { data: gateways } = useListGateways();
+  const { data: configuredModels } = useListConfiguredModels();
   
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
-  const [prompt, setPrompt] = useState("");
+  const [examples, setExamples] = useState("");
   const [count, setCount] = useState(5);
-  const [gatewayId, setGatewayId] = useState("");
-  const [modelId, setModelId] = useState("");
-
-  const gwId = Number(gatewayId) || 0;
-  const { data: models } = useListGatewayModels(gwId, { query: { queryKey: getListGatewayModelsQueryKey(gwId), enabled: !!gatewayId }});
+  const [configuredModelId, setConfiguredModelId] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cm = configuredModels?.find(m => m.id === Number(configuredModelId));
+    if (!cm) return;
     await mutation.mutateAsync({ 
       data: { 
         name, 
         topic, 
-        systemPrompt: prompt, 
         numberOfItems: count,
-        gatewayId: Number(gatewayId),
-        modelId
+        ...(examples.trim() ? { examples: examples.trim() } : {}),
+        gatewayId: cm.gatewayId,
+        modelId: cm.modelId
       } 
     });
-    queryClient.invalidateQueries({ queryKey: getListDatasetsQueryKey() });
+    // Dataset generation now runs in background — the BackgroundActivityProvider
+    // will show a toast and invalidate queries when done.
     onSuccess();
   };
 
@@ -316,50 +470,39 @@ function GenerateDatasetForm({ onSuccess }: { onSuccess: () => void }) {
     <RetroWindow title="AI GENERATOR">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block font-display mb-2 uppercase">Dataset Name</label>
+          <RetroFormField label="Dataset Name">
             <RetroInput required value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div>
-            <label className="block font-display mb-2 uppercase">Item Count</label>
+          </RetroFormField>
+          <RetroFormField label="Item Count">
             <RetroInput type="number" required min="1" max="50" value={count} onChange={(e) => setCount(Number(e.target.value))} />
-          </div>
+          </RetroFormField>
         </div>
         
-        <div>
-          <label className="block font-display mb-2 uppercase">Topic / Domain</label>
-          <RetroInput required value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g., Quantum Physics queries" />
-        </div>
+        <RetroFormField label="Description">
+          <RetroTextarea required rows={2} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Describe the data to generate, e.g.: Math word problems for grade school students" />
+        </RetroFormField>
 
-        <div>
-          <label className="block font-display mb-2 uppercase">Target System Prompt</label>
-          <RetroTextarea required rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="The prompt the models will be tested against..." />
-        </div>
+        <RetroFormField label="Examples (optional)">
+          <RetroTextarea rows={6} value={examples} onChange={(e) => setExamples(e.target.value)} placeholder={"Provide example items to guide style and format, e.g.:\n\n## Item 1\nA train travels 120 km in 2 hours. What is its average speed?\n\n## Item 2\nIf a rectangle has a width of 5 cm and a length of 12 cm, what is the area?"} className="font-mono text-sm" />
+        </RetroFormField>
 
-        <div className="border-[3px] border-black p-4 bg-dither text-white">
-          <div className="bg-white p-4 text-black border-[3px] border-black">
+        <div className="border-[3px] border-mac-black p-4 bg-dither">
+          <div className="bg-mac-white p-4 text-mac-black border-[3px] border-mac-black">
             <h4 className="font-display flex items-center mb-4"><BrainCircuit className="w-5 h-5 mr-2"/> Generator Model Config</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block font-display mb-2 uppercase text-sm">Gateway</label>
-                <RetroSelect required value={gatewayId} onChange={(e) => setGatewayId(e.target.value)}>
-                  <option value="">-- SELECT --</option>
-                  {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </RetroSelect>
-              </div>
-              <div>
-                <label className="block font-display mb-2 uppercase text-sm">Model</label>
-                <RetroSelect required value={modelId} onChange={(e) => setModelId(e.target.value)} disabled={!models?.length}>
-                  <option value="">-- SELECT --</option>
-                  {models?.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </RetroSelect>
-              </div>
-            </div>
+            <RetroFormField label="Configured Model">
+              <RetroSelect required value={configuredModelId} onChange={(e) => setConfiguredModelId(e.target.value)}>
+                <option value="">-- SELECT MODEL --</option>
+                {configuredModels?.map(m => {
+                  const gw = gateways?.find(g => g.id === m.gatewayId);
+                  return <option key={m.id} value={m.id}>{m.name} ({gw?.name ?? `GW #${m.gatewayId}`})</option>;
+                })}
+              </RetroSelect>
+            </RetroFormField>
           </div>
         </div>
 
         <RetroButton type="submit" disabled={mutation.isPending} size="lg" className="w-full">
-          {mutation.isPending ? "SYNTHESIZING..." : "GENERATE DATASET"}
+          {mutation.isPending ? "STARTING..." : "GENERATE DATASET"}
         </RetroButton>
       </form>
     </RetroWindow>

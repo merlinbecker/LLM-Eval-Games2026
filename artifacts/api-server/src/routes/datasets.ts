@@ -1,11 +1,13 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { db, datasetsTable, gatewaysTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { store } from "@workspace/store";
+import type { Dataset } from "@workspace/store";
 import {
   CreateDatasetBody,
   GetDatasetParams,
   DeleteDatasetParams,
+  UpdateDatasetParams,
+  UpdateDatasetBody,
   PrivacyCheckDatasetParams,
   PrivacyCheckDatasetBody,
   AnonymizeDatasetParams,
@@ -13,79 +15,66 @@ import {
   GenerateDatasetBody,
 } from "@workspace/api-zod";
 import { chatCompletion } from "../lib/llm-gateway";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-function datasetToJson(d: typeof datasetsTable.$inferSelect) {
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_SIZE } });
+
+function datasetToJson(d: Dataset) {
   return {
     id: d.id,
     name: d.name,
     content: d.content,
-    systemPrompt: d.systemPrompt,
     privacyStatus: d.privacyStatus,
     privacyReport: d.privacyReport ?? null,
-    createdAt: d.createdAt.toISOString(),
+    createdAt: d.createdAt,
   };
 }
 
-router.get("/datasets", async (_req, res) => {
-  const datasets = await db.select().from(datasetsTable);
+router.get("/datasets", (req, res) => {
+  const datasets = store.listDatasets(req.sessionId!);
   res.json(datasets.map(datasetToJson));
 });
 
-router.post("/datasets", async (req, res) => {
+router.post("/datasets", (req, res) => {
   const data = CreateDatasetBody.parse(req.body);
-  const [dataset] = await db
-    .insert(datasetsTable)
-    .values({
-      name: data.name,
-      content: data.content,
-      systemPrompt: data.systemPrompt,
-    })
-    .returning();
+  const dataset = store.createDataset(req.sessionId!, {
+    name: data.name,
+    content: data.content,
+  });
   res.status(201).json(datasetToJson(dataset));
 });
 
-router.post("/datasets/upload", upload.single("file"), async (req, res) => {
+router.post("/datasets/upload", upload.single("file"), (req, res) => {
   const file = req.file;
   if (!file) {
-    res.status(400).json({ message: "No file uploaded" });
+    res.status(400).json({ error: "No file uploaded" });
     return;
   }
 
   const originalName = file.originalname ?? "upload.md";
   if (!originalName.endsWith(".md")) {
-    res.status(400).json({ message: "Only .md (Markdown) files are accepted" });
+    res.status(400).json({ error: "Only .md (Markdown) files are accepted" });
     return;
   }
 
   const content = file.buffer.toString("utf-8");
   if (!content.trim()) {
-    res.status(400).json({ message: "File is empty" });
+    res.status(400).json({ error: "File is empty" });
     return;
   }
 
   const name = (req.body.name as string) || originalName.replace(/\.md$/, "");
-  const systemPrompt = req.body.systemPrompt as string;
-  if (!systemPrompt) {
-    res.status(400).json({ message: "systemPrompt is required" });
-    return;
-  }
 
-  const [dataset] = await db
-    .insert(datasetsTable)
-    .values({ name, content, systemPrompt })
-    .returning();
+  const dataset = store.createDataset(req.sessionId!, { name, content });
   res.status(201).json(datasetToJson(dataset));
 });
 
-router.get("/datasets/:id", async (req, res) => {
+router.get("/datasets/:id", (req, res) => {
   const { id } = GetDatasetParams.parse(req.params);
-  const [dataset] = await db
-    .select()
-    .from(datasetsTable)
-    .where(eq(datasetsTable.id, id));
+  const dataset = store.getDataset(req.sessionId!, id);
   if (!dataset) {
     res.status(404).json({ error: "Dataset not found" });
     return;
@@ -93,9 +82,21 @@ router.get("/datasets/:id", async (req, res) => {
   res.json(datasetToJson(dataset));
 });
 
-router.delete("/datasets/:id", async (req, res) => {
+router.put("/datasets/:id", (req, res) => {
+  const { id } = UpdateDatasetParams.parse(req.params);
+  const data = UpdateDatasetBody.parse(req.body);
+  const dataset = store.getDataset(req.sessionId!, id);
+  if (!dataset) {
+    res.status(404).json({ error: "Dataset not found" });
+    return;
+  }
+  const updated = store.updateDataset(req.sessionId!, id, data);
+  res.json(datasetToJson(updated!));
+});
+
+router.delete("/datasets/:id", (req, res) => {
   const { id } = DeleteDatasetParams.parse(req.params);
-  await db.delete(datasetsTable).where(eq(datasetsTable.id, id));
+  store.deleteDataset(req.sessionId!, id);
   res.json({ message: "Dataset deleted" });
 });
 
@@ -103,26 +104,20 @@ router.post("/datasets/:id/privacy-check", async (req, res) => {
   const { id } = PrivacyCheckDatasetParams.parse(req.params);
   const { gatewayId, modelId } = PrivacyCheckDatasetBody.parse(req.body);
 
-  const [dataset] = await db
-    .select()
-    .from(datasetsTable)
-    .where(eq(datasetsTable.id, id));
+  const dataset = store.getDataset(req.sessionId!, id);
   if (!dataset) {
     res.status(404).json({ error: "Dataset not found" });
     return;
   }
 
-  const [gateway] = await db
-    .select()
-    .from(gatewaysTable)
-    .where(eq(gatewaysTable.id, gatewayId));
+  const gateway = store.getGateway(req.sessionId!, gatewayId);
   if (!gateway) {
     res.status(404).json({ error: "Gateway not found" });
     return;
   }
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
+    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
     modelId,
     [
       {
@@ -145,6 +140,7 @@ Only output the JSON, nothing else.`,
         content: dataset.content,
       },
     ],
+    req.sessionId,
   );
 
   let parsed;
@@ -162,10 +158,7 @@ Only output the JSON, nothing else.`,
   }
 
   const status = parsed.status === "clean" ? "clean" : "issues_found";
-  await db
-    .update(datasetsTable)
-    .set({ privacyStatus: status, privacyReport: parsed.report })
-    .where(eq(datasetsTable.id, id));
+  store.updateDataset(req.sessionId!, id, { privacyStatus: status, privacyReport: parsed.report });
 
   res.json({
     status: parsed.status,
@@ -178,26 +171,20 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
   const { id } = AnonymizeDatasetParams.parse(req.params);
   const { gatewayId, modelId } = AnonymizeDatasetBody.parse(req.body);
 
-  const [dataset] = await db
-    .select()
-    .from(datasetsTable)
-    .where(eq(datasetsTable.id, id));
+  const dataset = store.getDataset(req.sessionId!, id);
   if (!dataset) {
     res.status(404).json({ error: "Dataset not found" });
     return;
   }
 
-  const [gateway] = await db
-    .select()
-    .from(gatewaysTable)
-    .where(eq(gatewaysTable.id, gatewayId));
+  const gateway = store.getGateway(req.sessionId!, gatewayId);
   if (!gateway) {
     res.status(404).json({ error: "Gateway not found" });
     return;
   }
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
+    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
     modelId,
     [
       {
@@ -209,58 +196,85 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
         content: dataset.content,
       },
     ],
+    req.sessionId,
   );
 
-  const [updated] = await db
-    .update(datasetsTable)
-    .set({ content: result.content, privacyStatus: "anonymized" })
-    .where(eq(datasetsTable.id, id))
-    .returning();
-
-  res.json(datasetToJson(updated));
+  const updated = store.updateDataset(req.sessionId!, id, { content: result.content, privacyStatus: "anonymized" });
+  res.json(datasetToJson(updated!));
 });
 
 router.post("/datasets/generate", async (req, res) => {
   const data = GenerateDatasetBody.parse(req.body);
+  const sessionId = req.sessionId!;
 
-  const [gateway] = await db
-    .select()
-    .from(gatewaysTable)
-    .where(eq(gatewaysTable.id, data.gatewayId));
+  const gateway = store.getGateway(sessionId, data.gatewayId);
   if (!gateway) {
     res.status(404).json({ error: "Gateway not found" });
     return;
   }
 
+  const activity = store.createActivity(sessionId, {
+    type: "dataset_generate",
+    title: `Generate: ${data.name}`,
+  });
+
+  res.status(202).json({ activityId: activity.id, message: "Dataset generation started" });
+
+  generateDatasetAsync(sessionId, activity.id, data, gateway).catch((err) => {
+    logger.error({ err, activityId: activity.id }, "Dataset generation failed");
+    store.updateActivity(sessionId, activity.id, {
+      status: "error",
+      error: (err as Error).message,
+      completedAt: new Date().toISOString(),
+    });
+  });
+});
+
+async function generateDatasetAsync(
+  sessionId: string,
+  activityId: number,
+  data: { name: string; topic: string; numberOfItems: number; examples?: string; gatewayId: number; modelId: string },
+  gateway: { type: string; baseUrl: string; apiKey: string; customHeaders?: Record<string, string> },
+): Promise<void> {
+  const examplesSection = data.examples
+    ? `\n\nHere are example items to guide the style, format, and complexity:\n\n${data.examples}\n\nGenerate new items following the same pattern, style, and level of detail as the examples above.`
+    : "";
+
+  store.updateActivity(sessionId, activityId, { progress: "Generating content..." });
+
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey },
+    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
     data.modelId,
     [
       {
         role: "system",
-        content: `You are a test data generator. Generate ${data.numberOfItems} test items as a well-structured Markdown document for the topic: "${data.topic}".
-
-Each test item should be a separate section with a heading (## Item N) containing a realistic prompt or question that could be given to an LLM using this system prompt: "${data.systemPrompt}".
-
-Output only the Markdown document, nothing else.`,
+        content: `You are a test data generator. Generate ${data.numberOfItems} test items as a well-structured Markdown document.\n\nDescription of data to generate: "${data.topic}"${examplesSection}\n\nEach item should be a separate section with a heading (## Item N). The items should be realistic and diverse.\n\nOutput only the raw Markdown content, nothing else. Do NOT wrap the output in code fences (no \`\`\`markdown or \`\`\`).`,
       },
       {
         role: "user",
-        content: `Generate ${data.numberOfItems} test items about: ${data.topic}`,
+        content: `Generate ${data.numberOfItems} test items for: ${data.topic}`,
       },
     ],
+    sessionId,
   );
 
-  const [dataset] = await db
-    .insert(datasetsTable)
-    .values({
-      name: data.name,
-      content: result.content,
-      systemPrompt: data.systemPrompt,
-    })
-    .returning();
+  // Strip markdown code fences that LLMs sometimes wrap around their output
+  const cleanedContent = result.content
+    .replace(/^```(?:markdown|md)?\s*\n?/gim, "")
+    .replace(/\n?```\s*$/gim, "")
+    .trim();
 
-  res.status(201).json(datasetToJson(dataset));
-});
+  const dataset = store.createDataset(sessionId, {
+    name: data.name,
+    content: cleanedContent,
+  });
+
+  store.updateActivity(sessionId, activityId, {
+    status: "completed",
+    progress: "Done",
+    resultId: dataset.id,
+    completedAt: new Date().toISOString(),
+  });
+}
 
 export default router;

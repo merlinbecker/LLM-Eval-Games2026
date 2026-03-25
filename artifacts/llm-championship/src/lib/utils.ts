@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Format a cost value in USD with cent precision (minimum $0.01 for non-zero costs). */
+export function formatCost(cost: number): string {
+  if (cost <= 0) return "$0.00";
+  const rounded = Math.max(0.01, Math.round(cost * 100) / 100);
+  return `$${rounded.toFixed(2)}`;
+}
+
 export function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
@@ -13,4 +20,28 @@ export function formatDate(dateString: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/** Extract the short display name from a fully-qualified model name (e.g. "openai/gpt-4" → "gpt-4"). */
+export function shortName(name: string): string {
+  return name.split("/").pop() || name;
+}
+
+/** Format a duration in milliseconds to a human-readable string (e.g. 1500 → "1.5s", 800 → "800ms"). */
+export function formatMs(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** Parse a Markdown document into individual items, split by `## ` headings or double-newline paragraphs. */
+export function parseDatasetItems(content: string): string[] {
+  const sections = content.split(/^## /m).filter(Boolean);
+  if (sections.length > 1) {
+    return sections.map((s) => s.trim());
+  }
+  const paragraphs = content
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  return paragraphs.length > 0 ? paragraphs : [content];
 }

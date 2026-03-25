@@ -1,0 +1,29 @@
+import type { VaultGateway, VaultDataset, VaultConfiguredModel } from "./types";
+
+const API_BASE = "/api";
+
+export async function syncToServer(
+  gateways: VaultGateway[],
+  datasets: VaultDataset[],
+  configuredModels: VaultConfiguredModel[],
+): Promise<{ sessionId: string; gatewayCount: number; datasetCount: number }> {
+  const res = await fetch(`${API_BASE}/session/sync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ gateways, datasets, configuredModels }),
+  });
+  if (!res.ok) {
+    throw new Error(`Session sync failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteSession(): Promise<void> {
+  await fetch(`${API_BASE}/session`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+

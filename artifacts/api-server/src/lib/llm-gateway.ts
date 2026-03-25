@@ -1,5 +1,9 @@
 import { logger } from "./logger";
 import { resolve4, resolve6 } from "node:dns/promises";
+import { store } from "@workspace/store";
+
+const DEFAULT_MAX_TOKENS = 4096;
+const DEFAULT_TEMPERATURE = 0.7;
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -17,11 +21,22 @@ interface GatewayConfig {
   type: string;
   baseUrl: string;
   apiKey: string;
+  customHeaders?: Record<string, string>;
 }
 
 interface OpenAIChatResponse {
   choices?: Array<{ message?: { content?: string } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
+interface AnthropicConverseResponse {
+  output?: { message?: { content?: Array<{ text?: string }> } };
+  usage?: { inputTokens?: number; outputTokens?: number };
+}
+
+interface GeminiGenerateResponse {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
 }
 
 interface OpenAIModelEntry {
@@ -103,7 +118,15 @@ async function validateGatewayUrl(baseUrl: string): Promise<void> {
 
 const GITHUB_MODELS_BASE = "https://models.inference.ai.azure.com";
 
-function getProviderEndpoints(gateway: GatewayConfig): { chatUrl: string; modelsUrl: string; headers: Record<string, string> } {
+function isCustomType(type: string): boolean {
+  return type === "custom" || type === "custom_openai" || type === "custom_anthropic" || type === "custom_gemini";
+}
+
+function resolveCustomUrl(baseUrl: string, modelId: string): string {
+  return baseUrl.replace(/\{model\}/g, encodeURIComponent(modelId));
+}
+
+function getProviderEndpoints(gateway: GatewayConfig, modelId?: string): { chatUrl: string; modelsUrl: string; headers: Record<string, string> } {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -121,11 +144,35 @@ function getProviderEndpoints(gateway: GatewayConfig): { chatUrl: string; models
     case "openrouter": {
       const base = gateway.baseUrl || "https://openrouter.ai/api/v1";
       headers["Authorization"] = `Bearer ${gateway.apiKey}`;
-      headers["HTTP-Referer"] = "https://llm-championship.replit.app";
-      headers["X-Title"] = "LLM Championship";
+      headers["HTTP-Referer"] = "https://llm-eval-games.replit.app";
+      headers["X-Title"] = "LLM Eval Games 2026";
       return {
         chatUrl: `${base}/chat/completions`,
         modelsUrl: `${base}/models`,
+        headers,
+      };
+    }
+    case "custom_openai":
+    case "custom_anthropic":
+    case "custom_gemini":
+    case "custom": {
+      // Custom headers override defaults; apiKey is NOT auto-added as Authorization
+      if (gateway.customHeaders) {
+        for (const [key, value] of Object.entries(gateway.customHeaders)) {
+          headers[key] = value;
+        }
+      }
+      // If no custom auth header is set but apiKey is provided, add api-key header
+      const hasAuthHeader = gateway.customHeaders && Object.keys(gateway.customHeaders).some(
+        k => k.toLowerCase() === "authorization" || k.toLowerCase() === "api-key"
+      );
+      if (!hasAuthHeader && gateway.apiKey) {
+        headers["api-key"] = gateway.apiKey;
+      }
+      const chatUrl = modelId ? resolveCustomUrl(gateway.baseUrl, modelId) : gateway.baseUrl;
+      return {
+        chatUrl,
+        modelsUrl: "", // Custom gateways have no models endpoint
         headers,
       };
     }
@@ -140,21 +187,111 @@ function getProviderEndpoints(gateway: GatewayConfig): { chatUrl: string; models
   }
 }
 
+function splitMessages(messages: ChatMessage[]): { system: ChatMessage[]; conversation: ChatMessage[] } {
+  const system: ChatMessage[] = [];
+  const conversation: ChatMessage[] = [];
+  for (const m of messages) {
+    (m.role === "system" ? system : conversation).push(m);
+  }
+  return { system, conversation };
+}
+
+function resolveEffectiveType(type: string): string {
+  return type === "custom" ? "custom_openai" : type;
+}
+
+function buildRequestBody(gateway: GatewayConfig, modelId: string, messages: ChatMessage[]): unknown {
+  const effectiveType = resolveEffectiveType(gateway.type);
+
+  switch (effectiveType) {
+    case "custom_anthropic": {
+      const { system, conversation } = splitMessages(messages);
+      const body: Record<string, unknown> = {
+        messages: conversation.map(m => ({
+          role: m.role as "user" | "assistant",
+          content: [{ text: m.content }],
+        })),
+        inferenceConfig: {
+          maxTokens: DEFAULT_MAX_TOKENS,
+          temperature: DEFAULT_TEMPERATURE,
+        },
+      };
+      if (system.length > 0) {
+        body.system = system.map(m => ({ text: m.content }));
+      }
+      return body;
+    }
+    case "custom_gemini": {
+      const { system, conversation } = splitMessages(messages);
+      const body: Record<string, unknown> = {
+        contents: conversation.map(m => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+        generationConfig: {
+          temperature: DEFAULT_TEMPERATURE,
+          topP: 1.0,
+          topK: 4,
+        },
+      };
+      if (system.length > 0) {
+        body.systemInstruction = {
+          role: "user",
+          parts: system.map(m => ({ text: m.content })),
+        };
+      }
+      return body;
+    }
+    default: {
+      return {
+        model: modelId,
+        messages,
+        temperature: DEFAULT_TEMPERATURE,
+      };
+    }
+  }
+}
+
+function parseResponse(gateway: GatewayConfig, data: unknown): { content: string; promptTokens: number; completionTokens: number } {
+  const effectiveType = resolveEffectiveType(gateway.type);
+
+  switch (effectiveType) {
+    case "custom_anthropic": {
+      const resp = data as AnthropicConverseResponse;
+      const content = resp.output?.message?.content?.[0]?.text ?? "";
+      const promptTokens = resp.usage?.inputTokens ?? 0;
+      const completionTokens = resp.usage?.outputTokens ?? 0;
+      return { content, promptTokens, completionTokens };
+    }
+    case "custom_gemini": {
+      const resp = data as GeminiGenerateResponse;
+      const content = resp.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      const promptTokens = resp.usageMetadata?.promptTokenCount ?? 0;
+      const completionTokens = resp.usageMetadata?.candidatesTokenCount ?? 0;
+      return { content, promptTokens, completionTokens };
+    }
+    default: {
+      // OpenAI-compatible
+      const resp = data as OpenAIChatResponse;
+      const content = resp.choices?.[0]?.message?.content ?? "";
+      const promptTokens = resp.usage?.prompt_tokens ?? 0;
+      const completionTokens = resp.usage?.completion_tokens ?? 0;
+      return { content, promptTokens, completionTokens };
+    }
+  }
+}
+
 export async function chatCompletion(
   gateway: GatewayConfig,
   modelId: string,
   messages: ChatMessage[],
+  sessionId?: string,
 ): Promise<ChatCompletionResult> {
   await validateGatewayUrl(gateway.baseUrl || getDefaultBase(gateway.type));
   const startTime = Date.now();
 
-  const { chatUrl, headers } = getProviderEndpoints(gateway);
-
-  const body = {
-    model: modelId,
-    messages,
-    temperature: 0.7,
-  };
+  const { chatUrl, headers } = getProviderEndpoints(gateway, modelId);
+  const body = buildRequestBody(gateway, modelId, messages);
 
   const response = await fetch(chatUrl, {
     method: "POST",
@@ -165,23 +302,50 @@ export async function chatCompletion(
 
   if (!response.ok) {
     const errorText = await response.text();
+    const durationMs = Date.now() - startTime;
     logger.error({ status: response.status, errorText, modelId, provider: gateway.type }, "LLM API error");
+
+    logLlmCall(sessionId, {
+      gatewayType: gateway.type, modelId, requestUrl: chatUrl,
+      requestBody: body, responseStatus: response.status,
+      responseBody: { error: errorText }, durationMs, error: errorText,
+    });
+
     throw new Error(`LLM API error (${response.status}): ${errorText}`);
   }
 
-  const data = await response.json() as OpenAIChatResponse;
+  const data = await response.json();
   const durationMs = Date.now() - startTime;
 
-  const content = data.choices?.[0]?.message?.content ?? "";
-  const promptTokens = data.usage?.prompt_tokens ?? 0;
-  const completionTokens = data.usage?.completion_tokens ?? 0;
+  const { content, promptTokens, completionTokens } = parseResponse(gateway, data);
+
+  logLlmCall(sessionId, {
+    gatewayType: gateway.type, modelId, requestUrl: chatUrl,
+    requestBody: body, responseStatus: response.status,
+    responseBody: data, durationMs, error: null,
+  });
 
   return { content, promptTokens, completionTokens, durationMs };
+}
+
+function logLlmCall(
+  sessionId: string | undefined,
+  data: Omit<import("@workspace/store").LlmLog, "id" | "timestamp">,
+): void {
+  if (!sessionId) return;
+  try {
+    store.addLlmLog(sessionId, { timestamp: new Date().toISOString(), ...data });
+  } catch { /* ignore logging errors */ }
 }
 
 export async function listModelsFromGateway(
   gateway: GatewayConfig,
 ): Promise<Array<{ id: string; name: string }>> {
+  // Custom gateways have no models endpoint
+  if (isCustomType(gateway.type)) {
+    return [];
+  }
+
   await validateGatewayUrl(gateway.baseUrl || getDefaultBase(gateway.type));
 
   const { modelsUrl, headers } = getProviderEndpoints(gateway);
@@ -214,7 +378,7 @@ export async function listModelsFromGateway(
   }
 }
 
-function getDefaultBase(type: string): string {
+export function getDefaultBase(type: string): string {
   switch (type) {
     case "github_copilot":
       return GITHUB_MODELS_BASE;

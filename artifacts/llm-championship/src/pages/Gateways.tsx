@@ -10,9 +10,17 @@ import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect } from "@
 import { formatDate } from "@/lib/utils";
 import { Server, Trash2 } from "lucide-react";
 import type { CreateGatewayType } from "@workspace/api-client-react";
+import { useVault } from "@/lib/vault/vault-store";
+
+function getDefaultBaseUrl(type: CreateGatewayType): string {
+  if (type === "openrouter") return "https://openrouter.ai/api/v1";
+  if (type === "github_copilot") return "https://models.inference.ai.azure.com";
+  return "";
+}
 
 export default function Gateways() {
   const queryClient = useQueryClient();
+  const { addGateway, removeGateway } = useVault();
   const { data: gateways, isLoading } = useListGateways();
   const deleteMutation = useDeleteGateway();
   const createMutation = useCreateGateway();
@@ -24,7 +32,14 @@ export default function Gateways() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createMutation.mutateAsync({ data: { name, type, baseUrl, apiKey } });
+    const resolvedBaseUrl = baseUrl.trim() || getDefaultBaseUrl(type);
+    if (!resolvedBaseUrl) {
+      alert("Base URL is required for custom gateways.");
+      return;
+    }
+
+    const result = await createMutation.mutateAsync({ data: { name, type, baseUrl: resolvedBaseUrl, apiKey } });
+    addGateway({ id: result.id, name, type, baseUrl: resolvedBaseUrl, apiKey });
     queryClient.invalidateQueries({ queryKey: getListGatewaysQueryKey() });
     setName(""); setBaseUrl(""); setApiKey("");
   };
@@ -32,6 +47,7 @@ export default function Gateways() {
   const handleDelete = async (id: number) => {
     if (confirm("SEVER CONNECTION?")) {
       await deleteMutation.mutateAsync({ id });
+      removeGateway(id);
       queryClient.invalidateQueries({ queryKey: getListGatewaysQueryKey() });
     }
   };
@@ -86,7 +102,7 @@ export default function Gateways() {
             </div>
             <div>
               <label className="block font-display mb-1 uppercase text-sm">Base URL</label>
-              <RetroInput required value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://openrouter.ai/api/v1" />
+              <RetroInput value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder={getDefaultBaseUrl(type) || "https://..."} />
             </div>
             <div>
               <label className="block font-display mb-1 uppercase text-sm">Access Token</label>
