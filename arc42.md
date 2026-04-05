@@ -9,7 +9,7 @@ title: "LLM Championship — arc42 Architekturdokumentation"
 
 Architekturdokumentation des Projekts **LLM Championship** (auch bekannt als *LLM Eiskunstlauf Meisterschaft / Winter Games '85*) gemäß arc42-Template Version 9.0-DE.
 
-arc42 © Dr. Peter Hruschka, Dr. Gernot Starke und Contributors. Siehe <https://arc42.org>.
+arc42 © Dr. Peter Hruschka, Dr. Gernot Starke und Contributors. Siehe <https://arc42.org>.  
 
 ---
 
