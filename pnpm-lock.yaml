@@ -215,6 +215,9 @@ importers:
       thread-stream:
         specifier: 3.1.0
         version: 3.1.0
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@25.3.5)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2)
 
   artifacts/llm-championship:
     devDependencies:
@@ -266,6 +269,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/store':
+        specifier: workspace:*
+        version: link:../../lib/store
       clsx:
         specifier: 'catalog:'
         version: 2.1.1

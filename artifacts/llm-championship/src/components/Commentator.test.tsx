@@ -1,19 +1,5 @@
 import { describe, it, expect } from "vitest";
-
-// Import the helpers directly — they are module-scoped functions
-// We need to extract them since they are not exported.
-// Re-implement the pure functions for testing (same logic, verifying correctness).
-
-// ─── shortName ───
-
-function shortName(name: string): string {
-  return name.split("/").pop() || name;
-}
-
-function formatMs(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-}
+import { formatMs, shortName } from "@/lib/utils";
 
 describe("Commentator helpers", () => {
   describe("shortName", () => {

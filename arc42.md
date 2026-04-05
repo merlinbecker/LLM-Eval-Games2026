@@ -182,7 +182,7 @@ C4Container
 | **Frontend SPA**      | Darstellung der Retro-UI; Benutzerinteraktion; Client-Vault-Management; Zustandsverwaltung via React Query  | `@workspace/llm-championship` |
 | **API Client React**  | Generierte React-Query-Hooks und Custom-Fetch-Wrapper; typsicherer API-Zugriff mit Session-Cookie           | `@workspace/api-client-react` |
 | **API Server**        | REST-Endpunkte; Geschäftslogik für Gateway-Verwaltung, Dataset-Operationen, Wettbewerbs-Evaluation           | `@workspace/api-server`       |
-| **Store Library**     | In-Memory-Store mit session-scoped Maps; TypeScript-Interfaces für Gateway, Dataset, Competition            | `@workspace/store`            |
+| **Store Library**     | In-Memory-Store mit session-scoped Maps; gemeinsame Dataset-Markdown-Helfer; TypeScript-Interfaces für Gateway, Dataset, Competition | `@workspace/store`            |
 | **API Zod Schemas**   | Generierte Zod-Schemas für Request/Response-Validierung                                                     | `@workspace/api-zod`          |
 | **API Specification** | OpenAPI-3.1-Kontraktdefinition als YAML; Quelle für Client- und Schema-Generierung                          | `@workspace/api-spec`         |
 
@@ -216,13 +216,15 @@ C4Component
 
         Component(datasetsRoute, "Datasets Router", "express.Router", "CRUD, Upload (Multer), Privacy-Check, Anonymisierung, KI-Generierung von Datensätzen")
 
-        Component(competitionsRoute, "Competitions Router", "express.Router", "CRUD für Wettbewerbe; POST /competitions/:id/run startet asynchrone Evaluation")
+        Component(competitionsRoute, "Competitions Router", "express.Router", "CRUD für Wettbewerbe; POST /competitions/:id/run delegiert die asynchrone Evaluation an den Competition Runner")
+
+        Component(competitionRunner, "Competition Runner Service", "TypeScript", "Orchestriert Wettbewerbsdurchläufe: Gateway-Lookup, Contestant-/Judge-Calls, partielle Resultatpersistenz, Cost-/Score-Berechnung und Activity-Progress")
 
         Component(logsRoute, "Logs Router", "express.Router", "GET /logs — Alle LLM-Call-Logs abrufen; DELETE /logs — Logs löschen")
 
         Component(activitiesRoute, "Activities Router", "express.Router", "GET /activities — Alle Background-Activities auflisten; GET /activities/:id — Einzelne Activity; POST /activities/:id/ack — Als gelesen markieren")
 
-        Component(llmGateway, "LLM Gateway Module", "TypeScript", "chatCompletion(), listModelsFromGateway(), validateGatewayUrl() — Multi-Format LLM-Kommunikation (OpenAI/Anthropic/Gemini) mit SSRF-Schutz, Custom Headers und automatischem Call-Logging")
+        Component(llmGateway, "LLM Gateway Module", "TypeScript", "chatCompletion(), listModelsFromGateway(), validateGatewayUrl() — Multi-Format LLM-Kommunikation (OpenAI/Anthropic/Gemini), intern in Provider-/Security-/Typ-Helfer aufgeteilt; SSRF-Schutz, Custom Headers und automatisches Call-Logging")
 
         Component(logger, "Logger", "Pino", "Strukturiertes Logging; JSON (Prod) / Pretty-Print (Dev); redaktiert Auth-Header")
     }
@@ -243,11 +245,13 @@ C4Component
 
     Rel(gatewaysRoute, llmGateway, "Nutzt", "Modelle auflisten")
     Rel(datasetsRoute, llmGateway, "Nutzt", "Privacy-Check, Anonymisierung, Generierung")
-    Rel(competitionsRoute, llmGateway, "Nutzt", "Evaluation: Teilnehmer + Richter")
+    Rel(competitionsRoute, competitionRunner, "Delegiert", "Run-Orchestrierung")
+    Rel(competitionRunner, llmGateway, "Nutzt", "Evaluation: Teilnehmer + Richter")
 
     Rel(gatewaysRoute, storeLib, "Liest/Schreibt", "session-scoped Gateways")
     Rel(datasetsRoute, storeLib, "Liest/Schreibt", "session-scoped Datasets")
-    Rel(competitionsRoute, storeLib, "Liest/Schreibt", "session-scoped Competitions")
+    Rel(competitionsRoute, storeLib, "Liest/Schreibt", "session-scoped Competitions (CRUD)")
+    Rel(competitionRunner, storeLib, "Liest/Schreibt", "session-scoped Competitions + Activities")
     Rel(logsRoute, storeLib, "Liest/Löscht", "session-scoped LLM-Logs")
     Rel(sessionRoute, storeLib, "Erstellt/Löscht", "Sessions + Bulk-Import")
 
@@ -268,10 +272,11 @@ C4Component
 | **Health Router**       | `GET /healthz` → `{ status: "ok" }`                                                                                               |
 | **Gateways Router**     | `GET/POST /gateways`, `DELETE /gateways/:id`, `GET /gateways/:id/models`; validiert und speichert Gateway-Konfigurationen; `GET/POST /configured-models`, `DELETE /configured-models/:id` — vorkonfigurierte Modelle mit optionalen Kosten ($/M Tokens) verwalten |
 | **Datasets Router**     | `GET/POST /datasets`, `POST /datasets/upload` (Multer, 5MB, .md), `DELETE /datasets/:id`, Privacy-Check/Anonymisierung/Generierung |
-| **Competitions Router** | `GET/POST /competitions`, `GET/DELETE /competitions/:id`, `POST /competitions/:id/run` (Evaluations-Engine); erstellt Activity bei Run-Start mit Progress-Tracking |
+| **Competitions Router** | `GET/POST /competitions`, `GET/DELETE /competitions/:id`, `POST /competitions/:id/run`; hält HTTP-Validierung und Response-Wiring schlank und delegiert die Run-Orchestrierung an den Competition Runner |
+| **Competition Runner Service** | Führt Wettbewerbe aus: lädt Gateway-Mapping, ruft Contestants und Judges auf, speichert partielle Ergebnisse, aktualisiert Activities und berechnet aggregierte Kennzahlen |
 | **Logs Router**         | `GET /logs` — LLM-Call-Logs der aktuellen Session abrufen (neueste zuerst); `DELETE /logs` — alle Logs löschen                    |
 | **Activities Router**   | `GET /activities` — alle Background-Activities auflisten; `GET /activities/:id` — einzelne Activity; `POST /activities/:id/ack` — als gelesen markieren |
-| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; Multi-Format-Support (OpenAI, Anthropic Converse, Gemini generateContent) via `buildRequestBody()` / `parseResponse()`; Custom HTTP Headers; `{model}`-URL-Platzhalter; automatisches Call-Logging (Request/Response) in den Session-Store |
+| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; intern in Provider-/Security-/Typ-Helfer zerlegt; Multi-Format-Support (OpenAI, Anthropic Converse, Gemini generateContent) via Provider-Mapper für Request/Response; Custom HTTP Headers; `{model}`-URL-Platzhalter; automatisches Call-Logging (Request/Response) in den Session-Store |
 | **Logger**              | Pino-Logger; strukturiertes JSON-Logging in Produktion; Pretty-Print in Entwicklung; Redaktion sensibler Header                    |
 
 ---
@@ -306,7 +311,7 @@ C4Component
 
         Component(logsPage, "Logs Page", "React", "LLM-Call-Log-Viewer: expandierbare Einträge mit Status, Modell, Dauer, Timestamp; einklappbare JSON-Ansicht für Request/Response; Auto-Refresh (5s); Clear-Funktion")
 
-        Component(retroComponents, "Retro-Komponentenbibliothek", "React, Tailwind CSS", "RetroWindow (einklappbar), RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge, RobotIcon, JudgeRevealRobot")
+        Component(retroComponents, "Retro-Komponentenbibliothek", "React, Tailwind CSS", "RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge, RobotIcon, JudgeRevealRobot")
     }
 
     Container(apiClient, "API Client React", "React Query Hooks")
@@ -352,9 +357,9 @@ C4Component
 
     Container_Boundary(storeLib, "Store Library (@workspace/store)") {
 
-        Component(storeIndex, "InMemoryStore", "TypeScript", "Singleton-Klasse mit session-scoped Maps; CRUD für Gateways, Datasets, Competitions, Activities; Bulk-Import; Cleanup-Timer (5min Intervall, 2h TTL)")
+        Component(storeIndex, "InMemoryStore", "TypeScript", "Singleton-Klasse mit session-scoped Maps; CRUD für Gateways, Datasets, Competitions, Activities; gemeinsame Dataset-Markdown-Normalisierung/-Segmentierung; Bulk-Import; Cleanup-Timer (5min Intervall, 2h TTL)")
 
-        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces: Gateway, Dataset, Competition, Activity, LlmLog, ConfiguredModel, CreateGateway, CreateDataset, CreateCompetition, CreateActivity, CreateConfiguredModel, ModelSelection, CompetitionResultEntry")
+        Component(storeTypes, "Type Definitions", "TypeScript", "Plain Interfaces und Pure Helpers: Gateway, Dataset, Competition, Activity, LlmLog, ConfiguredModel, CreateGateway, CreateDataset, CreateCompetition, CreateActivity, CreateConfiguredModel, ModelSelection, CompetitionResultEntry, Dataset-Markdown-Parser/Serializer")
     }
 
     Container(apiServer, "API Server", "Express 5")
@@ -369,13 +374,14 @@ C4Component
 |---------------------|-----------------------------------------------------------------------------------------------------------|
 | **Gateway**         | `id`, `name`, `type` (openrouter/github_copilot/custom_openai/custom_anthropic/custom_gemini), `baseUrl`, `apiKey`, `customHeaders?`, `createdAt` |
 | **ConfiguredModel** | `id`, `name`, `gatewayId`, `modelId`, `inputCostPerMillionTokens?`, `outputCostPerMillionTokens?`, `createdAt` |
-| **Dataset**         | `id`, `name`, `content` (Markdown), `systemPrompt`, `privacyStatus`, `privacyReport`, `createdAt`        |
+| **Dataset**         | `id`, `name`, `content` (Markdown), `privacyStatus`, `privacyReport`, `createdAt`                        |
 | **Competition**     | `id`, `name`, `datasetId`, `systemPrompt`, `status`, `contestantModels`, `judgeModels`, `results`, `createdAt` |
 | **ModelSelection**  | `gatewayId`, `modelId`, `modelName`, `inputCostPerMillionTokens?`, `outputCostPerMillionTokens?`          |
 | **LlmLog**          | `id`, `timestamp`, `gatewayType`, `modelId`, `requestUrl`, `requestBody`, `responseStatus`, `responseBody`, `durationMs`, `error` |
 | **Activity**        | `id`, `type` (competition_run/dataset_generate), `status` (running/completed/error), `title`, `progress?`, `resultId?`, `error?`, `acknowledged`, `createdAt`, `completedAt?` |
 
 Jede Session hat eigene Counter (`nextId`) und Maps; Sessions werden nach 2 Stunden Inaktivität automatisch bereinigt. LLM-Logs werden als Array pro Session gespeichert (max. 500 Einträge, FIFO). Activities tracken den Status langläufiger Hintergrund-Operationen und können vom Frontend als gelesen markiert werden.
+Zusätzlich exportiert `@workspace/store` gemeinsame Pure Helpers zur Dataset-Markdown-Verarbeitung: Wrapping-Code-Fences werden normalisiert, Items werden konsistent über `##`-Überschriften oder Absatz-Fallback segmentiert, und bearbeitete Items werden wieder kanonisch serialisiert.
 
 ---
 
@@ -720,7 +726,7 @@ Die Typsicherheit erstreckt sich über alle Schichten:
 
 ## 8.3 LLM-Gateway-API-Formate
 
-Das System unterstützt drei API-Formate für Custom-Gateways. Die Transformation zwischen den Formaten erfolgt im `LLM Gateway Module` über `buildRequestBody()` und `parseResponse()`.
+Das System unterstützt drei API-Formate für Custom-Gateways. Die Transformation zwischen den Formaten erfolgt im `LLM Gateway Module` über dedizierte Provider-Helfer für Request-Building und Response-Parsing.
 
 ### OpenAI-kompatibel (`custom_openai`)
 
@@ -774,12 +780,12 @@ Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
 |----------------------|--------------------------------------------------------------------------|
 | **Farbpalette**      | 1-bit Monochrom (Schwarz/Weiß) mit Dithering-Mustern                    |
 | **Schriftarten**     | Silkscreen (Pixel-Font) für Überschriften; System-Monospace für Text     |
-| **Fenster**          | `RetroWindow`: 3px Border, Titelleiste mit gestreiftem Hintergrund; optional einklappbar (`collapsible`) mit ▶/▼-Indikator |
+| **Fenster**          | `RetroWindow`: 3px Border, Titelleiste mit gestreiftem Hintergrund |
 | **Buttons**          | `RetroButton`: Press-Effekt (translate), Varianten: primary/secondary/danger |
 | **Formulare**        | `RetroInput`, `RetroTextarea`, `RetroSelect` mit 3px-Border und Focus-Ring |
 | **Badges**           | `RetroBadge`: Inline mit Border, Uppercase, Letter-Spacing               |
 | **Dreiecksdiagramm** | `TriangleChart`: SVG-basierter Ternary-Plot mit baryzentrischen Koordinaten; 3 Ecken (Qualität, Tempo, Effizienz); relative Normalisierung (1–10) anhand Min/Max aller Modelle (Speed/Cost invertiert: bester Wert → 10); Modelle als unterschiedliche Marker (Kreis, Quadrat, Raute, Dreieck, Kreuz); Gitterlinien bei 25%/50%/75%; Hover-Tooltip mit Z-Ordering |
-| **Einklappbare Fenster** | `RetroWindow` mit `collapsible`/`defaultCollapsed`-Props; Klick auf Titelleiste klappt Inhalt ein/aus; ▶/▼-Indikator |
+| **Fensterinhalt**        | `RetroWindow` rendert stets einen klar abgegrenzten Content-Bereich unter der Titelleiste; Schließen erfolgt optional über einen dedizierten Close-Button |
 | **Richter-Scoring-Overlay** | `JudgesScoreReveal`: Animiertes Overlay während laufender Wettbewerbe; `JudgeRevealRobot`-Komponenten mit CSS-Transition-Reveal und `animate-score-pop` (Bounce-Keyframe `scale 0.7→1.15→0.95→1`); absolut positioniert unter der Header-Bar (z-40); Queue-System (max. 4 Events) |
 
 ## 8.6 Fehlerbehandlung
@@ -938,7 +944,7 @@ mindmap
 | R3 | **Polling statt Push**                            | 2-Sekunden-Polling erzeugt unnötige Last; bei vielen gleichzeitigen Nutzern skaliert dies schlecht             | SSE oder WebSockets für Echtzeit-Updates                     |
 | R4 | **Keine Rate-Limiting**                           | API-Endpunkte sind nicht gegen Missbrauch geschützt                                                            | Rate-Limiting-Middleware (z.B. express-rate-limit)           |
 | R5 | **Datenverlust bei Server-Neustart**              | In-Memory-Daten (inkl. laufender Wettbewerbe) gehen bei Server-Neustart verloren                               | Client-Vault als primäre Quelle; optionale File-Persistenz  |
-| R6 | **Keine automatisierten Tests**                  | Aktuell keine Unit-/Integrationstests im Projekt                                                               | Test-Framework einführen (Vitest für Frontend, Jest für API) |
+| R6 | **Backend-Integrationsabdeckung unvollständig** | Frontend-Unit-Tests sowie direkte Runner- und Gateway-Helfertests sind vorhanden, aber Routen-Fehlerpfade und vollständige End-to-End-Flows sind noch nicht ausreichend automatisiert abgesichert | Gezielte Vitest-/Integrationstests für Route-, Session- und verbleibende Activity-Flows ergänzen |
 | R7 | **Abhängigkeit von externen LLM-Anbietern**      | Verfügbarkeit und Preisänderungen der LLM-APIs liegen außerhalb der Kontrolle                                  | Fallback-Gateway, Caching, Retry-Strategien                  |
 | R8 | **LocalStorage-Limit**                           | Client-Vault ist auf ~5-10 MB begrenzt; sehr große Datasets können das Limit erreichen                         | Gzip-Kompression (bereits implementiert); IndexedDB als Alternative |
 | R9 | **Konfigurierte Modelle nicht im Vault persistiert** | `ConfiguredModel`-Objekte (inkl. Kosten) werden nur im In-Memory-Store gehalten und gehen bei Session-Ablauf oder Server-Neustart verloren; sie sind nicht Teil des verschlüsselten Client-Vaults | ConfiguredModels in `VaultData` aufnehmen und beim Session-Sync mit übertragen |
@@ -951,7 +957,7 @@ mindmap
 | Begriff                  | Definition                                                                                                        |
 |--------------------------|-------------------------------------------------------------------------------------------------------------------|
 | **Gateway**              | Konfigurierte Verbindung zu einem LLM-Anbieter (OpenRouter, GitHub Copilot oder Custom-Endpunkt mit OpenAI-, Anthropic- oder Gemini-kompatibler API). Custom-Gateways unterstützen benutzerdefinierte HTTP-Headers und vollständige URL-Konfiguration mit `{model}`-Platzhalter |
-| **Dataset**              | Markdown-formatierter Testdatensatz, aufgeteilt in Items (getrennt durch `##`-Überschriften oder Absätze)           |
+| **Dataset**              | Markdown-formatierter Testdatensatz; optionale äußere Markdown-Code-Fences werden normalisiert, die Aufteilung in Items erfolgt konsistent über `##`-Überschriften oder Absatz-Fallback |
 | **Competition**          | Wettbewerb, in dem mehrere Teilnehmer-Modelle (Contestants) von Richter-Modellen (Judges) bewertet werden           |
 | **Configured Model**     | Vorkonfiguriertes Modell mit Gateway-Zuordnung, Anzeigename und optionalen Kosteninformationen (Input/Output $/M Tokens); wird bei der Wettbewerbs-Erstellung als Vorlage genutzt |
 | **Contestant Model**     | LLM-Modell, das als Teilnehmer in einem Wettbewerb antworten generiert                                             |

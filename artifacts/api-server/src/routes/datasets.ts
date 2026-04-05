@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { store } from "@workspace/store";
+import { store, normalizeDatasetMarkdown } from "@workspace/store";
 import type { Dataset } from "@workspace/store";
 import {
   CreateDatasetBody,
@@ -259,10 +259,7 @@ async function generateDatasetAsync(
   );
 
   // Strip markdown code fences that LLMs sometimes wrap around their output
-  const cleanedContent = result.content
-    .replace(/^```(?:markdown|md)?\s*\n?/gim, "")
-    .replace(/\n?```\s*$/gim, "")
-    .trim();
+  const cleanedContent = normalizeDatasetMarkdown(result.content);
 
   const dataset = store.createDataset(sessionId, {
     name: data.name,

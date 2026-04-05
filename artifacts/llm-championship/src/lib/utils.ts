@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { parseDatasetMarkdownItems } from "@workspace/store/dataset-markdown";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,13 +36,5 @@ export function formatMs(ms: number): string {
 
 /** Parse a Markdown document into individual items, split by `## ` headings or double-newline paragraphs. */
 export function parseDatasetItems(content: string): string[] {
-  const sections = content.split(/^## /m).filter(Boolean);
-  if (sections.length > 1) {
-    return sections.map((s) => s.trim());
-  }
-  const paragraphs = content
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-  return paragraphs.length > 0 ? paragraphs : [content];
+  return parseDatasetMarkdownItems(content);
 }

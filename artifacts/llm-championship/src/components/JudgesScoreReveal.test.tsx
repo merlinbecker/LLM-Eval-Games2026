@@ -1,13 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { JudgesScoreReveal } from "./JudgesScoreReveal";
-import type { CompetitionDetail, JudgeScore } from "@workspace/api-client-react";
-
-// ─── shortName tests (same logic used in component) ───
-
-function shortName(name: string): string {
-  return name.split("/").pop() || name;
-}
+import type {
+  CompetitionDetail,
+  CompetitionResult,
+  JudgeScore,
+  ModelResponse,
+} from "@workspace/api-client-react";
+import { shortName } from "@/lib/utils";
 
 describe("JudgesScoreReveal shortName", () => {
   it("extracts last segment", () => {
@@ -25,30 +25,64 @@ function makeCompetition(
   overrides: Partial<CompetitionDetail> = {},
 ): CompetitionDetail {
   return {
-    id: "comp-1",
+    id: 1,
     name: "Test Competition",
     status: "running",
-    datasetId: "ds-1",
+    datasetId: 1,
+    systemPrompt: "",
     contestantModels: [],
     judgeModels: [],
     results: [],
     createdAt: new Date().toISOString(),
     ...overrides,
-  } as CompetitionDetail;
+  };
 }
 
-function makeResult(modelId: string, modelName: string, responses: Array<{ judgeScores: JudgeScore[]; durationMs: number }>) {
+function makeJudgeScore(
+  judgeModelId: string,
+  judgeModelName: string,
+  score: number,
+): JudgeScore {
   return {
+    judgeModelId,
+    judgeModelName,
+    score,
+    reasoning: "test reasoning",
+  };
+}
+
+function makeModelResponse({
+  judgeScores,
+  durationMs,
+}: {
+  judgeScores: JudgeScore[];
+  durationMs: number;
+}): ModelResponse {
+  return {
+    dataItemIndex: 0,
+    response: "test",
+    durationMs,
+    promptTokens: 0,
+    completionTokens: 0,
+    cost: 0,
+    judgeScores,
+  };
+}
+
+function makeResult(
+  modelId: string,
+  modelName: string,
+  responses: Array<{ judgeScores: JudgeScore[]; durationMs: number }>,
+): CompetitionResult {
+  return {
+    gatewayId: 1,
     modelId,
     modelName,
-    responses: responses.map((r) => ({
-      response: "test",
-      durationMs: r.durationMs,
-      judgeScores: r.judgeScores,
-    })),
+    responses: responses.map(makeModelResponse),
     avgQuality: 0,
     avgSpeed: 0,
     totalCost: 0,
+    totalTokens: 0,
   };
 }
 
@@ -68,7 +102,7 @@ describe("JudgesScoreReveal", () => {
   });
 
   it("is hidden when competition is not running", () => {
-    const comp = makeCompetition({ status: "completed" as any });
+    const comp = makeCompetition({ status: "completed" });
     const { container } = render(<JudgesScoreReveal competition={comp} />);
     // The outer div should have opacity 0 or pointerEvents none
     const outer = container.firstChild as HTMLElement;
@@ -77,8 +111,8 @@ describe("JudgesScoreReveal", () => {
 
   it("detects new scores and shows reveal panel", async () => {
     const judgeScores: JudgeScore[] = [
-      { judgeModelId: "j1", judgeModelName: "judge/alpha", score: 8 },
-      { judgeModelId: "j2", judgeModelName: "judge/beta", score: 7 },
+      makeJudgeScore("j1", "judge/alpha", 8),
+      makeJudgeScore("j2", "judge/beta", 7),
     ];
 
     const comp = makeCompetition({
@@ -102,7 +136,7 @@ describe("JudgesScoreReveal", () => {
 
   it("shows model name in the title", () => {
     const judgeScores: JudgeScore[] = [
-      { judgeModelId: "j1", judgeModelName: "judge/alpha", score: 9 },
+      makeJudgeScore("j1", "judge/alpha", 9),
     ];
 
     const comp = makeCompetition({
@@ -124,8 +158,8 @@ describe("JudgesScoreReveal", () => {
 
   it("displays judge names", () => {
     const judgeScores: JudgeScore[] = [
-      { judgeModelId: "j1", judgeModelName: "judge/alpha", score: 8 },
-      { judgeModelId: "j2", judgeModelName: "judge/beta", score: 6 },
+      makeJudgeScore("j1", "judge/alpha", 8),
+      makeJudgeScore("j2", "judge/beta", 6),
     ];
 
     const comp = makeCompetition({
@@ -144,9 +178,9 @@ describe("JudgesScoreReveal", () => {
 
   it("reveals judges one by one with delay", () => {
     const judgeScores: JudgeScore[] = [
-      { judgeModelId: "j1", judgeModelName: "judge/a", score: 9 },
-      { judgeModelId: "j2", judgeModelName: "judge/b", score: 7 },
-      { judgeModelId: "j3", judgeModelName: "judge/c", score: 5 },
+      makeJudgeScore("j1", "judge/a", 9),
+      makeJudgeScore("j2", "judge/b", 7),
+      makeJudgeScore("j3", "judge/c", 5),
     ];
 
     const comp = makeCompetition({
@@ -181,8 +215,8 @@ describe("JudgesScoreReveal", () => {
 
   it("shows running average during reveal", () => {
     const judgeScores: JudgeScore[] = [
-      { judgeModelId: "j1", judgeModelName: "judge/a", score: 8 },
-      { judgeModelId: "j2", judgeModelName: "judge/b", score: 10 },
+      makeJudgeScore("j1", "judge/a", 8),
+      makeJudgeScore("j2", "judge/b", 10),
     ];
 
     const comp = makeCompetition({
@@ -212,7 +246,7 @@ describe("JudgesScoreReveal", () => {
   it("limits queue to MAX_QUEUE_SIZE (4)", () => {
     // Create 6 responses at once — only 4 should be queued
     const makeResp = (score: number) => ({
-      judgeScores: [{ judgeModelId: "j1", judgeModelName: "j", score }],
+      judgeScores: [makeJudgeScore("j1", "j", score)],
       durationMs: 100,
     });
 
@@ -233,7 +267,7 @@ describe("JudgesScoreReveal", () => {
 
   it("shows queue count indicator when queue has items", () => {
     const makeResp = (score: number) => ({
-      judgeScores: [{ judgeModelId: "j1", judgeModelName: "j", score }],
+      judgeScores: [makeJudgeScore("j1", "j", score)],
       durationMs: 100,
     });
 

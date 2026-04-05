@@ -7,30 +7,16 @@ export function RetroWindow({
   children,
   className,
   onClose,
-  collapsible = false,
-  defaultCollapsed = false,
 }: {
   title: string;
   children: React.ReactNode;
   className?: string;
   onClose?: () => void;
-  collapsible?: boolean;
-  defaultCollapsed?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-
-  const handleHeaderClick = () => {
-    if (collapsible) setCollapsed((c) => !c);
-  };
-
   return (
     <div className={cn("border-[3px] border-mac-black bg-mac-white retro-shadow flex flex-col relative", className)}>
       <div
-        className={cn(
-          "h-8 border-b-[3px] border-mac-black title-stripes flex items-center justify-between px-1 relative",
-          collapsible && "cursor-pointer select-none",
-        )}
-        onClick={handleHeaderClick}
+        className="h-8 border-b-[3px] border-mac-black title-stripes flex items-center justify-between px-1 relative"
       >
         {onClose && (
           <button
@@ -42,14 +28,9 @@ export function RetroWindow({
         )}
         <div className="bg-mac-white border-[3px] border-mac-black px-4 font-display text-sm uppercase tracking-widest absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
           {title}
-          {collapsible && (
-            <span className="font-display text-xs">{collapsed ? "▶" : "▼"}</span>
-          )}
         </div>
       </div>
-      {!collapsed && (
-        <div className="p-4 flex-1 flex flex-col bg-mac-white z-0">{children}</div>
-      )}
+      <div className="p-4 flex-1 flex flex-col bg-mac-white z-0">{children}</div>
     </div>
   );
 }
