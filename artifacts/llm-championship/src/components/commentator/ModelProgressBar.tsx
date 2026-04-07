@@ -1,5 +1,5 @@
 import type { CompetitionResult } from "@workspace/api-client-react";
-import { RobotIcon } from "@/components/retro";
+import { RobotIcon, RetroProgressBar } from "@/components/retro";
 import { formatMs, shortName } from "@/lib/utils";
 
 export function ModelProgressBar({
@@ -33,12 +33,7 @@ export function ModelProgressBar({
             )}
           </span>
         </div>
-        <div className="w-full h-3 border-[2px] border-mac-black bg-mac-white">
-          <div
-            className="h-full bg-mac-black transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
+        <RetroProgressBar percent={progressPercent} />
         {result.avgSpeed > 0 && (
           <div className="flex gap-3 text-[10px] font-bold uppercase mt-0.5 text-mac-black/60">
             <span>⌀ {formatMs(result.avgSpeed)}</span>

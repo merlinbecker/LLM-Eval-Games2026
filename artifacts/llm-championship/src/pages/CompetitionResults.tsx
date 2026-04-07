@@ -20,6 +20,10 @@ import { WinnersTab } from "./competition/WinnersTab";
 import { DetailsTab } from "./competition/DetailsTab";
 import type { CeremonyTab } from "./competition/types";
 
+import { sortByQuality } from "@/lib/competition-utils";
+
+const RUNNING_POLL_INTERVAL = 2000;
+
 // ─── TAB CONFIG ───
 
 const TAB_CONFIG: { id: CeremonyTab; label: string; icon: React.ReactNode }[] = [
@@ -39,7 +43,7 @@ export default function CompetitionResults() {
   
   const queryClient = useQueryClient();
   const { data: comp, isLoading } = useGetCompetition(id, {
-    query: { queryKey: getGetCompetitionQueryKey(id), refetchInterval: (query) => query.state.data?.status === 'running' ? 2000 : false }
+    query: { queryKey: getGetCompetitionQueryKey(id), refetchInterval: (query) => query.state.data?.status === 'running' ? RUNNING_POLL_INTERVAL : false }
   });
   const runMutation = useRunCompetition();
 
@@ -47,7 +51,7 @@ export default function CompetitionResults() {
   const { data: activities } = useListActivities({
     query: {
       queryKey: getListActivitiesQueryKey(),
-      refetchInterval: comp?.status === "running" ? 2000 : false,
+      refetchInterval: comp?.status === "running" ? RUNNING_POLL_INTERVAL : false,
     },
   });
   const runningActivity = activities?.find(
@@ -70,7 +74,7 @@ export default function CompetitionResults() {
 
   const isCompleted = comp.status === 'completed';
   const isRunning = comp.status === 'running';
-  const sortedResults = [...(comp.results || [])].sort((a, b) => b.avgQuality - a.avgQuality);
+  const sortedResults = sortByQuality([...(comp.results || [])]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">

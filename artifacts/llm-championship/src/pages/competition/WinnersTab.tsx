@@ -3,6 +3,7 @@ import { RetroWindow, RetroSelect, RobotIcon } from "@/components/retro";
 import { shortName, formatMs, formatCost } from "@/lib/utils";
 import { Award, Zap, Coins } from "lucide-react";
 import { PODIUM_CONFIG, PodiumEntry, JudgeRobotCard } from "./shared";
+import { computeAvgScore } from "@/lib/competition-utils";
 import type { SortedResultsProps } from "./types";
 
 export function WinnersTab({ comp, sortedResults }: SortedResultsProps) {
@@ -120,9 +121,7 @@ export function WinnersTab({ comp, sortedResults }: SortedResultsProps) {
                   </thead>
                   <tbody>
                     {selectedResult.responses.map((resp, qIdx) => {
-                      const avgJudge = resp.judgeScores.length > 0
-                        ? resp.judgeScores.reduce((s, js) => s + js.score, 0) / resp.judgeScores.length
-                        : 0;
+                      const avgJudge = computeAvgScore(resp.judgeScores);
                       return (
                         <tr key={qIdx} className="border-b-2 border-mac-black/20">
                           <td className="p-3 font-display">#{qIdx + 1}</td>

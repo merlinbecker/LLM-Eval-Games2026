@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RetroWindow, RetroButton, RetroSelect, RobotIcon } from "@/components/retro";
 import { shortName, formatMs, formatCost, parseDatasetItems } from "@/lib/utils";
+import { computeAvgScore } from "@/lib/competition-utils";
 import { Award, Zap, Coins } from "lucide-react";
 import { useGetDataset } from "@workspace/api-client-react";
 import type { JudgeScore } from "@workspace/api-client-react";
@@ -69,9 +70,7 @@ export function DetailsTab({ comp, sortedResults }: SortedResultsProps) {
         {sortedResults.map((modelResult) => {
           const response = modelResult.responses?.[selectedQuestion];
           const judgeScores: JudgeScore[] = response?.judgeScores ?? [];
-          const avgScore = judgeScores.length > 0
-            ? judgeScores.reduce((s, js) => s + js.score, 0) / judgeScores.length
-            : 0;
+          const avgScore = computeAvgScore(judgeScores);
 
           return (
             <RetroWindow key={modelResult.modelId} title={shortName(modelResult.modelName)}>

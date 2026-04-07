@@ -7,9 +7,11 @@ import type {
   ModelResponseEntry,
   ModelSelection,
 } from "@workspace/store";
-import { chatCompletion } from "../lib/llm-gateway";
+import { chatCompletion, toGatewayConfig } from "../lib/llm-gateway";
 
 const MAX_CONCURRENCY = 5;
+const DEFAULT_INPUT_COST_PER_MILLION = 1.0;
+const DEFAULT_OUTPUT_COST_PER_MILLION = 2.0;
 
 const JUDGE_SYSTEM_PROMPT =
   `You are a judge evaluating LLM responses. Score the following response on a scale of 1-10 based on quality, accuracy, helpfulness, and relevance.\n\nRespond in JSON format: { "score": <number 1-10>, "reasoning": "<brief explanation>" }\nOnly output the JSON.`;
@@ -77,12 +79,7 @@ async function scoreWithJudge(
 ): Promise<JudgeScoreEntry> {
   try {
     const judgeResult = await chatCompletion(
-      {
-        type: judgeGateway.type,
-        baseUrl: judgeGateway.baseUrl,
-        apiKey: judgeGateway.apiKey,
-        customHeaders: judgeGateway.customHeaders,
-      },
+      toGatewayConfig(judgeGateway),
       judge.modelId,
       [
         { role: "system", content: JUDGE_SYSTEM_PROMPT },
@@ -154,18 +151,21 @@ function buildResultEntry(
   };
 }
 
+function toNumber(val: unknown, fallback: number): number {
+  const n = Number(val);
+  return Number.isNaN(n) ? fallback : n;
+}
+
 function estimateCost(
   promptTokens: number,
   completionTokens: number,
   inputCostPerMillionTokens?: number | null,
   outputCostPerMillionTokens?: number | null,
 ): number {
-  const safePromptTokens = Number(promptTokens) || 0;
-  const safeCompletionTokens = Number(completionTokens) || 0;
-  const safeInputCost = Number(inputCostPerMillionTokens);
-  const safeOutputCost = Number(outputCostPerMillionTokens);
-  const inputCostPerToken = (!isNaN(safeInputCost) ? safeInputCost : 1.0) / 1_000_000;
-  const outputCostPerToken = (!isNaN(safeOutputCost) ? safeOutputCost : 2.0) / 1_000_000;
+  const safePromptTokens = toNumber(promptTokens, 0);
+  const safeCompletionTokens = toNumber(completionTokens, 0);
+  const inputCostPerToken = toNumber(inputCostPerMillionTokens, DEFAULT_INPUT_COST_PER_MILLION) / 1_000_000;
+  const outputCostPerToken = toNumber(outputCostPerMillionTokens, DEFAULT_OUTPUT_COST_PER_MILLION) / 1_000_000;
 
   return safePromptTokens * inputCostPerToken + safeCompletionTokens * outputCostPerToken;
 }
@@ -192,12 +192,7 @@ async function evaluateContestant(
 
     try {
       const result = await chatCompletion(
-        {
-          type: gateway.type,
-          baseUrl: gateway.baseUrl,
-          apiKey: gateway.apiKey,
-          customHeaders: gateway.customHeaders,
-        },
+        toGatewayConfig(gateway),
         contestant.modelId,
         [
           { role: "system", content: competition.systemPrompt },

@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { runCompetition } from "../services/competition-runner";
+import { notFound } from "../lib/route-utils";
 
 const router: IRouter = Router();
 
@@ -58,10 +59,7 @@ router.post("/competitions", (req, res) => {
 router.get("/competitions/:id", (req, res) => {
   const { id } = GetCompetitionParams.parse(req.params);
   const competition = store.getCompetition(req.sessionId!, id);
-  if (!competition) {
-    res.status(404).json({ error: "Competition not found" });
-    return;
-  }
+  if (!competition) { notFound(res, "Competition"); return; }
   res.json(competitionToJson(competition));
 });
 
@@ -76,20 +74,14 @@ router.post("/competitions/:id/run", (req, res) => {
   const sessionId = req.sessionId!;
 
   const competition = store.getCompetition(sessionId, id);
-  if (!competition) {
-    res.status(404).json({ error: "Competition not found" });
-    return;
-  }
+  if (!competition) { notFound(res, "Competition"); return; }
   if (competition.status === "running") {
     res.status(409).json({ error: "Competition is already running" });
     return;
   }
 
   const dataset = store.getDataset(sessionId, competition.datasetId);
-  if (!dataset) {
-    res.status(404).json({ error: "Dataset not found" });
-    return;
-  }
+  if (!dataset) { notFound(res, "Dataset"); return; }
 
   const activity = store.createActivity(sessionId, {
     type: "competition_run",

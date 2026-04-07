@@ -137,6 +137,9 @@ export default function Datasets() {
                   key={dataset.id}
                   className="border-[3px] border-mac-black p-4 flex flex-col md:flex-row gap-4 cursor-pointer hover:bg-mac-black/5 transition-colors"
                   onClick={() => setEditDatasetId(dataset.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditDatasetId(dataset.id); }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
@@ -166,6 +169,7 @@ export default function Datasets() {
                   <div
                     className="flex flex-col space-y-2 justify-center md:w-48 border-l-[3px] border-mac-black pl-4"
                     onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
                   >
                     <RetroButton size="sm" onClick={() => setEditDatasetId(dataset.id)}>
                       <Edit3 className="w-4 h-4 mr-1 inline" /> VIEW / EDIT

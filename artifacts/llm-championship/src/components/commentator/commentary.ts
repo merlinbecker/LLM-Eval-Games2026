@@ -1,6 +1,11 @@
 import type { CompetitionResult } from "@workspace/api-client-react";
 import { formatMs, shortName } from "@/lib/utils";
+import { computeAvgScore } from "@/lib/competition-utils";
 import type { CommentaryEvent } from "./types";
+
+function pickRandom<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
 
 export function generateResponseCommentary(
   model: CompetitionResult,
@@ -33,7 +38,7 @@ export function generateResponseCommentary(
     `Antwort #${itemIndex + 1} von ${name}: ${formatMs(duration)} auf der Uhr!`,
     `${name} liefert ab! ${formatMs(duration)} für Item #${itemIndex + 1}!`,
   ];
-  let message = commentaryOptions[Math.floor(Math.random() * commentaryOptions.length)];
+  let message = pickRandom(commentaryOptions);
 
   let highlight = false;
   if (fastest !== null && duration < fastest) {
@@ -47,9 +52,7 @@ export function generateResponseCommentary(
   }
 
   if (response.judgeScores.length > 0) {
-    const avgScore =
-      response.judgeScores.reduce((score, judge) => score + judge.score, 0) /
-      response.judgeScores.length;
+    const avgScore = computeAvgScore(response.judgeScores);
     if (avgScore >= 9) {
       message += ` ** WELTKLASSE-Bewertung: ${avgScore.toFixed(1)}/10!`;
       highlight = true;
@@ -95,7 +98,7 @@ export function generateLeaderChangeCommentary(
     timestamp: Date.now(),
     type: "leader_change",
     modelName: newLeader,
-    message: messages[Math.floor(Math.random() * messages.length)],
+    message: pickRandom(messages),
     highlight: true,
   };
 }

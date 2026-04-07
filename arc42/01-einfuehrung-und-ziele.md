@@ -26,7 +26,7 @@ Das Design folgt einer **Retro-Ästhetik** im Stil eines Macintosh System 5 (1-b
 | Rolle                     | Erwartungshaltung                                                                      |
 |---------------------------|----------------------------------------------------------------------------------------|
 | ML-/KI-Ingenieure         | Objektiver, wiederholbarer Vergleich verschiedener LLMs anhand standardisierter Metriken |
-| Prompt-Entwickler         | Testen verschiedener System-Prompts gegen mehrere Modelle mit Richter-Bewertung         |
+| Prompt-Entwickler         | Testen verschiedener System-Prompts gegen mehrere Modelle mit LLM-as-a-judge-Bewertung         |
 | Datenschutzbeauftragte    | Automatische PII-Erkennung und Anonymisierung in Test-Datensätzen                       |
 | Entwickler (Maintainer)   | Saubere Architektur, Typsicherheit, einfache Erweiterbarkeit                           |
 | Projektleitung            | Transparente Kostenschätzung und Qualitätsmessung für LLM-Einsatzentscheidungen         |

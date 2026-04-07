@@ -20,6 +20,13 @@ import type {
 export type { ChatCompletionResult, ChatMessage } from "./llm-gateway/types";
 export { getDefaultBase } from "./llm-gateway/provider";
 
+import type { Gateway } from "@workspace/store";
+
+/** Convert a store Gateway entity into the leaner GatewayConfig required by chatCompletion / listModels. */
+export function toGatewayConfig(g: Gateway): GatewayConfig {
+  return { type: g.type, baseUrl: g.baseUrl, apiKey: g.apiKey, customHeaders: g.customHeaders };
+}
+
 export async function chatCompletion(
   gateway: GatewayConfig,
   modelId: string,

@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CreateGatewayCustomHeaders } from "./createGatewayCustomHeaders";
-import type { CreateGatewayType } from "./createGatewayType";
+import type { GatewayType } from "./gatewayType";
 
 export interface CreateGateway {
   name: string;
-  type: CreateGatewayType;
+  type: GatewayType;
   baseUrl: string;
   apiKey: string;
   /** Custom HTTP headers (key-value pairs) */

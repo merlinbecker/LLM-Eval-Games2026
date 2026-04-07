@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
 import { store, normalizeDatasetMarkdown } from "@workspace/store";
-import type { Dataset } from "@workspace/store";
+import type { Dataset, Gateway } from "@workspace/store";
 import {
   CreateDatasetBody,
   GetDatasetParams,
@@ -14,8 +14,9 @@ import {
   AnonymizeDatasetBody,
   GenerateDatasetBody,
 } from "@workspace/api-zod";
-import { chatCompletion } from "../lib/llm-gateway";
+import { chatCompletion, toGatewayConfig } from "../lib/llm-gateway";
 import { logger } from "../lib/logger";
+import { notFound } from "../lib/route-utils";
 
 const router: IRouter = Router();
 
@@ -75,10 +76,7 @@ router.post("/datasets/upload", upload.single("file"), (req, res) => {
 router.get("/datasets/:id", (req, res) => {
   const { id } = GetDatasetParams.parse(req.params);
   const dataset = store.getDataset(req.sessionId!, id);
-  if (!dataset) {
-    res.status(404).json({ error: "Dataset not found" });
-    return;
-  }
+  if (!dataset) { notFound(res, "Dataset"); return; }
   res.json(datasetToJson(dataset));
 });
 
@@ -86,10 +84,7 @@ router.put("/datasets/:id", (req, res) => {
   const { id } = UpdateDatasetParams.parse(req.params);
   const data = UpdateDatasetBody.parse(req.body);
   const dataset = store.getDataset(req.sessionId!, id);
-  if (!dataset) {
-    res.status(404).json({ error: "Dataset not found" });
-    return;
-  }
+  if (!dataset) { notFound(res, "Dataset"); return; }
   const updated = store.updateDataset(req.sessionId!, id, data);
   res.json(datasetToJson(updated!));
 });
@@ -105,19 +100,13 @@ router.post("/datasets/:id/privacy-check", async (req, res) => {
   const { gatewayId, modelId } = PrivacyCheckDatasetBody.parse(req.body);
 
   const dataset = store.getDataset(req.sessionId!, id);
-  if (!dataset) {
-    res.status(404).json({ error: "Dataset not found" });
-    return;
-  }
+  if (!dataset) { notFound(res, "Dataset"); return; }
 
   const gateway = store.getGateway(req.sessionId!, gatewayId);
-  if (!gateway) {
-    res.status(404).json({ error: "Gateway not found" });
-    return;
-  }
+  if (!gateway) { notFound(res, "Gateway"); return; }
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
+    toGatewayConfig(gateway),
     modelId,
     [
       {
@@ -172,19 +161,13 @@ router.post("/datasets/:id/anonymize", async (req, res) => {
   const { gatewayId, modelId } = AnonymizeDatasetBody.parse(req.body);
 
   const dataset = store.getDataset(req.sessionId!, id);
-  if (!dataset) {
-    res.status(404).json({ error: "Dataset not found" });
-    return;
-  }
+  if (!dataset) { notFound(res, "Dataset"); return; }
 
   const gateway = store.getGateway(req.sessionId!, gatewayId);
-  if (!gateway) {
-    res.status(404).json({ error: "Gateway not found" });
-    return;
-  }
+  if (!gateway) { notFound(res, "Gateway"); return; }
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
+    toGatewayConfig(gateway),
     modelId,
     [
       {
@@ -208,10 +191,7 @@ router.post("/datasets/generate", async (req, res) => {
   const sessionId = req.sessionId!;
 
   const gateway = store.getGateway(sessionId, data.gatewayId);
-  if (!gateway) {
-    res.status(404).json({ error: "Gateway not found" });
-    return;
-  }
+  if (!gateway) { notFound(res, "Gateway"); return; }
 
   const activity = store.createActivity(sessionId, {
     type: "dataset_generate",
@@ -234,7 +214,7 @@ async function generateDatasetAsync(
   sessionId: string,
   activityId: number,
   data: { name: string; topic: string; numberOfItems: number; examples?: string; gatewayId: number; modelId: string },
-  gateway: { type: string; baseUrl: string; apiKey: string; customHeaders?: Record<string, string> },
+  gateway: Gateway,
 ): Promise<void> {
   const examplesSection = data.examples
     ? `\n\nHere are example items to guide the style, format, and complexity:\n\n${data.examples}\n\nGenerate new items following the same pattern, style, and level of detail as the examples above.`
@@ -243,7 +223,7 @@ async function generateDatasetAsync(
   store.updateActivity(sessionId, activityId, { progress: "Generating content..." });
 
   const result = await chatCompletion(
-    { type: gateway.type, baseUrl: gateway.baseUrl, apiKey: gateway.apiKey, customHeaders: gateway.customHeaders },
+    toGatewayConfig(gateway),
     data.modelId,
     [
       {

@@ -12,6 +12,7 @@ import {
 } from "./commentator/commentary";
 import type { CommentaryEvent } from "./commentator/types";
 import { useCompetitionActivityProgress } from "./commentator/useCompetitionActivityProgress";
+import { sortByQuality, parseProgressTotal, filterWithScore } from "@/lib/competition-utils";
 
 export function Commentator({ competition }: { competition: CompetitionDetail }) {
   const [events, setEvents] = useState<CommentaryEvent[]>([]);
@@ -27,16 +28,8 @@ export function Commentator({ competition }: { competition: CompetitionDetail })
   ) ?? 0;
 
   const estimatedTotal = (() => {
-    if (totalItems > 0) {
-      return totalItems;
-    }
-    if (activityProgress) {
-      const match = activityProgress.match(/(\d+)\/(\d+)/);
-      if (match) {
-        return parseInt(match[2], 10);
-      }
-    }
-    return 0;
+    if (totalItems > 0) return totalItems;
+    return (activityProgress ? parseProgressTotal(activityProgress) : null) ?? 0;
   })();
 
   useEffect(() => {
@@ -85,9 +78,7 @@ export function Commentator({ competition }: { competition: CompetitionDetail })
       prevMap.set(result.modelId, currentCount);
     }
 
-    const sorted = [...competition.results]
-      .filter((result) => result.avgQuality > 0)
-      .sort((a, b) => b.avgQuality - a.avgQuality);
+    const sorted = sortByQuality(filterWithScore([...competition.results]));
     if (sorted.length > 0) {
       const leaderEvent = generateLeaderChangeCommentary(
         prevLeaderRef.current,
@@ -107,9 +98,7 @@ export function Commentator({ competition }: { competition: CompetitionDetail })
 
   useEffect(() => {
     if (competition.status === "completed" && startedRef.current) {
-      const sorted = [...(competition.results || [])]
-        .filter((result) => result.avgQuality > 0)
-        .sort((a, b) => b.avgQuality - a.avgQuality);
+      const sorted = sortByQuality(filterWithScore([...(competition.results || [])]));
       const winner = sorted[0];
       if (winner) {
         setEvents((prev) => [
@@ -133,9 +122,7 @@ export function Commentator({ competition }: { competition: CompetitionDetail })
     }
   }, [events]);
 
-  const currentLeader = [...(competition.results || [])]
-    .filter((result) => result.avgQuality > 0)
-    .sort((a, b) => b.avgQuality - a.avgQuality)[0]?.modelId;
+  const currentLeader = sortByQuality(filterWithScore([...(competition.results || [])]))[0]?.modelId;
   const isRunning = competition.status === "running";
 
   return (

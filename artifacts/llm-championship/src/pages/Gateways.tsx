@@ -9,10 +9,10 @@ import {
 import { RetroWindow, RetroButton, RetroInput, RetroBadge, RetroSelect } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
 import { Server, Trash2 } from "lucide-react";
-import type { CreateGatewayType } from "@workspace/api-client-react";
+import type { GatewayType } from "@workspace/api-client-react";
 import { useVault } from "@/lib/vault/vault-store";
 
-function getDefaultBaseUrl(type: CreateGatewayType): string {
+function getDefaultBaseUrl(type: GatewayType): string {
   if (type === "openrouter") return "https://openrouter.ai/api/v1";
   if (type === "github_copilot") return "https://models.inference.ai.azure.com";
   return "";
@@ -26,7 +26,7 @@ export default function Gateways() {
   const createMutation = useCreateGateway();
 
   const [name, setName] = useState("");
-  const [type, setType] = useState<CreateGatewayType>("openrouter");
+  const [type, setType] = useState<GatewayType>("openrouter");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
 
@@ -94,7 +94,7 @@ export default function Gateways() {
             </div>
             <div>
               <label className="block font-display mb-1 uppercase text-sm">Protocol Type</label>
-              <RetroSelect required value={type} onChange={e => setType(e.target.value as CreateGatewayType)}>
+              <RetroSelect required value={type} onChange={e => setType(e.target.value as GatewayType)}>
                 <option value="openrouter">OpenRouter</option>
                 <option value="github_copilot">GitHub Copilot</option>
                 <option value="custom">Custom (OpenAI-compat)</option>

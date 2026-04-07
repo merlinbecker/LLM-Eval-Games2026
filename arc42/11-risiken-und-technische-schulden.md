@@ -14,3 +14,37 @@
 | R10 | **Fallback-Kosten bei fehlender Konfiguration** | Wenn keine modellspezifischen Kosten hinterlegt sind, greift ein fester Fallback ($1/M Input, $2/M Output). Dieser Wert ist für teure Modelle (z.B. GPT-4, Claude Opus) deutlich zu niedrig und für günstige Modelle zu hoch — die Kostenauswertung wird dadurch verzerrt. | Pflichtfeld für Kosten bei Modellkonfiguration; oder automatisches Abrufen von Pricing-Daten aus der Gateway-API |
 
 ---
+
+## SonarCloud Quality-Gate – Behobene Probleme (07.04.2026, Branch `fix/optimization`)
+
+Das Quality Gate war auf `ERROR` gesetzt, da `new_reliability_rating` den Schwellwert A nicht erreichte (Ist-Wert C). Alle 11 offenen Bugs wurden behoben:
+
+### Erledigte Maßnahmen
+
+| Maßnahme | Datei | Regel | Art |
+|---|---|---|---|
+| ~~M-1~~ | `artifacts/llm-championship/src/components/TriangleChart.tsx` | S6443 – React-`setState` Antipattern (`setHoveredIdx(hoveredIdx)`) | MAJOR ✅ |
+| ~~M-2~~ | `artifacts/llm-championship/src/lib/utils.test.ts` | S6638 – Konstant wahrer Ausdruck auf linker Seite von `&&` | MAJOR ✅ |
+| ~~M-3–M-5~~ | `artifacts/llm-championship/src/components/retro.tsx` | S1082 – Fehlende Keyboard-Listener auf klickbaren Nicht-Button-Elementen (3×) | MINOR ✅ |
+| ~~M-6–M-10~~ | `artifacts/llm-championship/src/pages/Datasets.tsx` | S1082 – Fehlende Keyboard-Listener auf klickbaren Nicht-Button-Elementen (5×) | MINOR ✅ |
+| ~~M-11~~ | `artifacts/mockup-sandbox/src/components/ui/input-group.tsx` | S1082 – Fehlender Keyboard-Listener auf `InputGroupAddon` (1×) | MINOR ✅ |
+
+### Offene Qualitäts-Risiken (noch nicht adressiert)
+
+| # | Bedingung | Ist-Wert | Schwellwert | Hinweis |
+|---|---|---|---|---|
+| – | New Duplicated Lines (%) | 2,2 % | < 3 % | Durch Code-Konsolidierung (Apr 2026, siehe [8.9](08-querschnittliche-konzepte.md#89-gemeinsame-hilfsmodule-code-konsolidierung-april-2026)) deutlich reduziert — Margin ist größer |
+
+Alle übrigen Quality-Gate-Bedingungen (Security Rating, Maintainability Rating, Security Hotspots) sind A/100 % und bedürfen keiner Maßnahmen.
+
+### Verbleibende OpenAPI-Schema-Duplikationen (deferred)
+
+Folgende Duplikationen in `lib/api-spec/openapi.yaml` wurden noch nicht als `$ref`-Schemas extrahiert. Sie erhöhen die Zeilenzahl der generierten Dateien, haben aber keinen Laufzeit-Einfluss:
+
+| ID | Schema | Vorkommen | Maßnahme |
+|----|--------|-----------|----------|
+| DUP-4 | `ModelSelection` (Inline-Objekt mit `gatewayId`, `modelId`, `modelName`, `inputCostPerMillionTokens`, `outputCostPerMillionTokens`) | 4× in `openapi.yaml` | Als `$ref: "#/components/schemas/ModelSelection"` extrahieren, dann `pnpm run codegen` |
+| DUP-5 | Dataset-Response-Felder (`id`, `name`, `content`, `privacyStatus`, `privacyReport`, `createdAt`) | 4× in `openapi.yaml` | Als `DatasetResponse`-Schema extrahieren |
+| DUP-7 | `{ message: string }` als DELETE-Response | 5× in `openapi.yaml` | Als `SuccessMessage`-Schema extrahieren |
+
+---

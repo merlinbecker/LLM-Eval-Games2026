@@ -3,6 +3,12 @@ import { store, type Competition, type Dataset } from "@workspace/store";
 
 vi.mock("../lib/llm-gateway", () => ({
   chatCompletion: vi.fn(),
+  toGatewayConfig: (g: { type: string; baseUrl: string; apiKey: string; customHeaders?: Record<string, string> }) => ({
+    type: g.type,
+    baseUrl: g.baseUrl,
+    apiKey: g.apiKey,
+    customHeaders: g.customHeaders,
+  }),
 }));
 
 import { chatCompletion } from "../lib/llm-gateway";

@@ -136,4 +136,34 @@ Langläufige Operationen (Wettbewerb-Evaluation, Datensatz-Generierung) werden a
 - `ActivityDropdown` in der `TopMenu`-Leiste zeigt laufende/abgeschlossene Activities mit Badge-Counter
 - Benutzer kann einzelne Activities als „zur Kenntnis genommen" markieren (`acknowledge`)
 
+## 8.9 Gemeinsame Hilfsmodule (Code-Konsolidierung, April 2026)
+
+Im Zuge einer Deduplizierungsinitiative (Branch `fix/optimization`) wurden ~200 doppelte Zeilen durch zentrale Hilfsmodule beseitigt.
+
+### Backend
+
+| Modul / Funktion | Datei | Beschreibung |
+|---|---|---|
+| `notFound(res, entity)` | `lib/route-utils.ts` | Einheitlicher 404-Express-Helper; ersetzt ~13 identische `res.status(404).json(...)`-Blöcke in allen Route-Dateien |
+| `toGatewayConfig(g)` | `lib/llm-gateway.ts` | Wandelt einen Store-`Gateway`-Eintrag in das `GatewayConfig`-Interface um; ersetzt 6 Inline-Objekte in `datasets.ts`, `gateways.ts` und `competition-runner.ts` |
+| `parseActivityId(id, res)` | `routes/activities.ts` | Lokaler Guard; parst die Activity-ID und antwortet mit 400 bei ungültiger Eingabe; ersetzt 2 identische `isNaN`-Blöcke |
+| `getDefaultBase(type)` | `lib/llm-gateway/provider.ts` | Bereits vorhanden; `resolveGatewayBaseUrl()` in `gateways.ts` nutzt ihn jetzt direkt statt die URL-Mapping-Logik zu duplizieren |
+
+### Frontend
+
+| Modul / Funktion | Datei | Beschreibung |
+|---|---|---|
+| `computeAvgScore(judgeScores)` | `lib/competition-utils.ts` | Berechnet den mittleren Richter-Score; ersetzt 3 identische Reduce-Ausdrücke in `WinnersTab`, `RunProgressView` und `DetailsTab` |
+| `sortByQuality(items)` | `lib/competition-utils.ts` | Generische Sortierfunktion nach `avgQuality`; ersetzt 5 Inline-Sortierungen in `CompetitionResults`, `Commentator`, `ArenaDashboard`, `QualityRanking` u. a. |
+| `parseProgressTotal(progress)` | `lib/competition-utils.ts` | Regex-basiertes Parsen des `"x/y"`-Fortschrittsstrings; vereinheitlicht 2 inkonsistente Implementierungen (Regex vs. `indexOf`) in `Commentator` und `RunProgressView` |
+| `RUNNING_POLL_INTERVAL` | `pages/CompetitionResults.tsx` | Konstante für das 2-Sekunden-Polling-Intervall; ersetzt 2 hardcodierte `2000`-Werte |
+| `<RetroProgressBar percent>` | `components/retro.tsx` | Retro-Fortschrittsbalken-Komponente; ersetzt 2 identische JSX-Blöcke in `RunProgressView` und `ModelProgressBar` |
+| ArenaDashboard Podium | `pages/ArenaDashboard.tsx` | 2 nahezu identische JSX-Podiumsarme durch eine einzelne `.map()`-Schleife ersetzt |
+
+### OpenAPI-Spec
+
+| Schema | Beschreibung |
+|---|---|
+| `GatewayType` | Als gemeinsames `$ref`-Schema in `openapi.yaml` extrahiert; `Gateway.type` und `CreateGateway.type` referenzieren es statt den Enum zu duplizieren; nach Codegen entfällt `CreateGatewayType` aus den generierten Dateien |
+
 ---

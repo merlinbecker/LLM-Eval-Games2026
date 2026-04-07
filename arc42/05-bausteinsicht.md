@@ -137,7 +137,7 @@ C4Component
 | **Competition Runner Service** | Führt Wettbewerbe aus: lädt Gateway-Mapping, ruft Contestants und Judges auf, speichert partielle Ergebnisse, aktualisiert Activities und berechnet aggregierte Kennzahlen |
 | **Logs Router**         | `GET /logs` — LLM-Call-Logs der aktuellen Session abrufen (neueste zuerst); `DELETE /logs` — alle Logs löschen                    |
 | **Activities Router**   | `GET /activities` — alle Background-Activities auflisten; `GET /activities/:id` — einzelne Activity; `POST /activities/:id/ack` — als gelesen markieren |
-| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; intern in Provider-/Security-/Typ-Helfer zerlegt; Multi-Format-Support (OpenAI, Anthropic Converse, Gemini generateContent) via Provider-Mapper für Request/Response; Custom HTTP Headers; `{model}`-URL-Platzhalter; automatisches Call-Logging (Request/Response) in den Session-Store |
+| **LLM Gateway Module**  | Zentrale LLM-Kommunikation: `chatCompletion()`, `listModelsFromGateway()`, `validateGatewayUrl()` mit SSRF-Schutz; `toGatewayConfig()` konvertiert Store-`Gateway`-Einträge in `GatewayConfig`; intern in Provider-/Security-/Typ-Helfer zerlegt; Multi-Format-Support (OpenAI, Anthropic Converse, Gemini generateContent) via Provider-Mapper für Request/Response; Custom HTTP Headers; `{model}`-URL-Platzhalter; automatisches Call-Logging (Request/Response) in den Session-Store |
 | **Logger**              | Pino-Logger; strukturiertes JSON-Logging in Produktion; Pretty-Print in Entwicklung; Redaktion sensibler Header                    |
 
 ---

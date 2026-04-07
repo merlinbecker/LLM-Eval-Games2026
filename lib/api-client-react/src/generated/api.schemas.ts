@@ -13,10 +13,9 @@ export interface SuccessMessage {
   message: string;
 }
 
-export type CreateGatewayType =
-  (typeof CreateGatewayType)[keyof typeof CreateGatewayType];
+export type GatewayType = (typeof GatewayType)[keyof typeof GatewayType];
 
-export const CreateGatewayType = {
+export const GatewayType = {
   openrouter: "openrouter",
   github_copilot: "github_copilot",
   custom: "custom",
@@ -32,7 +31,7 @@ export type CreateGatewayCustomHeaders = { [key: string]: string };
 
 export interface CreateGateway {
   name: string;
-  type: CreateGatewayType;
+  type: GatewayType;
   baseUrl: string;
   apiKey: string;
   /** Custom HTTP headers (key-value pairs) */
@@ -54,17 +53,6 @@ export interface SessionSyncResponse {
   gatewayCount: number;
   datasetCount: number;
 }
-
-export type GatewayType = (typeof GatewayType)[keyof typeof GatewayType];
-
-export const GatewayType = {
-  openrouter: "openrouter",
-  github_copilot: "github_copilot",
-  custom: "custom",
-  custom_openai: "custom_openai",
-  custom_anthropic: "custom_anthropic",
-  custom_gemini: "custom_gemini",
-} as const;
 
 /**
  * Custom HTTP headers (key-value pairs)

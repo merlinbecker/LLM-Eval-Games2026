@@ -1,11 +1,10 @@
 import type { CompetitionResult } from "@workspace/api-client-react";
 import { Crown, TrendingUp } from "lucide-react";
 import { shortName } from "@/lib/utils";
+import { sortByQuality, filterWithScore } from "@/lib/competition-utils";
 
 export function QualityRanking({ results }: { results: CompetitionResult[] }) {
-  const sorted = [...results]
-    .filter((result) => result.avgQuality > 0)
-    .sort((a, b) => b.avgQuality - a.avgQuality);
+  const sorted = sortByQuality(filterWithScore([...results]));
   if (sorted.length === 0) {
     return null;
   }

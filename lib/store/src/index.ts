@@ -38,8 +38,7 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 class InMemoryStore {
   private sessions = new Map<string, SessionStore>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private cleanupTimer: any = null;
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.startCleanup();
