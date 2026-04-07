@@ -58,20 +58,21 @@ export default function NewCompetition() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <div>
-                <label className="block font-display mb-2 uppercase">Event Name</label>
-                <RetroInput required value={name} onChange={e => setName(e.target.value)} placeholder="Q1 Logic Brawl" />
+                <label htmlFor="comp-name" className="block font-display mb-2 uppercase">Event Name</label>
+                <RetroInput id="comp-name" required value={name} onChange={e => setName(e.target.value)} placeholder="Q1 Logic Brawl" />
               </div>
               <div>
-                <label className="block font-display mb-2 uppercase">Test Dataset</label>
-                <RetroSelect required value={datasetId} onChange={e => setDatasetId(e.target.value)}>
+                <label htmlFor="comp-dataset" className="block font-display mb-2 uppercase">Test Dataset</label>
+                <RetroSelect id="comp-dataset" required value={datasetId} onChange={e => setDatasetId(e.target.value)}>
                   <option value="">-- SELECT DATASET --</option>
                   {datasets?.map(ds => <option key={ds.id} value={ds.id}>{ds.name}</option>)}
                 </RetroSelect>
               </div>
             </div>
             <div>
-              <label className="block font-display mb-2 uppercase">Global System Prompt (Override)</label>
+              <label htmlFor="comp-system-prompt" className="block font-display mb-2 uppercase">Global System Prompt (Override)</label>
               <RetroTextarea 
+                id="comp-system-prompt"
                 required 
                 rows={5} 
                 value={systemPrompt} 

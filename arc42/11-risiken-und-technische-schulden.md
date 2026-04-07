@@ -33,6 +33,9 @@ Das Quality Gate war auf `ERROR` gesetzt, da `new_reliability_rating` den Schwel
 | ~~M-14–M-18~~ | `artifacts/llm-championship/src/pages/Datasets.tsx` | S6848/S1082 – Nicht-native interaktive Elemente ohne `role`/Keyboard-Listener (bereits zuvor behoben, stale) | MINOR | – |
 | ~~M-19~~ | `artifacts/api-server/src/routes/activities.ts` | S7773 – `isNaN()` → `Number.isNaN()` | MINOR | 07.04.2026 |
 | ~~M-20~~ | `artifacts/llm-championship/src/lib/vault/crypto.ts` | S7758 – `String.fromCharCode()` → `String.fromCodePoint()`, `charCodeAt()` → `codePointAt()` | MINOR | 07.04.2026 |
+| ~~M-21–M-24~~ | `artifacts/llm-championship/src/pages/Gateways.tsx` | S6853 – 4× `<label>` ohne `htmlFor`-Zuordnung (Identifier, Protocol Type, Base URL, Access Token) | MAJOR | 07.04.2026 |
+| ~~M-25–M-27~~ | `artifacts/llm-championship/src/pages/NewCompetition.tsx` | S6853 – 3× `<label>` ohne `htmlFor`-Zuordnung (Event Name, Test Dataset, System Prompt) | MAJOR | 07.04.2026 |
+| ~~M-28~~ | `artifacts/llm-championship/src/components/retro.tsx` | S6853 – `RetroFormField` renderte `<label>` ohne `htmlFor`; optionaler `htmlFor?`-Prop ergänzt | MAJOR | 07.04.2026 |
 
 ### Quality-Gate-Bedingungen (aktuell)
 

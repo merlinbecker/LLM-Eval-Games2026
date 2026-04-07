@@ -89,24 +89,24 @@ export default function Gateways() {
         <RetroWindow title="ADD GATEWAY">
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block font-display mb-1 uppercase text-sm">Identifier</label>
-              <RetroInput required value={name} onChange={e => setName(e.target.value)} placeholder="Main OpenRouter" />
+              <label htmlFor="gateway-name" className="block font-display mb-1 uppercase text-sm">Identifier</label>
+              <RetroInput id="gateway-name" required value={name} onChange={e => setName(e.target.value)} placeholder="Main OpenRouter" />
             </div>
             <div>
-              <label className="block font-display mb-1 uppercase text-sm">Protocol Type</label>
-              <RetroSelect required value={type} onChange={e => setType(e.target.value as GatewayType)}>
+              <label htmlFor="gateway-type" className="block font-display mb-1 uppercase text-sm">Protocol Type</label>
+              <RetroSelect id="gateway-type" required value={type} onChange={e => setType(e.target.value as GatewayType)}>
                 <option value="openrouter">OpenRouter</option>
                 <option value="github_copilot">GitHub Copilot</option>
                 <option value="custom">Custom (OpenAI-compat)</option>
               </RetroSelect>
             </div>
             <div>
-              <label className="block font-display mb-1 uppercase text-sm">Base URL</label>
-              <RetroInput value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder={getDefaultBaseUrl(type) || "https://..."} />
+              <label htmlFor="gateway-base-url" className="block font-display mb-1 uppercase text-sm">Base URL</label>
+              <RetroInput id="gateway-base-url" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder={getDefaultBaseUrl(type) || "https://..."} />
             </div>
             <div>
-              <label className="block font-display mb-1 uppercase text-sm">Access Token</label>
-              <RetroInput type="password" required value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." />
+              <label htmlFor="gateway-api-key" className="block font-display mb-1 uppercase text-sm">Access Token</label>
+              <RetroInput id="gateway-api-key" type="password" required value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." />
             </div>
             <div className="pt-4">
               <RetroButton type="submit" disabled={createMutation.isPending} className="w-full">
