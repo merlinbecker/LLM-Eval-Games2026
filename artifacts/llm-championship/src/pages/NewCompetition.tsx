@@ -173,15 +173,16 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
   return (
     <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 items-end">
       <div className="sm:col-span-2">
-        <label className="block font-display text-sm mb-1 uppercase">Gateway</label>
-        <RetroSelect value={gatewayId} onChange={e => setGatewayId(e.target.value)}>
+        <label htmlFor="gateway-select" className="block font-display text-sm mb-1 uppercase">Gateway</label>
+        <RetroSelect id="gateway-select" value={gatewayId} onChange={e => setGatewayId(e.target.value)}>
           <option value="">- SELECT -</option>
           {gateways?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </RetroSelect>
       </div>
       <div className="sm:col-span-2">
-        <label className="block font-display text-sm mb-1 uppercase">Model (List)</label>
+        <label htmlFor="model-list-select" className="block font-display text-sm mb-1 uppercase">Model (List)</label>
         <RetroSelect
+          id="model-list-select"
           value={models?.some((m) => m.id === modelId) ? modelId : ""}
           onChange={e => {
             const id = e.target.value;
@@ -196,8 +197,9 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
         </RetroSelect>
       </div>
       <div className="sm:col-span-2">
-        <label className="block font-display text-sm mb-1 uppercase">Model Identifier</label>
+        <label htmlFor="model-identifier-input" className="block font-display text-sm mb-1 uppercase">Model Identifier</label>
         <RetroInput
+          id="model-identifier-input"
           value={modelId}
           onChange={e => setModelId(e.target.value)}
           placeholder="z. B. openai/gpt-4o-mini"
@@ -210,8 +212,9 @@ function ModelSelector({ onAdd, buttonLabel, icon, disabled }: { onAdd: (m: Mode
         </RetroButton>
       </div>
       <div className="sm:col-span-7">
-        <label className="block font-display text-sm mb-1 uppercase">Display Name (optional)</label>
+        <label htmlFor="display-name-input" className="block font-display text-sm mb-1 uppercase">Display Name (optional)</label>
         <RetroInput
+          id="display-name-input"
           value={modelName}
           onChange={e => setModelName(e.target.value)}
           placeholder="Falls leer, wird Name aus Liste oder Identifier genutzt"

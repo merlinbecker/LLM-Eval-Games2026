@@ -15,27 +15,34 @@
 
 ---
 
-## SonarCloud Quality-Gate – Behobene Probleme (07.04.2026, Branch `fix/optimization`)
+## SonarCloud Quality-Gate – Behobene Probleme (Branch `fix/optimization`)
 
-Das Quality Gate war auf `ERROR` gesetzt, da `new_reliability_rating` den Schwellwert A nicht erreichte (Ist-Wert C). Alle 11 offenen Bugs wurden behoben:
+Das Quality Gate war auf `ERROR` gesetzt, da `new_reliability_rating` den Schwellwert A nicht erreichte (Ist-Wert C). Alle Issues wurden in zwei Fix-Zyklen behoben:
 
 ### Erledigte Maßnahmen
 
-| Maßnahme | Datei | Regel | Art |
-|---|---|---|---|
-| ~~M-1~~ | `artifacts/llm-championship/src/components/TriangleChart.tsx` | S6443 – React-`setState` Antipattern (`setHoveredIdx(hoveredIdx)`) | MAJOR ✅ |
-| ~~M-2~~ | `artifacts/llm-championship/src/lib/utils.test.ts` | S6638 – Konstant wahrer Ausdruck auf linker Seite von `&&` | MAJOR ✅ |
-| ~~M-3–M-5~~ | `artifacts/llm-championship/src/components/retro.tsx` | S1082 – Fehlende Keyboard-Listener auf klickbaren Nicht-Button-Elementen (3×) | MINOR ✅ |
-| ~~M-6–M-10~~ | `artifacts/llm-championship/src/pages/Datasets.tsx` | S1082 – Fehlende Keyboard-Listener auf klickbaren Nicht-Button-Elementen (5×) | MINOR ✅ |
-| ~~M-11~~ | `artifacts/mockup-sandbox/src/components/ui/input-group.tsx` | S1082 – Fehlender Keyboard-Listener auf `InputGroupAddon` (1×) | MINOR ✅ |
-
-### Offene Qualitäts-Risiken (noch nicht adressiert)
-
-| # | Bedingung | Ist-Wert | Schwellwert | Hinweis |
+| Maßnahme | Datei | Regel | Schwere | Datum |
 |---|---|---|---|---|
-| – | New Duplicated Lines (%) | 2,2 % | < 3 % | Durch Code-Konsolidierung (Apr 2026, siehe [8.9](08-querschnittliche-konzepte.md#89-gemeinsame-hilfsmodule-code-konsolidierung-april-2026)) deutlich reduziert — Margin ist größer |
+| ~~M-1~~ | `artifacts/llm-championship/src/components/TriangleChart.tsx` | S6443 – React-`setState` Antipattern (`setHoveredIdx(hoveredIdx)`) | MAJOR | 07.04.2026 |
+| ~~M-2~~ | `artifacts/llm-championship/src/lib/utils.test.ts` | S6638 – Konstant wahrer Ausdruck auf linker Seite von `&&` | MAJOR | 07.04.2026 |
+| ~~M-3~~ | `artifacts/llm-championship/src/pages/competition/DetailsTab.tsx` | S6853 – `<label>` ohne `htmlFor`-Zuordnung | MAJOR | 07.04.2026 |
+| ~~M-4~~ | `artifacts/llm-championship/src/pages/competition/WinnersTab.tsx` | S6853 – `<label>` ohne `htmlFor`-Zuordnung | MAJOR | 07.04.2026 |
+| ~~M-5–M-7~~ | `artifacts/llm-championship/src/pages/NewCompetition.tsx` | S6853 – `<label>` ohne `htmlFor`-Zuordnung (3×) | MAJOR | 07.04.2026 |
+| ~~M-8~~ | `artifacts/llm-championship/src/components/TopMenu.tsx` | S6772 – Mehrdeutiges Whitespace nach `<span>` (JSX) | MAJOR | 07.04.2026 |
+| ~~M-9–M-13~~ | `artifacts/llm-championship/src/components/retro.tsx` | S6848/S1082 – Nicht-native interaktive Elemente ohne `role`/Keyboard-Listener (bereits zuvor behoben, stale) | MINOR | – |
+| ~~M-14–M-18~~ | `artifacts/llm-championship/src/pages/Datasets.tsx` | S6848/S1082 – Nicht-native interaktive Elemente ohne `role`/Keyboard-Listener (bereits zuvor behoben, stale) | MINOR | – |
+| ~~M-19~~ | `artifacts/api-server/src/routes/activities.ts` | S7773 – `isNaN()` → `Number.isNaN()` | MINOR | 07.04.2026 |
+| ~~M-20~~ | `artifacts/llm-championship/src/lib/vault/crypto.ts` | S7758 – `String.fromCharCode()` → `String.fromCodePoint()`, `charCodeAt()` → `codePointAt()` | MINOR | 07.04.2026 |
 
-Alle übrigen Quality-Gate-Bedingungen (Security Rating, Maintainability Rating, Security Hotspots) sind A/100 % und bedürfen keiner Maßnahmen.
+### Quality-Gate-Bedingungen (aktuell)
+
+| Bedingung | Schwellwert | Ist-Wert | Status |
+|---|---|---|---|
+| `new_reliability_rating` | A (1) | A (1) | ✅ |
+| `new_security_rating` | A (1) | A (1) | ✅ |
+| `new_maintainability_rating` | A (1) | A (1) | ✅ |
+| `new_duplicated_lines_density` | < 3 % | 2,2 % | ✅ |
+| `new_security_hotspots_reviewed` | 100 % | 100 % | ✅ |
 
 ### Verbleibende OpenAPI-Schema-Duplikationen (deferred)
 

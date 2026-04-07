@@ -47,8 +47,9 @@ export function WinnersTab({ comp, sortedResults }: SortedResultsProps) {
       {/* Model Selector */}
       <RetroWindow title="EINZELWERTUNG">
         <div className="mb-6">
-          <label className="block font-display mb-2 uppercase text-sm">Modell auswählen:</label>
+          <label htmlFor="model-select" className="block font-display mb-2 uppercase text-sm">Modell auswählen:</label>
           <RetroSelect
+            id="model-select"
             value={String(selectedModelIdx)}
             onChange={(e) => setSelectedModelIdx(Number(e.target.value))}
             className="max-w-md"

@@ -6,7 +6,7 @@ const router: IRouter = Router();
 
 function parseActivityId(id: string, res: Parameters<typeof notFound>[0]): number | null {
   const n = Number(id);
-  if (isNaN(n)) {
+  if (Number.isNaN(n)) {
     res.status(400).json({ error: "Invalid activity ID" });
     return null;
   }

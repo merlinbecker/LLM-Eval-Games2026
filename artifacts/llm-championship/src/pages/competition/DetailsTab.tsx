@@ -24,8 +24,9 @@ export function DetailsTab({ comp, sortedResults }: SortedResultsProps) {
     <div className="space-y-6">
       {/* Question Selector */}
       <div className="border-[3px] border-mac-black bg-mac-white p-4 retro-shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4">
-        <label className="font-display uppercase text-sm whitespace-nowrap">Frage auswählen:</label>
+        <label htmlFor="question-select" className="font-display uppercase text-sm whitespace-nowrap">Frage auswählen:</label>
         <RetroSelect
+          id="question-select"
           value={String(selectedQuestion)}
           onChange={(e) => setSelectedQuestion(Number(e.target.value))}
           className="max-w-xs"
