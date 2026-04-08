@@ -166,13 +166,13 @@ export function Commentator({ competition }: { competition: CompetitionDetail })
             </div>
           )}
 
-        <div className="border-[2px] border-mac-black bg-mac-black/5">
+        <div className="border-[2px] border-mac-black bg-pattern-5">
           <div className="bg-mac-black text-mac-white px-3 py-1 font-display text-xs uppercase flex items-center gap-1">
             <Mic className="w-3 h-3" /> Live-Ticker
           </div>
           <div ref={scrollRef} className="max-h-64 overflow-y-auto p-2 space-y-1.5">
             {events.length === 0 && (
-              <p className="text-sm text-mac-black/40 italic p-2">
+              <p className="text-sm font-sans italic p-2">
                 Warte auf den Startschuss...
               </p>
             )}
@@ -181,15 +181,15 @@ export function Commentator({ competition }: { competition: CompetitionDetail })
                 key={event.id}
                 className={`text-sm font-sans leading-snug px-2 py-1 border-l-[3px] ${
                   event.highlight
-                    ? "border-mac-black bg-mac-black/10 font-bold"
-                    : "border-mac-black/30"
+                    ? "border-mac-black bg-pattern-12 font-bold"
+                    : "border-mac-black"
                 } ${
                   event.type === "finish"
                     ? "bg-mac-black text-mac-white border-mac-black px-3 py-2 font-display uppercase"
                     : ""
                 }`}
               >
-                <span className="text-[10px] text-mac-black/40 mr-2 font-display">
+                <span className="text-[10px] mr-2 font-display">
                   {new Date(event.timestamp).toLocaleTimeString("de-DE", {
                     hour: "2-digit",
                     minute: "2-digit",

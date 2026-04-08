@@ -1,0 +1,39 @@
+/* ─────────────────────────────────────────────────────────
+   BASE — Globale Element-Styles
+   ───────────────────────────────────────────────────────── */
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased font-sans text-xl leading-tight
+           selection:bg-mac-black selection:text-mac-white;
+    background-image:
+      linear-gradient( 45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient( 45deg, transparent 75%, var(--color-mac-black) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--color-mac-black) 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight uppercase;
+  }
+
+  ::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+    background: var(--color-mac-white);
+    border-left: 2px solid var(--color-mac-black);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-mac-black);
+    border: 2px solid var(--color-mac-white);
+  }
+  ::-webkit-scrollbar-button {
+    background: var(--color-mac-white);
+    border: 2px solid var(--color-mac-black);
+    display: block;
+    height: 16px;
+    width: 16px;
+  }
+}

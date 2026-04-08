@@ -1,0 +1,27 @@
+/* ─────────────────────────────────────────────────────────
+   THEME — 1-Bit Design-Token-Wurzel
+   Nur diese Datei tauschen, um die gesamte App einzufärben.
+   ───────────────────────────────────────────────────────── */
+
+@theme inline {
+  /* ── Primärfarben: nur Schwarz & Weiß ── */
+  /*--color-mac-black: #000; */
+  /*--color-mac-white: #fff; */
+  --color-mac-black: #009;
+  --color-mac-white: #fe8f11;
+  /* ── Schriften ── */
+  --font-display: 'Silkscreen', cursive;
+  --font-sans: 'VT323', monospace;
+
+  /* ── Semantische Aliase (mappen auf Primärfarben) ── */
+  --color-background:         var(--color-mac-white);
+  --color-foreground:         var(--color-mac-black);
+  --color-border:             var(--color-mac-black);
+  --color-primary:            var(--color-mac-black);
+  --color-primary-foreground: var(--color-mac-white);
+  --color-muted:              var(--color-mac-white);
+  --color-muted-foreground:   var(--color-mac-black);
+  --color-card:               var(--color-mac-white);
+  --color-card-foreground:    var(--color-mac-black);
+  --color-ring:               var(--color-mac-black);
+}

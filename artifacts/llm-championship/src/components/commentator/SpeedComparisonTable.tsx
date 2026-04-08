@@ -37,7 +37,7 @@ export function SpeedComparisonTable({ results }: { results: CompetitionResult[]
                     {index === 0 ? (
                       <Zap className="w-3 h-3" />
                     ) : (
-                      <span className="text-[10px] text-mac-black/50">+{formatMs(diff)}</span>
+                      <span className="text-[10px] text-mac-black">+{formatMs(diff)}</span>
                     )}
                   </span>
                 </div>

@@ -56,7 +56,7 @@ export function StatCard({ icon, label, value, subValue }: { icon: React.ReactNo
     <div className="border-[3px] border-mac-black bg-mac-white p-4 flex flex-col items-center text-center retro-shadow-sm">
       <div className="mb-2">{icon}</div>
       <span className="font-display text-2xl">{value}</span>
-      {subValue && <span className="text-xs text-mac-black/60 mt-1">{subValue}</span>}
+      {subValue && <span className="text-xs text-mac-black mt-1">{subValue}</span>}
       <span className="text-xs uppercase font-bold mt-1">{label}</span>
     </div>
   );
