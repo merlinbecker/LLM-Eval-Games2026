@@ -90,8 +90,7 @@ Every pixel is crafted to evoke the Macintosh System 5 era:
 LLM-Eval-Games2026/
 ├── artifacts/
 │   ├── api-server/            Express 5 REST API (in-memory store, session management)
-│   ├── llm-championship/      React 19 SPA (main application)
-│   └── mockup-sandbox/        Design prototyping sandbox
+│   └── llm-championship/      React 19 SPA (main application)
 ├── lib/
 │   ├── api-spec/              OpenAPI 3.1 spec (single source of truth)
 │   ├── api-client-react/      Generated React Query hooks (via Orval)

@@ -27,8 +27,7 @@ Macintosh System 5 / Winter Games 1985 aesthetic. Fully monochrome black-and-whi
 artifacts-monorepo/
 ├── artifacts/
 │   ├── api-server/         # Express API server (In-Memory Store, Session-Management)
-│   ├── llm-championship/   # React + Vite frontend (main web app, Client-Vault)
-│   └── mockup-sandbox/     # Design prototyping sandbox
+│   └── llm-championship/   # React + Vite frontend (main web app, Client-Vault)
 ├── lib/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
