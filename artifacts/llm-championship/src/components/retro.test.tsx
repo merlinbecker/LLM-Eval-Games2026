@@ -38,30 +38,6 @@ describe("RetroWindow", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("toggles collapse when collapsible", async () => {
-    render(
-      <RetroWindow title="Collapsible" collapsible>
-        <p>Content</p>
-      </RetroWindow>,
-    );
-    expect(screen.getByText("Content")).toBeInTheDocument();
-    // Click header to collapse
-    await userEvent.click(screen.getByText("Collapsible"));
-    expect(screen.queryByText("Content")).toBeNull();
-    // Click again to expand
-    await userEvent.click(screen.getByText("Collapsible"));
-    expect(screen.getByText("Content")).toBeInTheDocument();
-  });
-
-  it("starts collapsed when defaultCollapsed is true", () => {
-    render(
-      <RetroWindow title="Collapsed" collapsible defaultCollapsed>
-        <p>Hidden</p>
-      </RetroWindow>,
-    );
-    expect(screen.queryByText("Hidden")).toBeNull();
-  });
-
   it("does not toggle when not collapsible", async () => {
     render(
       <RetroWindow title="Static">
@@ -75,7 +51,7 @@ describe("RetroWindow", () => {
   it("close button stopPropagation does not trigger collapse", async () => {
     const onClose = vi.fn();
     render(
-      <RetroWindow title="Both" collapsible onClose={onClose}>
+      <RetroWindow title="Both" onClose={onClose}>
         <p>Content</p>
       </RetroWindow>,
     );

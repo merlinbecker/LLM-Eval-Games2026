@@ -5,16 +5,13 @@ import {
   DeleteGatewayParams,
   ListGatewayModelsParams,
 } from "@workspace/api-zod";
-import { listModelsFromGateway } from "../lib/llm-gateway";
+import { listModelsFromGateway, getDefaultBase, toGatewayConfig } from "../lib/llm-gateway";
+import { notFound } from "../lib/route-utils";
 
 const router: IRouter = Router();
 
 function resolveGatewayBaseUrl(type: string, baseUrl: string): string {
-  const normalized = baseUrl.trim();
-  if (normalized) return normalized;
-  if (type === "openrouter") return "https://openrouter.ai/api/v1";
-  if (type === "github_copilot") return "https://models.inference.ai.azure.com";
-  return "";
+  return baseUrl.trim() || getDefaultBase(type);
 }
 
 router.get("/gateways", (req, res) => {
@@ -61,18 +58,11 @@ router.get("/gateways/:id/models", async (req, res) => {
   const { id } = ListGatewayModelsParams.parse(req.params);
   const gateway = store.getGateway(req.sessionId!, id);
 
-  if (!gateway) {
-    res.status(404).json({ error: "Gateway not found" });
-    return;
-  }
+  if (!gateway) { notFound(res, "Gateway"); return; }
 
   let models: Array<{ id: string; name: string }> = [];
   try {
-    models = await listModelsFromGateway({
-      type: gateway.type,
-      baseUrl: gateway.baseUrl,
-      apiKey: gateway.apiKey,
-    });
+    models = await listModelsFromGateway(toGatewayConfig(gateway));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to list models";
     res.status(400).json({ error: message });

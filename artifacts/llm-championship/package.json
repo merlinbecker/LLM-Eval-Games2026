@@ -24,6 +24,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@workspace/api-client-react": "workspace:*",
+    "@workspace/store": "workspace:*",
     "clsx": "catalog:",
     "framer-motion": "catalog:",
     "lucide-react": "catalog:",

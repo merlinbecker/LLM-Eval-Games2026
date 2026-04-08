@@ -22,7 +22,6 @@ export * from "./createConfiguredModel";
 export * from "./createDataset";
 export * from "./createGateway";
 export * from "./createGatewayCustomHeaders";
-export * from "./createGatewayType";
 export * from "./dataset";
 export * from "./datasetPrivacyStatus";
 export * from "./gateway";

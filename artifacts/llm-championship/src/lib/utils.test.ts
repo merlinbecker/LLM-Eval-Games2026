@@ -120,4 +120,14 @@ describe("parseDatasetItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0]).toBe("Single block of text");
   });
+
+  it("strips a wrapping markdown fence", () => {
+    const content = "```markdown\n## Question 1\nWhat is AI?\n```";
+    const items = parseDatasetItems(content);
+    expect(items).toEqual(["## Question 1\nWhat is AI?"]);
+  });
+
+  it("returns an empty list for blank content", () => {
+    expect(parseDatasetItems("   ")).toEqual([]);
+  });
 });

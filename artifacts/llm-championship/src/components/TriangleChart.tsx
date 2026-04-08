@@ -237,7 +237,6 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
           return (
             <g
               key={`hover-${p.name}`}
-              onMouseEnter={() => setHoveredIdx(hoveredIdx)}
               onMouseLeave={() => setHoveredIdx(null)}
               className="cursor-pointer"
             >

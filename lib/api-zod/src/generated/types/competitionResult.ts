@@ -12,7 +12,7 @@ export interface CompetitionResult {
   modelId: string;
   modelName: string;
   avgSpeed: number;
-  avgCost: number;
+  totalCost: number;
   avgQuality: number;
   totalTokens: number;
   responses: ModelResponse[];

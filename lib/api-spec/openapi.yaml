@@ -649,6 +649,10 @@ components:
         - gatewayCount
         - datasetCount
 
+    GatewayType:
+      type: string
+      enum: [openrouter, github_copilot, custom, custom_openai, custom_anthropic, custom_gemini]
+
     Gateway:
       type: object
       properties:
@@ -657,8 +661,7 @@ components:
         name:
           type: string
         type:
-          type: string
-          enum: [openrouter, github_copilot, custom, custom_openai, custom_anthropic, custom_gemini]
+          $ref: "#/components/schemas/GatewayType"
         baseUrl:
           type: string
         customHeaders:
@@ -682,8 +685,7 @@ components:
         name:
           type: string
         type:
-          type: string
-          enum: [openrouter, github_copilot, custom, custom_openai, custom_anthropic, custom_gemini]
+          $ref: "#/components/schemas/GatewayType"
         baseUrl:
           type: string
         apiKey:

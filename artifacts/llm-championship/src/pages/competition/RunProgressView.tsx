@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { RetroWindow, RobotIcon } from "@/components/retro";
+import { RetroWindow, RobotIcon, RetroProgressBar } from "@/components/retro";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { shortName, formatMs, formatCost } from "@/lib/utils";
+import { computeAvgScore, sortByQuality, parseProgressTotal } from "@/lib/competition-utils";
 import type { CompetitionDetail } from "@workspace/api-client-react";
 
 export function RunProgressView({
@@ -30,20 +31,13 @@ export function RunProgressView({
   };
 
   // Estimate total items from any model's progress text (format: "ModelName: item X/Y")
-  const estimatedTotal = (() => {
-    if (activeModelProgress) {
-      const slashIdx = activeModelProgress.indexOf("/");
-      if (slashIdx !== -1) {
-        const after = activeModelProgress.substring(slashIdx + 1).trim();
-        const total = parseInt(after, 10);
-        if (!Number.isNaN(total) && total > 0) return total;
-      }
-    }
-    return results.reduce((max, r) => Math.max(max, r.responses?.length ?? 0), 0);
-  })();
+  const estimatedTotal = (
+    (activeModelProgress ? parseProgressTotal(activeModelProgress) : null) ??
+    results.reduce((max, r) => Math.max(max, r.responses?.length ?? 0), 0)
+  );
 
   // Sort by current average quality descending
-  const sorted = [...results].sort((a, b) => b.avgQuality - a.avgQuality);
+  const sorted = sortByQuality(results);
 
   return (
     <RetroWindow title="LAUF-ÜBERSICHT">
@@ -90,12 +84,7 @@ export function RunProgressView({
                     )}
                   </div>
                   {/* Progress bar */}
-                  <div className="w-full h-3 border-[2px] border-mac-black bg-mac-white mt-1">
-                    <div
-                      className={`h-full transition-all duration-500 ${isActive ? "bg-mac-black" : "bg-mac-black/60"}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  <RetroProgressBar percent={pct} active={isActive} />
                   <div className="flex gap-4 text-xs font-bold uppercase mt-1">
                     <span>{completedItems}/{totalItems} Items</span>
                     {result.avgQuality > 0 && <span>⌀ {result.avgQuality.toFixed(1)}/10</span>}
@@ -121,9 +110,7 @@ export function RunProgressView({
                     </thead>
                     <tbody>
                       {result.responses.map((resp, i) => {
-                        const avgJudge = resp.judgeScores.length > 0
-                          ? resp.judgeScores.reduce((s, js) => s + js.score, 0) / resp.judgeScores.length
-                          : 0;
+                        const avgJudge = computeAvgScore(resp.judgeScores);
                         const isNewItem = i === result.responses.length - 1 && isActive;
                         return (
                           <tr

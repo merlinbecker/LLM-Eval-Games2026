@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RetroWindow, RetroButton, RetroSelect, RobotIcon } from "@/components/retro";
 import { shortName, formatMs, formatCost, parseDatasetItems } from "@/lib/utils";
+import { computeAvgScore } from "@/lib/competition-utils";
 import { Award, Zap, Coins } from "lucide-react";
 import { useGetDataset } from "@workspace/api-client-react";
 import type { JudgeScore } from "@workspace/api-client-react";
@@ -23,8 +24,9 @@ export function DetailsTab({ comp, sortedResults }: SortedResultsProps) {
     <div className="space-y-6">
       {/* Question Selector */}
       <div className="border-[3px] border-mac-black bg-mac-white p-4 retro-shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4">
-        <label className="font-display uppercase text-sm whitespace-nowrap">Frage auswählen:</label>
+        <label htmlFor="question-select" className="font-display uppercase text-sm whitespace-nowrap">Frage auswählen:</label>
         <RetroSelect
+          id="question-select"
           value={String(selectedQuestion)}
           onChange={(e) => setSelectedQuestion(Number(e.target.value))}
           className="max-w-xs"
@@ -69,9 +71,7 @@ export function DetailsTab({ comp, sortedResults }: SortedResultsProps) {
         {sortedResults.map((modelResult) => {
           const response = modelResult.responses?.[selectedQuestion];
           const judgeScores: JudgeScore[] = response?.judgeScores ?? [];
-          const avgScore = judgeScores.length > 0
-            ? judgeScores.reduce((s, js) => s + js.score, 0) / judgeScores.length
-            : 0;
+          const avgScore = computeAvgScore(judgeScores);
 
           return (
             <RetroWindow key={modelResult.modelId} title={shortName(modelResult.modelName)}>

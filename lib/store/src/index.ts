@@ -12,6 +12,12 @@ import type {
   Activity,
   CreateActivity,
 } from "./types";
+export {
+  joinDatasetMarkdownItems,
+  normalizeDatasetMarkdown,
+  parseDatasetMarkdownItems as parseMarkdownItems,
+  stripWrappingMarkdownCodeFence,
+} from "./dataset-markdown";
 
 declare function setInterval(callback: () => void, ms: number): unknown;
 declare function clearInterval(handle: unknown): void;
@@ -32,8 +38,7 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 class InMemoryStore {
   private sessions = new Map<string, SessionStore>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private cleanupTimer: any = null;
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.startCleanup();
@@ -341,19 +346,6 @@ class InMemoryStore {
 }
 
 export const store = new InMemoryStore();
-
-/** Parse a Markdown document into individual items, split by `## ` headings or double-newline paragraphs. */
-export function parseMarkdownItems(content: string): string[] {
-  const sections = content.split(/^## /m).filter(Boolean);
-  if (sections.length > 1) {
-    return sections.map((s) => s.trim());
-  }
-  const paragraphs = content
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-  return paragraphs.length > 0 ? paragraphs : [content];
-}
 
 export type { Gateway, CreateGateway, Dataset, CreateDataset, Competition, CreateCompetition, LlmLog, ConfiguredModel, CreateConfiguredModel, Activity, CreateActivity };
 export type { JudgeScoreEntry, ModelResponseEntry, CompetitionResultEntry, ModelSelection } from "./types";

@@ -7,30 +7,16 @@ export function RetroWindow({
   children,
   className,
   onClose,
-  collapsible = false,
-  defaultCollapsed = false,
 }: {
   title: string;
   children: React.ReactNode;
   className?: string;
   onClose?: () => void;
-  collapsible?: boolean;
-  defaultCollapsed?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-
-  const handleHeaderClick = () => {
-    if (collapsible) setCollapsed((c) => !c);
-  };
-
   return (
     <div className={cn("border-[3px] border-mac-black bg-mac-white retro-shadow flex flex-col relative", className)}>
       <div
-        className={cn(
-          "h-8 border-b-[3px] border-mac-black title-stripes flex items-center justify-between px-1 relative",
-          collapsible && "cursor-pointer select-none",
-        )}
-        onClick={handleHeaderClick}
+        className="h-8 border-b-[3px] border-mac-black title-stripes flex items-center justify-between px-1 relative"
       >
         {onClose && (
           <button
@@ -42,14 +28,9 @@ export function RetroWindow({
         )}
         <div className="bg-mac-white border-[3px] border-mac-black px-4 font-display text-sm uppercase tracking-widest absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
           {title}
-          {collapsible && (
-            <span className="font-display text-xs">{collapsed ? "▶" : "▼"}</span>
-          )}
         </div>
       </div>
-      {!collapsed && (
-        <div className="p-4 flex-1 flex flex-col bg-mac-white z-0">{children}</div>
-      )}
+      <div className="p-4 flex-1 flex flex-col bg-mac-white z-0">{children}</div>
     </div>
   );
 }
@@ -267,10 +248,18 @@ export function RetroDialog({
   className?: string;
 }) {
   return (
-    <div className="fixed inset-0 bg-mac-black/50 flex items-center justify-center z-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-mac-black/50 flex items-center justify-center z-50"
+      onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      role="presentation"
+    >
       <div
         className={cn("bg-mac-white border-[3px] border-mac-black w-full max-w-md retro-shadow", className)}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         <div className="bg-mac-black text-mac-white px-4 py-2 font-display uppercase">{title}</div>
         <div className="p-6 space-y-4">{children}</div>
@@ -284,15 +273,29 @@ export function RetroFormField({
   label,
   children,
   className,
+  htmlFor,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
+  htmlFor?: string;
 }) {
   return (
     <div className={className}>
-      <label className="block font-display mb-2 uppercase text-sm">{label}</label>
+      <label htmlFor={htmlFor} className="block font-display mb-2 uppercase text-sm">{label}</label>
       {children}
+    </div>
+  );
+}
+
+// ─── PROGRESS BAR ───
+export function RetroProgressBar({ percent, active = false }: { percent: number; active?: boolean }) {
+  return (
+    <div className="w-full h-3 border-[2px] border-mac-black bg-mac-white">
+      <div
+        className={`h-full transition-all duration-500 ${active ? "bg-mac-black" : "bg-mac-black/60"}`}
+        style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+      />
     </div>
   );
 }

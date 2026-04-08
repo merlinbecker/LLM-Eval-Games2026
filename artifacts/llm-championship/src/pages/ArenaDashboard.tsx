@@ -4,6 +4,7 @@ import type { CompetitionDetail } from "@workspace/api-client-react";
 import { useQueries } from "@tanstack/react-query";
 import { RetroWindow, RetroButton, RetroBadge, TrophyIcon, RobotIcon } from "@/components/retro";
 import { formatDate } from "@/lib/utils";
+import { sortByQuality } from "@/lib/competition-utils";
 import { Activity, TerminalSquare } from "lucide-react";
 
 function useOverallChampions(competitions: { id: number; status: string }[]) {
@@ -17,7 +18,7 @@ function useOverallChampions(competitions: { id: number; status: string }[]) {
   queries.forEach(query => {
     const data = query.data as CompetitionDetail | undefined;
     if (data?.results?.length) {
-      const sorted = [...data.results].sort((a, b) => b.avgQuality - a.avgQuality);
+      const sorted = sortByQuality([...data.results]);
       sorted.slice(0, 3).forEach((result, index) => {
         const key = result.modelName;
         const existing = medalMap.get(key) || { gold: 0, silver: 0, bronze: 0, modelName: key };
@@ -49,56 +50,37 @@ export default function ArenaDashboard() {
             <p className="font-sans text-xl uppercase">1-Bit Large Language Model Evaluation</p>
           </div>
           <div className="relative w-full max-w-3xl z-10 mt-16">
-            {(topModels.length > 0 && topModels.some(Boolean)) ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-end">
-                {[topModels[1], topModels[0], topModels[2]].map((model, idx) => {
-                  const label = idx === 1 ? "Gold" : idx === 0 ? "Silber" : "Bronze";
-                  // 1-bit: no color
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex flex-col items-center text-center bg-mac-white border-2 border-mac-black px-3 py-3 retro-shadow-sm ${
-                        idx === 1 ? "sm:-translate-y-8" : idx === 0 ? "sm:translate-y-3" : "sm:translate-y-8"
-                      }`}
-                    >
-                      <span className="font-display text-xs uppercase mb-1">{label}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-end">
+              {[topModels[1], topModels[0], topModels[2]].map((model, idx) => {
+                const label = idx === 1 ? "Gold" : idx === 0 ? "Silber" : "Bronze";
+                return (
+                  <div
+                    key={idx}
+                    className={`flex flex-col items-center text-center bg-mac-white border-2 border-mac-black px-3 py-3 retro-shadow-sm ${
+                      idx === 1 ? "sm:-translate-y-8" : idx === 0 ? "sm:translate-y-3" : "sm:translate-y-8"
+                    }`}
+                  >
+                    <span className="font-display text-xs uppercase mb-1">{label}</span>
+                    {model ? (
                       <RobotIcon className="w-16 h-16 text-mac-black" />
-                      {model ? (
-                        <>
-                          <p className="font-display text-xs uppercase mt-2 truncate w-full" title={model.modelName}>{model.modelName}</p>
-                          <p className="text-[10px] mt-1">G: {model.gold} S: {model.silver} B: {model.bronze}</p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-display text-xs uppercase mt-2">-</p>
-                          <p className="text-[10px] mt-1">G: 0 S: 0 B: 0</p>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-end">
-                {[0, 1, 2].map((idx) => {
-                  const label = idx === 1 ? "Gold" : idx === 0 ? "Silber" : "Bronze";
-                  // 1-bit: no color
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex flex-col items-center text-center bg-mac-white border-2 border-mac-black px-3 py-3 retro-shadow-sm ${
-                        idx === 1 ? "sm:-translate-y-8" : idx === 0 ? "sm:translate-y-3" : "sm:translate-y-8"
-                      }`}
-                    >
-                      <span className="font-display text-xs uppercase mb-1">{label}</span>
+                    ) : (
                       <span className="w-16 h-16 flex items-center justify-center text-4xl text-mac-black select-none">?</span>
-                      <p className="font-display text-xs uppercase mt-2 text-mac-black/40">---</p>
-                      <p className="text-[10px] mt-1 text-mac-black/40">G: - S: - B: -</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    )}
+                    {model ? (
+                      <>
+                        <p className="font-display text-xs uppercase mt-2 truncate w-full" title={model.modelName}>{model.modelName}</p>
+                        <p className="text-[10px] mt-1">G: {model.gold} S: {model.silver} B: {model.bronze}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-display text-xs uppercase mt-2 text-mac-black/40">---</p>
+                        <p className="text-[10px] mt-1 text-mac-black/40">G: - S: - B: -</p>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
         <div className="p-6 bg-mac-white grid grid-cols-1 md:grid-cols-3 gap-6">
