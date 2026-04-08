@@ -1,4 +1,4 @@
-ja---
+---
 date: März 2026
 title: "LLM Championship — arc42 Architekturdokumentation"
 ---
