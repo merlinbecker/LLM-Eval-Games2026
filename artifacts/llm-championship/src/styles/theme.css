@@ -5,10 +5,8 @@
 
 @theme inline {
   /* ── Primärfarben: nur Schwarz & Weiß ── */
-  /*--color-mac-black: #000; */
-  /*--color-mac-white: #fff; */
-  --color-mac-black: #009;
-  --color-mac-white: #fe8f11;
+  --color-mac-black: #000; 
+  --color-mac-white: #fff; 
   /* ── Schriften ── */
   --font-display: 'Silkscreen', cursive;
   --font-sans: 'VT323', monospace;

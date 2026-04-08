@@ -84,19 +84,102 @@ Das System verzichtet bewusst auf eine externe Datenbank (siehe [ADR-9](09-archi
 
 ## 8.5 Retro-UI-Designsystem
 
-Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985):
+Das UI folgt konsequent der **Macintosh System 5 Ästhetik** (ca. 1985). Das gesamte Designsystem basiert auf dem Prinzip der **strikten 1-Bit-Beschränkung**: Ausschließlich Schwarz und Weiß — kein `opacity`, keine `rgba`-Werte, keine Halbtöne. Grautöne werden ausschließlich durch CSS-Dithering-Muster abgebildet.
+
+### CSS-Architektur
+
+Der Stylecode ist in vier thematische Dateien aufgeteilt (`artifacts/llm-championship/src/styles/`):
+
+| Datei | Zweck |
+|-------|-------|
+| `theme.css` | **Einzige Quelle für alle Design-Tokens** — zwei Primärfarben + semantische Aliase. Diese Datei austauschen = gesamte App neu einfärben. |
+| `patterns.css` | Dithering-Muster als Tailwind-Utilities. Alle Muster nutzen `var(--color-mac-black)` / `var(--color-mac-white)` — keine hardcodierten Farbwerte. |
+| `base.css` | Body, h1–h6, Scrollbar, Selection-Styles |
+| `utilities.css` | `.retro-shadow`, `.title-stripes`, `.scanlines`, Animationen (`blink`, `score-pop`) |
+
+### Theme-Token-System
+
+Das Theme basiert auf genau **zwei CSS Custom Properties**, aus denen alle anderen Tokens abgeleitet werden:
+
+```css
+/* theme.css — @theme inline */
+--color-mac-black: #000;
+--color-mac-white: #fff;
+
+/* Alle semantischen Aliase verweisen auf diese zwei Variablen */
+--color-background:         var(--color-mac-white);
+--color-foreground:         var(--color-mac-black);
+--color-primary:            var(--color-mac-black);
+--color-primary-foreground: var(--color-mac-white);
+/* … */
+```
+
+Tailwind CSS v4 mit `@theme inline` kompiliert alle Utility-Klassen als `var(--color-mac-black)` statt als Literal `#000`. Das ermöglicht **Runtime-Theme-Switching** ohne Rebuild.
+
+### Dithering-Muster (Ersatz für Grautöne)
+
+Statt `bg-mac-black/50` oder `rgba(0,0,0,0.5)` werden CSS-Gradienten-Muster verwendet:
+
+| Klasse | Dichte | Technik |
+|--------|--------|---------|
+| `.bg-pattern-5` | ~5% | `radial-gradient`, 6px-Gitter |
+| `.bg-pattern-12` | ~12% | 4×8px Bayer-Dither |
+| `.bg-pattern-25` | 25% | 4px Bayer-Dither |
+| `.bg-dither` | 50% | Schachbrettmuster |
+| `.bg-dither-lines` | ~50% | Horizontale Linien |
+| `.bg-pattern-75` | 75% | Invertiertes Schachbrettmuster |
+
+Eigene Muster können als Drop-in in `patterns.css` eingetragen werden (z. B. von [Crankit GFXP](https://dev.crankit.app/tools/gfxp/)).
+
+### Theme überschreiben
+
+**Build-time** via Vite-Env-Variablen (`.env.local`):
+```env
+VITE_COLOR_BLACK=#1a1a2e
+VITE_COLOR_WHITE=#e8e8e0
+```
+
+**Runtime** via JavaScript:
+```ts
+document.documentElement.style.setProperty("--color-mac-black", "#2d1b69");
+document.documentElement.style.setProperty("--color-mac-white", "#f0e6ff");
+```
+
+Das Bootstrapping in `src/main.tsx` liest die Vite-Variablen direkt beim App-Start und setzt sie vor dem ersten Render auf `:root`.
+
+### Komponenten-Bibliothek
+
+Die Retro-Komponenten sind in zwei Unterverzeichnisse strukturiert:
+
+**`src/components/ui/`** — Interaktive UI-Bausteine:
+
+| Komponente | Verantwortung |
+|------------|---------------|
+| `RetroWindow` | Container mit Titelleiste (`.title-stripes`), optionalem Close-Button, `retro-shadow` |
+| `RetroButton` | Press-Effekt (`active:translate-y-1`); Varianten: `primary`/`secondary`/`danger`; `disabled`: Dither-Muster statt opacity |
+| `RetroInput` / `RetroTextarea` | 3px Border, Focus-Ring; `placeholder:text-mac-black` |
+| `RetroSelect` | Native `<select>` mit reinem SVG-Chevron (`currentColor`) — kein `backgroundImage`-Inline-Style |
+| `RetroCombobox` | Durchsuchbares Dropdown; ausgewählter Eintrag: `bg-pattern-12`; Disabled: `bg-pattern-25 border-dashed` |
+| `RetroBadge` | Inline-Label mit Border, Uppercase |
+| `RetroDialog` | Modal mit `bg-dither`-Backdrop |
+| `RetroFormField` | Label + Input-Wrapper |
+| `RetroProgressBar` | Fortschrittsbalken; offener Bereich: `bg-pattern-75` |
+| `RetroError` | Gestrichelter Fehlerrahmen |
+
+**`src/components/icons/`** — SVG-Icon-Komponenten: `RobotIcon`, `MedalIcon`, `PodiumIcon`, `TrophyIcon`
+
+Alle Komponenten werden aus `src/components/retro.tsx` re-exportiert (Barrel-Export für Abwärtskompatibilität).
 
 | Element              | Umsetzung                                                                |
 |----------------------|--------------------------------------------------------------------------|
-| **Farbpalette**      | 1-bit Monochrom (Schwarz/Weiß) mit Dithering-Mustern                    |
-| **Schriftarten**     | Silkscreen (Pixel-Font) für Überschriften; System-Monospace für Text     |
-| **Fenster**          | `RetroWindow`: 3px Border, Titelleiste mit gestreiftem Hintergrund |
+| **Farbpalette**      | 1-Bit Monochrom (Schwarz/Weiß); Grautöne als Dithering-Muster           |
+| **Schriftarten**     | Silkscreen (Pixel-Font, `font-display`) für Überschriften; VT323 (`font-sans`) für Text |
+| **Fenster**          | `RetroWindow`: 3px Border, gestreifte Titelleiste, optionaler Close-Button |
 | **Buttons**          | `RetroButton`: Press-Effekt (translate), Varianten: primary/secondary/danger |
-| **Formulare**        | `RetroInput`, `RetroTextarea`, `RetroSelect` mit 3px-Border und Focus-Ring |
+| **Formulare**        | `RetroInput`, `RetroTextarea`, `RetroSelect`, `RetroCombobox` mit 3px-Border und Focus-Ring |
 | **Badges**           | `RetroBadge`: Inline mit Border, Uppercase, Letter-Spacing               |
-| **Dreiecksdiagramm** | `TriangleChart`: SVG-basierter Ternary-Plot mit baryzentrischen Koordinaten; 3 Ecken (Qualität, Tempo, Effizienz); relative Normalisierung (1–10) anhand Min/Max aller Modelle (Speed/Cost invertiert: bester Wert → 10); Modelle als unterschiedliche Marker (Kreis, Quadrat, Raute, Dreieck, Kreuz); Gitterlinien bei 25%/50%/75%; Hover-Tooltip mit Z-Ordering |
-| **Fensterinhalt**        | `RetroWindow` rendert stets einen klar abgegrenzten Content-Bereich unter der Titelleiste; Schließen erfolgt optional über einen dedizierten Close-Button |
-| **Richter-Scoring-Overlay** | `JudgesScoreReveal`: Animiertes Overlay während laufender Wettbewerbe; `JudgeRevealRobot`-Komponenten mit CSS-Transition-Reveal und `animate-score-pop` (Bounce-Keyframe `scale 0.7→1.15→0.95→1`); absolut positioniert unter der Header-Bar (z-40); Queue-System (max. 4 Events) |
+| **Dreiecksdiagramm** | `TriangleChart`: SVG-basierter Ternary-Plot mit baryzentrischen Koordinaten; 3 Ecken (Qualität, Tempo, Effizienz); relative Normalisierung (1–10) anhand Min/Max aller Modelle (Speed/Cost invertiert: bester Wert → 10); Modelle als unterschiedliche Marker (Kreis, Quadrat, Raute, Dreieck, Kreuz); Gitterlinien bei 25%/50%/75%; Hover-Tooltip mit Z-Ordering; alle SVG-Farben als `currentColor` |
+| **Richter-Scoring-Overlay** | `JudgesScoreReveal`: Animiertes Overlay; `visibility`-basierte Ein-/Ausblendung (kein `opacity`); `animate-score-pop` (Bounce-Keyframe); Queue-System (max. 4 Events) |
 
 ## 8.6 Fehlerbehandlung
 

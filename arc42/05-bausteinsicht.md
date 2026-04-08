@@ -172,7 +172,7 @@ C4Component
 
         Component(logsPage, "Logs Page", "React", "LLM-Call-Log-Viewer: expandierbare Einträge mit Status, Modell, Dauer, Timestamp; einklappbare JSON-Ansicht für Request/Response; Auto-Refresh (5s); Clear-Funktion")
 
-        Component(retroComponents, "Retro-Komponentenbibliothek", "React, Tailwind CSS", "RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroBadge, RobotIcon, JudgeRevealRobot")
+        Component(retroComponents, "Retro-Komponentenbibliothek", "React, Tailwind CSS", "ui/: RetroWindow, RetroButton, RetroInput, RetroTextarea, RetroSelect, RetroCombobox, RetroBadge, RetroDialog, RetroFormField, RetroProgressBar, RetroError. icons/: RobotIcon, MedalIcon, PodiumIcon, TrophyIcon. Barrel-Export via retro.tsx. CSS-Architektur: theme.css (Token-Wurzel), patterns.css (Dither-Utilities), base.css, utilities.css.")
     }
 
     Container(apiClient, "API Client React", "React Query Hooks")
