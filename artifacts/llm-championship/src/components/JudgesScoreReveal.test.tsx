@@ -104,9 +104,9 @@ describe("JudgesScoreReveal", () => {
   it("is hidden when competition is not running", () => {
     const comp = makeCompetition({ status: "completed" });
     const { container } = render(<JudgesScoreReveal competition={comp} />);
-    // The outer div should have opacity 0 or pointerEvents none
+    // The outer div should have visibility hidden or pointerEvents none
     const outer = container.firstChild as HTMLElement;
-    expect(outer.style.opacity).toBe("0");
+    expect(outer.style.visibility).toBe("hidden");
   });
 
   it("detects new scores and shows reveal panel", async () => {
@@ -131,7 +131,7 @@ describe("JudgesScoreReveal", () => {
 
     // After entering phase, the WERTUNG title should appear
     const outer = container.firstChild as HTMLElement;
-    expect(outer.style.opacity).toBe("1");
+    expect(outer.style.visibility).toBe("visible");
   });
 
   it("shows model name in the title", () => {

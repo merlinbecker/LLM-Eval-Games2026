@@ -14,6 +14,9 @@
 | 11 | **Tab-basierte Competition-Results** | Alternative: Einzelseite mit Scroll-Sektionen, Multi-Page-Routing                                          | 3 Tabs (Übersicht/Gewinner & Judges/Detail-Antworten) reduzieren kognitive Last; alle Daten aus einem API-Call (`useGetCompetition`); Tab-State als lokaler React-State statt URL-Routing |
 | 12 | **Drei Custom-Gateway-Typen** statt eines generischen | Alternative: Einzelner `custom`-Typ mit manueller Format-Konfiguration                          | Explizite Typen (`custom_openai`, `custom_anthropic`, `custom_gemini`) ermöglichen automatische Request/Response-Transformation; weniger Fehlkonfiguration; klare UI-Führung mit typ-spezifischen URL-Platzhaltern |
 
+| 13 | **`@theme inline` + CSS Custom Properties als Theme-Interface** | Alternative: Tailwind-Konfigurationsdatei mit statischen Werten (`tailwind.config.js`) | `@theme inline` in Tailwind v4 erzeugt Utilities mit `var(--color-mac-black)` statt Literalen. Ermöglicht Runtime-Theme-Switching ohne Rebuild; Theme-Tokens bleiben in einer einzigen CSS-Datei (`theme.css`) und sind per Env-Variable oder JavaScript überschreibbar |
+| 14 | **Dithering-Muster statt Opacity** | Alternative: Tailwind Opacity-Modifier (`bg-black/50`, `text-mac-black/60`) | Opacity verletzt die 1-Bit-Restriktion (Antialiasing, Browser-Compositing erzeugt Halbtöne). CSS-Gradienten-Muster (`radial-gradient`, `repeating-linear-gradient`) liefern echte Schwarz-Weiß-Pixel. `visibility` statt `opacity` für Animationen und Show/Hide-States |
+
 <a id="adr-9"></a>
 
 ## ADR-9: In-Memory-Store + Client-Vault statt PostgreSQL

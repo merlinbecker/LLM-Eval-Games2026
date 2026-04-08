@@ -37,8 +37,8 @@ const MARKERS: Array<{
 ];
 
 function MarkerShape({ shape, x, y, size = 8, filled }: { shape: string; x: number; y: number; size?: number; filled?: boolean }) {
-  const fill = filled ? "#000" : "#fff";
-  const stroke = "#000";
+  const fill = filled ? "currentColor" : "white";
+  const stroke = "currentColor";
   const sw = 2.5;
 
   switch (shape) {
@@ -151,30 +151,30 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
       >
         {/* Grid lines */}
         {gridLines.map((l, i) => (
-          <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#000" strokeWidth={1} strokeOpacity={0.15} />
+          <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="currentColor" strokeWidth={1} strokeOpacity={0.15} />
         ))}
 
         {/* Triangle outline */}
         <polygon
           points={`${Q.x},${Q.y} ${S.x},${S.y} ${C.x},${C.y}`}
           fill="none"
-          stroke="#000"
+          stroke="currentColor"
           strokeWidth={3}
         />
 
         {/* Vertex dots with hover */}
-        <circle cx={Q.x} cy={Q.y} r={8} fill={hoveredVertex === "quality" ? "#333" : "#000"} className="cursor-pointer" onMouseEnter={() => setHoveredVertex("quality")} onMouseLeave={() => setHoveredVertex(null)} />
-        <circle cx={S.x} cy={S.y} r={8} fill={hoveredVertex === "speed" ? "#333" : "#000"} className="cursor-pointer" onMouseEnter={() => setHoveredVertex("speed")} onMouseLeave={() => setHoveredVertex(null)} />
-        <circle cx={C.x} cy={C.y} r={8} fill={hoveredVertex === "cost" ? "#333" : "#000"} className="cursor-pointer" onMouseEnter={() => setHoveredVertex("cost")} onMouseLeave={() => setHoveredVertex(null)} />
+        <circle cx={Q.x} cy={Q.y} r={8} fill="currentColor" className="cursor-pointer" onMouseEnter={() => setHoveredVertex("quality")} onMouseLeave={() => setHoveredVertex(null)} />
+        <circle cx={S.x} cy={S.y} r={8} fill="currentColor" className="cursor-pointer" onMouseEnter={() => setHoveredVertex("speed")} onMouseLeave={() => setHoveredVertex(null)} />
+        <circle cx={C.x} cy={C.y} r={8} fill="currentColor" className="cursor-pointer" onMouseEnter={() => setHoveredVertex("cost")} onMouseLeave={() => setHoveredVertex(null)} />
 
         {/* Vertex labels */}
-        <text x={Q.x} y={Q.y - labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
+        <text x={Q.x} y={Q.y - labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="currentColor">
           QUALITÄT
         </text>
-        <text x={S.x - labelPadding + 10} y={S.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
+        <text x={S.x - labelPadding + 10} y={S.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="currentColor">
           LATENZ
         </text>
-        <text x={C.x + labelPadding - 10} y={C.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#000">
+        <text x={C.x + labelPadding - 10} y={C.y + labelPadding} textAnchor="middle" fontSize={13} fontWeight="bold" fill="currentColor">
           KOSTEN
         </text>
 
@@ -184,8 +184,8 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
           const tx = Q.x - tw / 2; const ty = Q.y - labelPadding - th - 4;
           return (
             <g>
-              <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
-              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#000">Max: 10</text>
+              <rect x={tx} y={ty} width={tw} height={th} fill="white" stroke="currentColor" strokeWidth={2.5} />
+              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="currentColor">Max: 10</text>
             </g>
           );
         })()}
@@ -195,8 +195,8 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
           const tx = S.x - labelPadding + 10 - tw / 2; const ty = S.y + labelPadding + 8;
           return (
             <g>
-              <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
-              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#000">Schlechteste: {label}</text>
+              <rect x={tx} y={ty} width={tw} height={th} fill="white" stroke="currentColor" strokeWidth={2.5} />
+              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="currentColor">Schlechteste: {label}</text>
             </g>
           );
         })()}
@@ -206,16 +206,16 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
           const tx = C.x + labelPadding - 10 - tw / 2; const ty = C.y + labelPadding + 8;
           return (
             <g>
-              <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
-              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#000">Schlechteste: {label}</text>
+              <rect x={tx} y={ty} width={tw} height={th} fill="white" stroke="currentColor" strokeWidth={2.5} />
+              <text x={tx + tw / 2} y={ty + 23} textAnchor="middle" fontSize={11} fontWeight="bold" fill="currentColor">Schlechteste: {label}</text>
             </g>
           );
         })()}
 
         {/* Center crosshair */}
         <g opacity={0.2}>
-          <line x1={(Q.x + S.x + C.x) / 3 - 6} y1={(Q.y + S.y + C.y) / 3} x2={(Q.x + S.x + C.x) / 3 + 6} y2={(Q.y + S.y + C.y) / 3} stroke="#000" strokeWidth={1.5} />
-          <line x1={(Q.x + S.x + C.x) / 3} y1={(Q.y + S.y + C.y) / 3 - 6} x2={(Q.x + S.x + C.x) / 3} y2={(Q.y + S.y + C.y) / 3 + 6} stroke="#000" strokeWidth={1.5} />
+          <line x1={(Q.x + S.x + C.x) / 3 - 6} y1={(Q.y + S.y + C.y) / 3} x2={(Q.x + S.x + C.x) / 3 + 6} y2={(Q.y + S.y + C.y) / 3} stroke="currentColor" strokeWidth={1.5} />
+          <line x1={(Q.x + S.x + C.x) / 3} y1={(Q.y + S.y + C.y) / 3 - 6} x2={(Q.x + S.x + C.x) / 3} y2={(Q.y + S.y + C.y) / 3 + 6} stroke="currentColor" strokeWidth={1.5} />
         </g>
 
         {/* Data points – render non-hovered first, hovered last for z-ordering */}
@@ -227,7 +227,7 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
             className="cursor-pointer"
           >
             <MarkerShape shape={p.marker.shape} x={p.x} y={p.y} size={8} filled={false} />
-            <text x={p.x} y={p.y - 14} textAnchor="middle" fontSize={10} fontWeight="bold" fill="#000">
+            <text x={p.x} y={p.y - 14} textAnchor="middle" fontSize={10} fontWeight="bold" fill="currentColor">
               {p.name}
             </text>
           </g>
@@ -241,7 +241,7 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
               className="cursor-pointer"
             >
               <MarkerShape shape={p.marker.shape} x={p.x} y={p.y} size={10} filled={true} />
-              <text x={p.x} y={p.y - 14} textAnchor="middle" fontSize={10} fontWeight="bold" fill="#000">
+              <text x={p.x} y={p.y - 14} textAnchor="middle" fontSize={10} fontWeight="bold" fill="currentColor">
                 {p.name}
               </text>
             </g>
@@ -262,12 +262,12 @@ export function TriangleChart({ data, width = 440, height = 400, worstCost, wors
 
           return (
             <g>
-              <rect x={tx} y={ty} width={tw} height={th} fill="#fff" stroke="#000" strokeWidth={2.5} />
-              <text x={tx + 8} y={ty + 16} fontSize={11} fontWeight="bold" fill="#000">{p.name}</text>
-              <text x={tx + 8} y={ty + 32} fontSize={10} fill="#000">
+              <rect x={tx} y={ty} width={tw} height={th} fill="white" stroke="currentColor" strokeWidth={2.5} />
+              <text x={tx + 8} y={ty + 16} fontSize={11} fontWeight="bold" fill="currentColor">{p.name}</text>
+              <text x={tx + 8} y={ty + 32} fontSize={10} fill="currentColor">
                 Qualität: {p.qualityScore.toFixed(1)} | Latenz: {p.speedScore.toFixed(1)}
               </text>
-              <text x={tx + 8} y={ty + 48} fontSize={10} fill="#000">
+              <text x={tx + 8} y={ty + 48} fontSize={10} fill="currentColor">
                 Kosten: {p.costScore.toFixed(1)}
               </text>
             </g>

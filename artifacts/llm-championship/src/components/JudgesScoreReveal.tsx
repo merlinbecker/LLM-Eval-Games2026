@@ -47,7 +47,7 @@ function JudgeRevealRobot({
       <div
         className="transition-all duration-500 ease-out"
         style={{
-          opacity: isRevealed ? 1 : 0,
+          visibility: isRevealed ? "visible" as const : "hidden" as const,
           transform: isRevealed
             ? "translateY(0) scale(1)"
             : "translateY(1.5rem) scale(0.7)",
@@ -222,8 +222,8 @@ export function JudgesScoreReveal({
       : null;
 
   // Individual event enter/exit animation
-  const contentOpacity =
-    phase === "entering" || phase === "exiting" ? 0 : hasContent ? 1 : 0;
+  const contentVisible =
+    phase !== "entering" && phase !== "exiting" && hasContent;
 
   return (
     <div
@@ -231,15 +231,13 @@ export function JudgesScoreReveal({
       style={{
         top: "100%",
         marginTop: "2rem",
-        opacity: overlayVisible ? 1 : 0,
+        visibility: overlayVisible ? "visible" as const : "hidden" as const,
         pointerEvents: overlayVisible ? "auto" : "none",
-        transition: `opacity ${ENTER_DURATION}ms ease-out`,
       }}
     >
       <div
         style={{
-          opacity: contentOpacity,
-          transition: `opacity ${ENTER_DURATION}ms ease-out`,
+          visibility: contentVisible ? "visible" as const : "hidden" as const,
         }}
       >
         {currentEvent && (
@@ -278,7 +276,7 @@ export function JudgesScoreReveal({
 
               {/* Queue indicator */}
               {queue.length > 0 && (
-                <p className="text-center text-xs font-display uppercase text-mac-black/50 mt-4">
+                <p className="text-center text-xs font-display uppercase text-mac-black mt-4">
                   {queue.length} weitere Wertung{queue.length > 1 ? "en" : ""} in
                   der Warteschlange
                 </p>

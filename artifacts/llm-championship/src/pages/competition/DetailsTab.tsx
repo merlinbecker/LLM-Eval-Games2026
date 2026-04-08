@@ -77,22 +77,22 @@ export function DetailsTab({ comp, sortedResults }: SortedResultsProps) {
             <RetroWindow key={modelResult.modelId} title={shortName(modelResult.modelName)}>
               {/* Header with metrics */}
               <div className="flex flex-wrap gap-4 mb-4 pb-4 border-b-[3px] border-mac-black">
-                <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-mac-black/5">
+                <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-pattern-5">
                   <Award className="w-4 h-4" />
                   <span className="font-display text-lg">{avgScore.toFixed(1)}</span>
                   <span className="text-xs uppercase">Ø Score</span>
                 </div>
                 {response && (
                   <>
-                    <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-mac-black/5">
+                    <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-pattern-5">
                       <Zap className="w-4 h-4" />
                       <span className="font-display text-lg">{formatMs(response.durationMs)}</span>
                     </div>
-                    <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-mac-black/5">
+                    <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-pattern-5">
                       <Coins className="w-4 h-4" />
                       <span className="font-display text-lg">{formatCost(response.cost)}</span>
                     </div>
-                    <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-mac-black/5">
+                    <div className="flex items-center gap-2 border-[2px] border-mac-black px-3 py-1 bg-pattern-5">
                       <span className="text-xs uppercase">{response.promptTokens + response.completionTokens} Tokens</span>
                     </div>
                   </>
@@ -100,7 +100,7 @@ export function DetailsTab({ comp, sortedResults }: SortedResultsProps) {
               </div>
 
               {/* Response text */}
-              <div className="bg-mac-black/5 p-4 border-[2px] border-mac-black font-mono text-sm mb-4 max-h-64 overflow-y-auto whitespace-pre-wrap">
+              <div className="bg-pattern-5 p-4 border-[2px] border-mac-black font-mono text-sm mb-4 max-h-64 overflow-y-auto whitespace-pre-wrap">
                 {response?.response ?? "Keine Antwort für diese Frage."}
               </div>
 

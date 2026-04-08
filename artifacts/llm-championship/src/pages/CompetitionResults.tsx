@@ -140,7 +140,7 @@ export default function CompetitionResults() {
                   flex items-center px-4 py-2 font-display text-sm uppercase tracking-wider border-[3px] border-mac-black transition-all
                   ${activeTab === tab.id
                     ? 'bg-mac-black text-mac-white'
-                    : 'bg-mac-white text-mac-black hover:bg-mac-black/10'
+                    : 'bg-mac-white text-mac-black hover:bg-pattern-12'
                   }
                 `}
               >

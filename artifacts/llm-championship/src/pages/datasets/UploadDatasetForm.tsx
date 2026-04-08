@@ -90,7 +90,7 @@ export function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
         {inputMode === "file" ? (
           <RetroFormField label="Markdown File (.md)">
             <div
-              className="border-[3px] border-dashed border-mac-black p-8 text-center cursor-pointer hover:bg-mac-black/5"
+              className="border-[3px] border-dashed border-mac-black p-8 text-center cursor-pointer hover:bg-pattern-5"
               onClick={() => fileInputRef.current?.click()}
             >
               <input
@@ -108,7 +108,7 @@ export function UploadDatasetForm({ onSuccess }: { onSuccess: () => void }) {
                 </div>
               ) : (
                 <div className="font-display">
-                  <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <FileText className="w-10 h-10 mx-auto mb-2" />
                   <p className="text-lg uppercase">CLICK TO SELECT .MD FILE</p>
                   <p className="text-sm">OR DRAG &amp; DROP</p>
                 </div>

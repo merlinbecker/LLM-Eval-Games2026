@@ -65,14 +65,14 @@ export function DatasetEditDialog({
   };
 
   return (
-    <div className="fixed inset-0 bg-mac-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-dither flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
         className="bg-mac-white border-[3px] border-mac-black w-full max-w-4xl max-h-[90vh] flex flex-col retro-shadow"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="bg-mac-black text-mac-white px-4 py-2 font-display uppercase flex items-center justify-between">
           <span>DATASET: {dataset?.name ?? "..."}</span>
-          <button onClick={onClose} className="text-mac-white hover:opacity-70 font-display text-lg">
+          <button onClick={onClose} className="text-mac-white font-display text-lg">
             ✕
           </button>
         </div>
@@ -98,7 +98,7 @@ export function DatasetEditDialog({
 
               {items.map((item, index) => (
                 <div key={index} className="border-[3px] border-mac-black bg-mac-white">
-                  <div className="flex items-center justify-between px-3 py-1.5 bg-mac-black/5 border-b-[2px] border-mac-black">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-pattern-5 border-b-[2px] border-mac-black">
                     <span className="font-display text-xs uppercase tracking-wider">
                       Item {index + 1}
                     </span>
@@ -115,13 +115,13 @@ export function DatasetEditDialog({
                     rows={Math.max(3, item.split("\n").length + 1)}
                     value={item}
                     onChange={(event) => handleItemChange(index, event.target.value)}
-                    className="w-full px-3 py-2 bg-mac-white text-mac-black font-mono text-sm focus:outline-none focus:ring-4 focus:ring-mac-black/20 resize-y border-0"
+                    className="w-full px-3 py-2 bg-mac-white text-mac-black font-mono text-sm focus:outline-none focus:ring-4 focus:ring-mac-black resize-y border-0"
                   />
                 </div>
               ))}
 
               {items.length === 0 && (
-                <div className="text-center py-8 text-mac-black/40 font-display uppercase">
+                <div className="text-center py-8 text-mac-black font-display uppercase">
                   Keine Items vorhanden
                 </div>
               )}

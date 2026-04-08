@@ -64,14 +64,14 @@ export default function Gateways() {
           ) : (
             <div className="space-y-4">
               {gateways.map(g => (
-                <div key={g.id} className="border-[3px] border-black p-4 flex items-center justify-between hover:bg-black/5 transition-colors">
+                <div key={g.id} className="border-[3px] border-mac-black p-4 flex items-center justify-between hover:bg-pattern-5 transition-colors">
                   <div className="flex items-center space-x-4">
                     <Server className="w-8 h-8" />
                     <div>
                       <h3 className="font-display text-xl font-bold uppercase">{g.name}</h3>
                       <div className="text-sm space-x-2">
                         <RetroBadge>{g.type}</RetroBadge>
-                        <span className="text-black/60">{g.baseUrl}</span>
+                        <span className="text-mac-black">{g.baseUrl}</span>
                       </div>
                     </div>
                   </div>

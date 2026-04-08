@@ -60,7 +60,7 @@ export function RunProgressView({
           return (
             <div
               key={result.modelId}
-              className={`border-[3px] ${isActive ? "border-mac-black bg-mac-black/5" : "border-mac-black/40 bg-mac-white"} transition-all`}
+              className={`${isActive ? "border-[3px] border-mac-black bg-pattern-5" : "border-[1px] border-mac-black bg-mac-white"} transition-all`}
             >
               {/* Model Header */}
               <button
@@ -115,7 +115,7 @@ export function RunProgressView({
                         return (
                           <tr
                             key={i}
-                            className={`border-b border-mac-black/20 ${isNewItem ? "bg-mac-black/10 font-bold" : ""}`}
+                            className={`border-b border-mac-black ${isNewItem ? "bg-pattern-12 font-bold" : ""}`}
                           >
                             <td className="p-1.5 font-display text-sm">#{i + 1}</td>
                             <td className="p-1.5 text-center font-display text-sm">

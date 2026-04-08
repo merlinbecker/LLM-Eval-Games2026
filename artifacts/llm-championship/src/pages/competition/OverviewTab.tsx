@@ -56,7 +56,7 @@ export function OverviewTab({ comp, sortedResults }: SortedResultsProps) {
           <div className="flex-1 text-center md:text-left">
             <p className="font-display text-sm tracking-widest mb-1">GEWINNER</p>
             <p className="font-display text-3xl uppercase">{shortName(winner.modelName)}</p>
-            <p className="text-sm opacity-70 mt-1">{winner.modelId}</p>
+            <p className="text-sm mt-1">{winner.modelId}</p>
           </div>
           <div className="flex gap-6 text-center">
             <div>
@@ -133,7 +133,7 @@ export function OverviewTab({ comp, sortedResults }: SortedResultsProps) {
           <div className="w-full bg-mac-white flex items-center justify-center p-2">
             <TriangleChart data={radarData} worstCost={worstCost} worstLatency={worstLatency} formatCost={formatCost} formatLatency={formatMs} />
           </div>
-          <div className="p-3 border-t-[3px] border-mac-black bg-mac-black/5">
+            <div className="p-3 border-t-[3px] border-mac-black bg-pattern-5">
             <p className="text-xs uppercase font-bold mb-1">Leserichtung:</p>
             <p className="text-xs">Je näher ein Punkt an einer Ecke liegt, desto stärker ist das Modell in dieser Dimension.</p>
           </div>
@@ -155,7 +155,7 @@ export function OverviewTab({ comp, sortedResults }: SortedResultsProps) {
               </thead>
               <tbody>
                 {sortedResults.map((r, i) => (
-                  <tr key={r.modelId} className={`border-b-2 border-mac-black/20 ${i === 0 ? 'bg-mac-black/10 font-bold' : ''}`}>
+                  <tr key={r.modelId} className={`border-b-2 border-mac-black ${i === 0 ? 'bg-pattern-12 font-bold' : ''}`}>
                     <td className="p-2 font-display">{i + 1}</td>
                     <td className="p-2 font-bold truncate max-w-[10rem]" title={r.modelId}>{shortName(r.modelName)}</td>
                     <td className="p-2 text-center font-display">{r.avgQuality.toFixed(1)}</td>

@@ -74,11 +74,13 @@ Your API keys never leave your browser unencrypted:
 
 ### 🖥️ Retro UI Design System
 Every pixel is crafted to evoke the Macintosh System 5 era:
-- 1-bit monochrome palette with dithering patterns
+- 1-bit monochrome palette — strictly **black and white only**, no opacity
+- Dithering patterns (5 %, 12 %, 25 %, 50 %, 75 % density) replace all gray tones
 - Pixel fonts (Silkscreen, VT323)
 - Collapsible `RetroWindow` components with striped title bars
 - 8-bit robot avatars for competing models
 - Press-effect buttons, 3px borders, and checkerboard backgrounds
+- Full **runtime theme switching** via CSS Custom Properties — swap two variables to recolour the entire app (see [Theme Customization](#-theme-customization))
 
 ---
 
@@ -88,8 +90,7 @@ Every pixel is crafted to evoke the Macintosh System 5 era:
 LLM-Eval-Games2026/
 ├── artifacts/
 │   ├── api-server/            Express 5 REST API (in-memory store, session management)
-│   ├── llm-championship/      React 19 SPA (main application)
-│   └── mockup-sandbox/        Design prototyping sandbox
+│   └── llm-championship/      React 19 SPA (main application)
 ├── lib/
 │   ├── api-spec/              OpenAPI 3.1 spec (single source of truth)
 │   ├── api-client-react/      Generated React Query hooks (via Orval)
@@ -209,7 +210,77 @@ pnpm run typecheck:libs
 | **Encryption** | Web Crypto API (AES-256-GCM, PBKDF2) |
 | **Testing** | Vitest, Testing Library |
 | **Build** | esbuild (API), Vite (frontend), pnpm workspaces |
-| **UI** | Custom retro component library (RetroWindow, RetroButton, RobotIcon, etc.) |
+| **UI** | Custom retro component library (`src/components/ui/` + `src/components/icons/`) |
+
+---
+
+## 🎨 Theme Customization
+
+The entire UI is driven by exactly **two CSS Custom Properties** defined in [`src/styles/theme.css`](artifacts/llm-championship/src/styles/theme.css):
+
+```css
+--color-mac-black: #000;
+--color-mac-white: #fff;
+```
+
+Because Tailwind CSS v4 is configured with `@theme inline`, all utility classes reference these variables as `var(--color-mac-black)` at runtime — not as hardcoded hex values. This means the whole app can be recoloured by changing just two values.
+
+### Build-time: `.env` file
+
+Create `.env.local` in `artifacts/llm-championship/` (git-ignored):
+
+```env
+VITE_COLOR_BLACK=#1a1a2e
+VITE_COLOR_WHITE=#e8e8e0
+```
+
+### Runtime: JavaScript
+
+Call this anywhere (e.g. a ThemeSelector component) to switch the theme without a page reload:
+
+```ts
+const root = document.documentElement;
+root.style.setProperty("--color-mac-black", "#2d1b69");
+root.style.setProperty("--color-mac-white", "#f0e6ff");
+```
+
+### CSS Architecture
+
+The design system is split into four focused files under `artifacts/llm-championship/src/styles/`:
+
+| File | Purpose |
+|------|---------|
+| `theme.css` | **Single source of truth** — two primary colors + semantic aliases; swap this file to re-theme |
+| `patterns.css` | Dither pattern utilities: `.bg-pattern-5/12/25/75`, `.bg-dither`, `.bg-dither-lines` |
+| `base.css` | Body, headings, scrollbar, selection styles |
+| `utilities.css` | `.retro-shadow`, `.title-stripes`, `.scanlines`, `.animate-blink`, `.animate-score-pop` |
+
+### Component Library
+
+Reusable retro components live in `artifacts/llm-championship/src/components/`:
+
+```
+components/
+├── ui/
+│   ├── RetroWindow.tsx      — Collapsible panel with striped title bar
+│   ├── RetroButton.tsx      — Press-effect button (primary / secondary / danger)
+│   ├── RetroInput.tsx       — 1-bit text input with 3px border
+│   ├── RetroTextarea.tsx    — Multi-line variant
+│   ├── RetroSelect.tsx      — Native select with SVG chevron (no inline style hacks)
+│   ├── RetroCombobox.tsx    — Searchable dropdown with keyboard navigation
+│   ├── RetroBadge.tsx       — Inline label with border
+│   ├── RetroDialog.tsx      — Modal with dither backdrop
+│   ├── RetroFormField.tsx   — Label + input wrapper
+│   ├── RetroProgressBar.tsx — 1-bit progress bar
+│   └── RetroError.tsx       — Dashed error box
+└── icons/
+    ├── RobotIcon.tsx
+    ├── MedalIcon.tsx
+    ├── PodiumIcon.tsx
+    └── TrophyIcon.tsx
+```
+
+All components are re-exported from `components/retro.tsx` for backward-compatible imports.
 
 ---
 

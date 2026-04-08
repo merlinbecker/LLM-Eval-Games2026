@@ -65,8 +65,8 @@ function ActivityDropdown() {
                 <div
                   key={a.id}
                   className={cn(
-                    "px-3 py-2 border-b border-mac-black/20 flex items-start gap-2 text-xs",
-                    !a.acknowledged && a.status !== "running" && "bg-mac-black/5"
+                    "px-3 py-2 border-b border-mac-black flex items-start gap-2 text-xs",
+                    !a.acknowledged && a.status !== "running" && "bg-pattern-5"
                   )}
                 >
                   {a.status === "running" && <Loader2 className="w-4 h-4 animate-spin flex-shrink-0 mt-0.5" />}

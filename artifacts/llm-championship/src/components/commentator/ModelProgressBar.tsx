@@ -35,7 +35,7 @@ export function ModelProgressBar({
         </div>
         <RetroProgressBar percent={progressPercent} />
         {result.avgSpeed > 0 && (
-          <div className="flex gap-3 text-[10px] font-bold uppercase mt-0.5 text-mac-black/60">
+          <div className="flex gap-3 text-[10px] font-bold uppercase mt-0.5 text-mac-black">
             <span>⌀ {formatMs(result.avgSpeed)}</span>
             {result.avgQuality > 0 && <span>⌀ {result.avgQuality.toFixed(1)}/10</span>}
           </div>

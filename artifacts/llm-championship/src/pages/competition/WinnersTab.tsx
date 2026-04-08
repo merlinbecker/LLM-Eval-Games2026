@@ -124,7 +124,7 @@ export function WinnersTab({ comp, sortedResults }: SortedResultsProps) {
                     {selectedResult.responses.map((resp, qIdx) => {
                       const avgJudge = computeAvgScore(resp.judgeScores);
                       return (
-                        <tr key={qIdx} className="border-b-2 border-mac-black/20">
+                        <tr key={qIdx} className="border-b-2 border-mac-black">
                           <td className="p-3 font-display">#{qIdx + 1}</td>
                           {judgeList.map((judge) => {
                             const js = resp.judgeScores.find((s) => s.judgeModelId === judge.id);

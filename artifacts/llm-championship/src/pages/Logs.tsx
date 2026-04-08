@@ -26,19 +26,19 @@ function CollapsibleJson({ data, label }: { data: unknown; label: string }) {
   const jsonStr = useMemo(() => JSON.stringify(data, null, 2), [data]);
 
   return (
-    <div className="border-2 border-mac-black/30 bg-mac-white">
+      <div className="border-2 border-mac-black bg-mac-white">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 font-display text-xs uppercase hover:bg-mac-black/5 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-1.5 font-display text-xs uppercase hover:bg-pattern-5 transition-colors"
       >
         {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         {label}
-        <span className="ml-auto text-mac-black/40 font-sans normal-case text-xs">
+        <span className="ml-auto text-mac-black font-sans normal-case text-xs">
           {jsonStr.length > 200 ? `${(jsonStr.length / 1024).toFixed(1)} KB` : `${jsonStr.length} chars`}
         </span>
       </button>
       {open && (
-        <pre className="px-3 py-2 text-xs font-mono overflow-x-auto border-t-2 border-mac-black/20 bg-mac-black/5 max-h-96 overflow-y-auto whitespace-pre-wrap break-words">
+        <pre className="px-3 py-2 text-xs font-mono overflow-x-auto border-t-2 border-mac-black bg-pattern-5 max-h-96 overflow-y-auto whitespace-pre-wrap break-words">
           {jsonStr}
         </pre>
       )}
@@ -54,7 +54,7 @@ function LogEntry({ log }: { log: LlmLog }) {
     <div className={cn("border-2 border-mac-black", isError && "border-dashed")}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-mac-black/5 transition-colors text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-pattern-5 transition-colors text-left"
       >
         {expanded ? <ChevronDown className="w-4 h-4 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 flex-shrink-0" />}
         <span className="font-display text-xs uppercase w-20 flex-shrink-0">
@@ -66,30 +66,30 @@ function LogEntry({ log }: { log: LlmLog }) {
           </RetroBadge>
         </span>
         <span className="font-display text-sm uppercase truncate flex-1">{log.modelId}</span>
-        <span className="text-xs font-sans text-mac-black/60 flex-shrink-0">{log.gatewayType}</span>
+        <span className="text-xs font-sans text-mac-black flex-shrink-0">{log.gatewayType}</span>
         <span className="font-display text-xs w-20 text-right flex-shrink-0">{log.durationMs}ms</span>
-        <span className="text-xs font-sans text-mac-black/40 w-36 text-right flex-shrink-0">
+        <span className="text-xs font-sans text-mac-black w-36 text-right flex-shrink-0">
           {formatTimestamp(log.timestamp)}
         </span>
       </button>
 
       {expanded && (
-        <div className="border-t-2 border-mac-black px-4 py-3 space-y-3 bg-mac-black/[0.02]">
+        <div className="border-t-2 border-mac-black px-4 py-3 space-y-3 bg-mac-white">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
             <div>
-              <span className="font-display uppercase text-mac-black/60">Gateway</span>
+              <span className="font-display uppercase text-mac-black">Gateway</span>
               <p className="font-sans mt-0.5">{log.gatewayType}</p>
             </div>
             <div>
-              <span className="font-display uppercase text-mac-black/60">Model</span>
+              <span className="font-display uppercase text-mac-black">Model</span>
               <p className="font-sans mt-0.5 break-all">{log.modelId}</p>
             </div>
             <div>
-              <span className="font-display uppercase text-mac-black/60">URL</span>
+              <span className="font-display uppercase text-mac-black">URL</span>
               <p className="font-sans mt-0.5 break-all">{log.requestUrl}</p>
             </div>
             <div>
-              <span className="font-display uppercase text-mac-black/60">Duration</span>
+              <span className="font-display uppercase text-mac-black">Duration</span>
               <p className="font-sans mt-0.5">{log.durationMs}ms</p>
             </div>
           </div>
@@ -157,9 +157,9 @@ export default function Logs() {
         {isLoading ? (
           <div className="p-8 text-center font-display text-2xl animate-pulse">LOADING LOGS...</div>
         ) : logList.length === 0 ? (
-          <div className="p-12 text-center border-2 border-dashed border-mac-black/30">
+          <div className="p-12 text-center border-2 border-dashed border-mac-black">
             <p className="font-display text-xl uppercase mb-2">Keine Logs vorhanden</p>
-            <p className="font-sans text-mac-black/60">
+            <p className="font-sans text-mac-black">
               LLM Calls werden automatisch geloggt, wenn Competitions ausgeführt oder Datasets generiert/geprüft werden.
             </p>
           </div>

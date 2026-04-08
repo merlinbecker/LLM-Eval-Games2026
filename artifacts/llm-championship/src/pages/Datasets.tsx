@@ -135,7 +135,7 @@ export default function Datasets() {
               {datasets.map((dataset) => (
                 <div
                   key={dataset.id}
-                  className="border-[3px] border-mac-black p-4 flex flex-col md:flex-row gap-4 cursor-pointer hover:bg-mac-black/5 transition-colors"
+                  className="border-[3px] border-mac-black p-4 flex flex-col md:flex-row gap-4 cursor-pointer hover:bg-pattern-5 transition-colors"
                   onClick={() => setEditDatasetId(dataset.id)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditDatasetId(dataset.id); }}
                   role="button"

@@ -9,6 +9,8 @@
 | **Mehrfach-Richter-Bewertung**           | 3–5 LLM-Richter bewerten jeden Teilnehmer; Mittelwert reduziert Einzel-Bias                                     |
 | **SSRF-Schutzschicht**                   | Gateway-URLs werden auf HTTPS und öffentliche IPs validiert; DNS-Auflösung wird auf private IP-Bereiche geprüft  |
 | **Retro-UI-Komponentenbibliothek**       | Custom `Retro*`-Komponenten kapseln die Macintosh-System-5-Ästhetik einheitlich über alle Seiten                 |
+| **1-Bit-CSS-Architektur**                | Strikte Trennung von Design-Tokens (`theme.css`), Dithering-Mustern (`patterns.css`), Basisstyles und Utilities; kein `opacity`, keine `rgba`; Grautöne ausschließlich als Dithering-CSS-Muster |
+| **CSS Custom Properties als Theme-Interface** | `@theme inline` in Tailwind v4 belässt alle Utilities als `var(--color-mac-black)` — kein Literal-Wert. Runtime-Theme-Switch mit zwei CSS-Variablen, ohne Rebuild. Überschreibbar via `.env`-Datei (`VITE_COLOR_BLACK`, `VITE_COLOR_WHITE`) oder JavaScript |
 | **React Query mit Polling**              | Automatisches Polling (2s) für laufende Wettbewerbe ermöglicht Live-Updates ohne WebSockets                      |
 | **Background-Activity-System**           | Langläufige Operationen (Wettbewerbe, Dataset-Generierung) laufen async im Backend; Frontend pollt Activity-Status alle 3s und zeigt Toast-Notifications bei Abschluss; Nutzer kann frei navigieren |
 

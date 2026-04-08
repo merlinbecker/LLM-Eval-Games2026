@@ -73,8 +73,8 @@ export default function ArenaDashboard() {
                       </>
                     ) : (
                       <>
-                        <p className="font-display text-xs uppercase mt-2 text-mac-black/40">---</p>
-                        <p className="text-[10px] mt-1 text-mac-black/40">G: - S: - B: -</p>
+                        <p className="font-display text-xs uppercase mt-2 text-mac-black">---</p>
+                        <p className="text-[10px] mt-1 text-mac-black">G: - S: - B: -</p>
                       </>
                     )}
                   </div>
@@ -84,21 +84,21 @@ export default function ArenaDashboard() {
           </div>
         </div>
         <div className="p-6 bg-mac-white grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/gateways" className="border-[3px] border-mac-black p-4 flex items-start space-x-4 hover:bg-mac-black/5 transition-colors cursor-pointer">
+          <Link href="/gateways" className="border-[3px] border-mac-black p-4 flex items-start space-x-4 hover:bg-pattern-5 transition-colors cursor-pointer">
             <TerminalSquare className="w-8 h-8 flex-shrink-0" />
             <div>
               <h3 className="font-display font-bold uppercase mb-1">1. Configure</h3>
               <p className="text-lg leading-tight">Setup your Gateways &amp; Models.</p>
             </div>
           </Link>
-          <Link href="/datasets" className="border-[3px] border-mac-black p-4 flex items-start space-x-4 hover:bg-mac-black/5 transition-colors cursor-pointer">
+          <Link href="/datasets" className="border-[3px] border-mac-black p-4 flex items-start space-x-4 hover:bg-pattern-5 transition-colors cursor-pointer">
             <Activity className="w-8 h-8 flex-shrink-0" />
             <div>
               <h3 className="font-display font-bold uppercase mb-1">2. Evaluate</h3>
               <p className="text-lg leading-tight">Upload datasets &amp; run tests.</p>
             </div>
           </Link>
-          <Link href="/competitions/new" className="border-[3px] border-mac-black p-4 flex items-start space-x-4 bg-mac-black text-mac-white hover:bg-mac-black/90 transition-colors cursor-pointer">
+          <Link href="/competitions/new" className="border-[3px] border-mac-black p-4 flex items-start space-x-4 bg-mac-black text-mac-white hover:bg-mac-black transition-colors cursor-pointer">
             <TrophyIcon className="w-8 h-8 flex-shrink-0" />
             <div>
               <h3 className="font-display font-bold uppercase mb-1">3. Start the Games</h3>
@@ -133,7 +133,7 @@ export default function ArenaDashboard() {
             </thead>
             <tbody>
               {competitionList.map((comp) => (
-                <tr key={comp.id} className="border-b-2 border-mac-black/20 hover:bg-mac-black/5">
+                <tr key={comp.id} className="border-b-2 border-mac-black hover:bg-pattern-5">
                   <td className="p-3 font-display">#{comp.id}</td>
                   <td className="p-3 font-bold uppercase">{comp.name}</td>
                   <td className="p-3">

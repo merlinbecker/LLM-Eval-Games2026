@@ -1,0 +1,75 @@
+/* ─────────────────────────────────────────────────────────
+   PATTERNS — Schwarz/Weiß Dither-Patterns als Grauton-Ersatz
+   Alle Patterns nutzen ausschließlich --color-mac-black und
+   --color-mac-white — damit sind sie vollständig themebar.
+
+   Crankit-Patterns lassen sich hier als Drop-in-Ersatz
+   eintragen: https://dev.crankit.app/tools/gfxp/
+   ───────────────────────────────────────────────────────── */
+
+@layer utilities {
+  /* ~5 %: vereinzelter Punkt alle 6×6 px */
+  .bg-pattern-5 {
+    background-image: radial-gradient(
+      circle,
+      var(--color-mac-black) 1px,
+      transparent 1px
+    );
+    background-size: 6px 6px;
+    background-color: var(--color-mac-white);
+  }
+
+  /* ~12 %: Bayer-2×2 sparse — 1 von 8 Pixeln schwarz */
+  .bg-pattern-12 {
+    background-image:
+      linear-gradient(45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-mac-black) 25%, transparent 25%);
+    background-size: 4px 8px;
+    background-position: 0 0, 0 4px;
+    background-color: var(--color-mac-white);
+  }
+
+  /* ~25 %: Bayer 2×2 — 1 von 4 Pixeln schwarz */
+  .bg-pattern-25 {
+    background-image:
+      linear-gradient(45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, transparent 75%),
+      linear-gradient(-45deg, transparent 75%, transparent 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0;
+    background-color: var(--color-mac-white);
+  }
+
+  /* ~50 %: Schachbrett (vorhandenes bg-dither-Pattern) */
+  .bg-dither {
+    background-image:
+      linear-gradient( 45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient( 45deg, transparent 75%, var(--color-mac-black) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--color-mac-black) 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0;
+  }
+
+  /* ~50 %: Horizontale Linien (jede 2. Zeile schwarz) */
+  .bg-dither-lines {
+    background: repeating-linear-gradient(
+      0deg,
+      var(--color-mac-white) 0 1px,
+      var(--color-mac-black) 1px 2px
+    );
+  }
+
+  /* ~75 %: Invertiertes Schachbrett — 3 von 4 Pixeln schwarz */
+  .bg-pattern-75 {
+    background-image:
+      linear-gradient( 45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-mac-black) 25%, transparent 25%),
+      linear-gradient( 45deg, transparent 75%, var(--color-mac-black) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--color-mac-black) 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 2px 0, -2px 2px, 0 -2px;
+    background-color: var(--color-mac-black);
+  }
+}

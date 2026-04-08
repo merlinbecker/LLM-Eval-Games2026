@@ -93,19 +93,19 @@ export default function NewCompetition() {
                 icon={<Swords className="w-4 h-4 mr-2" />}
               />
               
-              <div className="mt-6 flex-1 border-t-[3px] border-black pt-4">
+              <div className="mt-6 flex-1 border-t-[3px] border-mac-black pt-4">
                 <h4 className="font-display uppercase mb-4">Roster ({contestants.length})</h4>
                 <div className="space-y-2">
                   {contestants.map((c, i) => (
-                    <div key={i} className="flex justify-between items-center border-[3px] border-black p-2 bg-black/5">
+                    <div key={i} className="flex justify-between items-center border-[3px] border-mac-black p-2 bg-pattern-5">
                       <div className="flex items-center space-x-2">
                         <Bot className="w-5 h-5" />
                         <span className="font-bold">{c.modelName}</span>
                       </div>
-                      <button type="button" onClick={() => setContestants(contestants.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-black hover:text-white">&times;</button>
+                      <button type="button" onClick={() => setContestants(contestants.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-mac-black hover:text-mac-white">&times;</button>
                     </div>
                   ))}
-                  {contestants.length === 0 && <div className="text-center p-4 border-2 border-dashed border-black">NO CONTESTANTS</div>}
+                  {contestants.length === 0 && <div className="text-center p-4 border-2 border-dashed border-mac-black">NO CONTESTANTS</div>}
                 </div>
               </div>
             </div>
@@ -121,19 +121,19 @@ export default function NewCompetition() {
                 disabled={judges.length >= 5}
               />
               
-              <div className="mt-6 flex-1 border-t-[3px] border-black pt-4">
+              <div className="mt-6 flex-1 border-t-[3px] border-mac-black pt-4">
                 <h4 className="font-display uppercase mb-4">Panel ({judges.length})</h4>
                 <div className="space-y-2">
                   {judges.map((c, i) => (
-                    <div key={i} className="flex justify-between items-center border-[3px] border-black p-2 bg-black/5">
+                    <div key={i} className="flex justify-between items-center border-[3px] border-mac-black p-2 bg-pattern-5">
                       <div className="flex items-center space-x-2">
                         <Bot className="w-5 h-5" />
                         <span className="font-bold">{c.modelName}</span>
                       </div>
-                      <button type="button" onClick={() => setJudges(judges.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-black hover:text-white">&times;</button>
+                      <button type="button" onClick={() => setJudges(judges.filter((_, idx) => idx !== i))} className="text-xl font-bold px-2 hover:bg-mac-black hover:text-mac-white">&times;</button>
                     </div>
                   ))}
-                  {judges.length === 0 && <div className="text-center p-4 border-2 border-dashed border-black">NO JUDGES (3–5 REQUIRED)</div>}
+                  {judges.length === 0 && <div className="text-center p-4 border-2 border-dashed border-mac-black">NO JUDGES (3–5 REQUIRED)</div>}
                 </div>
               </div>
             </div>
